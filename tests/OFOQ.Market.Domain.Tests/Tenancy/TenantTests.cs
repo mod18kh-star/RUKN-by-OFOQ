@@ -124,4 +124,106 @@ public sealed class TenantTests
         Assert.Throws<ArgumentException>(() =>
             TenantId.From(Guid.Empty));
     }
+
+    [Fact]
+    public void TenantSlug_Create_NormalizesToLowercase()
+    {
+        var slug = TenantSlug.Create("Turks-Store");
+
+        Assert.Equal(
+            "turks-store",
+            slug.Value);
+    }
+
+    [Fact]
+    public void TenantSlug_Create_WithReservedSlug_ThrowsArgumentException()
+    {
+        Assert.Throws<ArgumentException>(() =>
+            TenantSlug.Create("admin"));
+    }
+
+    [Fact]
+    public void TenantSlug_Create_WithSpaces_ThrowsArgumentException()
+    {
+        Assert.Throws<ArgumentException>(() =>
+            TenantSlug.Create("turks store"));
+    }
+
+    [Fact]
+    public void TenantSlug_Create_WithArabicCharacters_ThrowsArgumentException()
+    {
+        Assert.Throws<ArgumentException>(() =>
+            TenantSlug.Create("متجر"));
+    }
+
+    [Fact]
+    public void TenantSlug_Create_WithLeadingHyphen_ThrowsArgumentException()
+    {
+        Assert.Throws<ArgumentException>(() =>
+            TenantSlug.Create("-turks"));
+    }
+
+    [Fact]
+    public void ChangeSlug_WithDifferentSlug_UpdatesSlugAndRaisesDomainEvent()
+    {
+        var createdAt = DateTimeOffset.UtcNow;
+        var changedAt = createdAt.AddMinutes(10);
+
+        var tenant = Tenant.Create(
+            "Turks Store",
+            "turks",
+            createdAt);
+
+        tenant.ClearDomainEvents();
+
+        tenant.ChangeSlug(
+            "turks-store",
+            changedAt);
+
+        Assert.Equal(
+            "turks-store",
+            tenant.Slug.Value);
+
+        var domainEvent =
+            Assert.Single(tenant.DomainEvents);
+
+        var slugChangedEvent =
+            Assert.IsType<TenantSlugChangedDomainEvent>(
+                domainEvent);
+
+        Assert.Equal(
+            "turks",
+            slugChangedEvent.PreviousSlug.Value);
+
+        Assert.Equal(
+            "turks-store",
+            slugChangedEvent.NewSlug.Value);
+
+        Assert.Equal(
+            changedAt,
+            slugChangedEvent.OccurredAtUtc);
+    }
+
+    [Fact]
+    public void ChangeSlug_WithSameSlug_DoesNotRaiseDomainEvent()
+    {
+        var now = DateTimeOffset.UtcNow;
+
+        var tenant = Tenant.Create(
+            "Turks Store",
+            "turks",
+            now);
+
+        tenant.ClearDomainEvents();
+
+        tenant.ChangeSlug(
+            "TURKS",
+            now.AddMinutes(5));
+
+        Assert.Empty(tenant.DomainEvents);
+
+        Assert.Equal(
+            "turks",
+            tenant.Slug.Value);
+    }
 }

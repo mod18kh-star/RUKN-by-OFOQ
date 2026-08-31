@@ -53,13 +53,12 @@ public sealed class Tenant :
         DateTimeOffset createdAtUtc,
         Guid? createdByUserId = null)
     {
-        name = NormalizeName(name);
-
+        var normalizedName = NormalizeName(name);
         var tenantSlug = TenantSlug.Create(slug);
 
         var tenant = new Tenant(
             TenantId.New(),
-            name,
+            normalizedName,
             tenantSlug,
             createdAtUtc,
             createdByUserId);
@@ -89,17 +88,36 @@ public sealed class Tenant :
         DateTimeOffset updatedAtUtc,
         Guid? updatedByUserId = null)
     {
-        Slug = TenantSlug.Create(slug);
+        var newSlug = TenantSlug.Create(slug);
+
+        if (Slug.Equals(newSlug))
+            return;
+
+        var previousSlug = Slug;
+
+        Slug = newSlug;
 
         MarkUpdated(
             updatedAtUtc,
             updatedByUserId);
+
+        var domainEvent =
+            new TenantSlugChangedDomainEvent(
+                Id,
+                previousSlug,
+                newSlug,
+                updatedAtUtc);
+
+        RaiseDomainEvent(domainEvent);
     }
 
     public void Activate(
         DateTimeOffset updatedAtUtc,
         Guid? updatedByUserId = null)
     {
+        if (Status == TenantStatus.Active)
+            return;
+
         Status = TenantStatus.Active;
 
         MarkUpdated(
@@ -111,6 +129,9 @@ public sealed class Tenant :
         DateTimeOffset updatedAtUtc,
         Guid? updatedByUserId = null)
     {
+        if (Status == TenantStatus.Suspended)
+            return;
+
         Status = TenantStatus.Suspended;
 
         MarkUpdated(
@@ -167,15 +188,15 @@ public sealed class Tenant :
                 nameof(name));
         }
 
-        name = name.Trim();
+        var normalizedName = name.Trim();
 
-        if (name.Length > 200)
+        if (normalizedName.Length > 200)
         {
             throw new ArgumentException(
                 "Tenant name cannot exceed 200 characters.",
                 nameof(name));
         }
 
-        return name;
+        return normalizedName;
     }
 }
