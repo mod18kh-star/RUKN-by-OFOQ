@@ -22,7 +22,7 @@ public sealed class TenantTests
 
         Assert.False(tenant.Id.IsEmpty);
         Assert.Equal("متجر أفق", tenant.Name);
-        Assert.Equal("ofoq-store", tenant.Slug);
+        Assert.Equal("ofoq-store", tenant.Slug.Value);
         Assert.Equal(TenantStatus.Draft, tenant.Status);
 
         Assert.Equal(now, tenant.CreatedAtUtc);

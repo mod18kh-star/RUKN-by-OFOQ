@@ -14,7 +14,7 @@ public sealed class Tenant :
     private Tenant(
         TenantId id,
         string name,
-        string slug,
+        TenantSlug slug,
         DateTimeOffset createdAtUtc,
         Guid? createdByUserId)
         : base(id)
@@ -29,7 +29,7 @@ public sealed class Tenant :
 
     public string Name { get; private set; } = string.Empty;
 
-    public string Slug { get; private set; } = string.Empty;
+    public TenantSlug Slug { get; private set; }
 
     public TenantStatus Status { get; private set; }
 
@@ -54,12 +54,13 @@ public sealed class Tenant :
         Guid? createdByUserId = null)
     {
         name = NormalizeName(name);
-        slug = NormalizeSlug(slug);
+
+        var tenantSlug = TenantSlug.Create(slug);
 
         var tenant = new Tenant(
             TenantId.New(),
             name,
-            slug,
+            tenantSlug,
             createdAtUtc,
             createdByUserId);
 
@@ -88,7 +89,7 @@ public sealed class Tenant :
         DateTimeOffset updatedAtUtc,
         Guid? updatedByUserId = null)
     {
-        Slug = NormalizeSlug(slug);
+        Slug = TenantSlug.Create(slug);
 
         MarkUpdated(
             updatedAtUtc,
@@ -160,34 +161,21 @@ public sealed class Tenant :
     private static string NormalizeName(string name)
     {
         if (string.IsNullOrWhiteSpace(name))
+        {
             throw new ArgumentException(
                 "Tenant name is required.",
                 nameof(name));
+        }
 
         name = name.Trim();
 
         if (name.Length > 200)
+        {
             throw new ArgumentException(
                 "Tenant name cannot exceed 200 characters.",
                 nameof(name));
+        }
 
         return name;
-    }
-
-    private static string NormalizeSlug(string slug)
-    {
-        if (string.IsNullOrWhiteSpace(slug))
-            throw new ArgumentException(
-                "Tenant slug is required.",
-                nameof(slug));
-
-        slug = slug.Trim().ToLowerInvariant();
-
-        if (slug.Length > 100)
-            throw new ArgumentException(
-                "Tenant slug cannot exceed 100 characters.",
-                nameof(slug));
-
-        return slug;
     }
 }
