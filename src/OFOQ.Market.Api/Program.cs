@@ -1,13 +1,19 @@
+using OFOQ.Market.Api.Endpoints.Tenancy;
+using OFOQ.Market.Application;
 using OFOQ.Market.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 
 var connectionString =
-    builder.Configuration.GetConnectionString("MarketDatabase")
+    builder.Configuration.GetConnectionString(
+        "MarketDatabase")
     ?? throw new InvalidOperationException(
         "Connection string 'MarketDatabase' was not found.");
 
-builder.Services.AddInfrastructure(connectionString);
+builder.Services.AddApplication();
+
+builder.Services.AddInfrastructure(
+    connectionString);
 
 var app = builder.Build();
 
@@ -18,5 +24,7 @@ app.MapGet(
         status = "ok",
         service = "OFOQ.Market.Api"
     }));
+
+app.MapTenantEndpoints();
 
 app.Run();
