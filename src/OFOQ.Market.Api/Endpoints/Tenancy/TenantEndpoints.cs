@@ -1,5 +1,7 @@
 using OFOQ.Market.Application.Tenancy.CreateTenant;
+using OFOQ.Market.Application.Tenancy.GetTenantById;
 using OFOQ.Market.Contracts.Tenancy;
+using OFOQ.Market.Domain.Tenancy;
 
 namespace OFOQ.Market.Api.Endpoints.Tenancy;
 
@@ -15,6 +17,10 @@ public static class TenantEndpoints
         group.MapPost(
             "/",
             CreateTenantAsync);
+
+        group.MapGet(
+            "/{tenantId}",
+            GetTenantByIdAsync);
 
         return endpoints;
     }
@@ -66,5 +72,47 @@ public static class TenantEndpoints
                     message = exception.Message
                 });
         }
+    }
+
+    private static async Task<IResult> GetTenantByIdAsync(
+        string tenantId,
+        GetTenantByIdHandler handler,
+        CancellationToken cancellationToken)
+    {
+        if (!Guid.TryParse(tenantId, out var tenantGuid) ||
+            tenantGuid == Guid.Empty)
+        {
+            return Results.BadRequest(
+                new
+                {
+                    code = "invalid_tenant_id",
+                    message = "Tenant ID must be a valid non-empty GUID."
+                });
+        }
+
+        var result =
+            await handler.HandleAsync(
+                TenantId.From(tenantGuid),
+                cancellationToken);
+
+        if (result is null)
+        {
+            return Results.NotFound(
+                new
+                {
+                    code = "tenant_not_found",
+                    message = "Tenant was not found."
+                });
+        }
+
+        var response =
+            new GetTenantByIdResponse(
+                result.TenantId.Value,
+                result.Name,
+                result.Slug,
+                result.Status.ToString(),
+                result.CreatedAtUtc);
+
+        return Results.Ok(response);
     }
 }
