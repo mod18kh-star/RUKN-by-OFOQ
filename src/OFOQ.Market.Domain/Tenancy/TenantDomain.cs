@@ -4,7 +4,7 @@ namespace OFOQ.Market.Domain.Tenancy;
 
 public sealed class TenantDomain :
     Entity<TenantDomainId>,
-    ITenantScoped,
+    ITenantScoped<TenantId>,
     IAuditable,
     ISoftDeletable
 {
@@ -20,7 +20,7 @@ public sealed class TenantDomain :
         Guid? createdByUserId)
         : base(id)
     {
-        TenantId = tenantId.Value;
+        TenantId = tenantId;
         Domain = domain;
 
         Status = TenantDomainStatus.PendingVerification;
@@ -30,7 +30,7 @@ public sealed class TenantDomain :
         CreatedByUserId = createdByUserId;
     }
 
-    public Guid TenantId { get; private set; }
+    public TenantId TenantId { get; private set; }
 
     public DomainName Domain { get; private set; }
 

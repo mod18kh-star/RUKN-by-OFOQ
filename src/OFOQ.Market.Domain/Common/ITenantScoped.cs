@@ -1,6 +1,7 @@
 namespace OFOQ.Market.Domain.Common;
 
-public interface ITenantScoped
+public interface ITenantScoped<TTenantId>
+    where TTenantId : notnull
 {
-    Guid TenantId { get; }
+    TTenantId TenantId { get; }
 }

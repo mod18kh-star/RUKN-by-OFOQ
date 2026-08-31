@@ -1,0 +1,31 @@
+using Microsoft.EntityFrameworkCore;
+using OFOQ.Market.Application.Common.Persistence;
+using OFOQ.Market.Domain.Tenancy;
+
+namespace OFOQ.Market.Infrastructure.Persistence;
+
+public sealed class MarketDbContext :
+    DbContext,
+    IUnitOfWork
+{
+    public MarketDbContext(
+        DbContextOptions<MarketDbContext> options)
+        : base(options)
+    {
+    }
+
+    public DbSet<Tenant> Tenants
+        => Set<Tenant>();
+
+    public DbSet<TenantDomain> TenantDomains
+        => Set<TenantDomain>();
+
+    protected override void OnModelCreating(
+        ModelBuilder modelBuilder)
+    {
+        base.OnModelCreating(modelBuilder);
+
+        modelBuilder.ApplyConfigurationsFromAssembly(
+            typeof(MarketDbContext).Assembly);
+    }
+}

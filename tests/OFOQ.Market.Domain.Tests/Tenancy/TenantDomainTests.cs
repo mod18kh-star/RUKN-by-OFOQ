@@ -43,7 +43,6 @@ public sealed class TenantDomainTests
     public void Create_CreatesPendingNonPrimaryDomain()
     {
         var tenantId = TenantId.New();
-
         var now = DateTimeOffset.UtcNow;
 
         var domain = TenantDomain.Create(
@@ -54,7 +53,7 @@ public sealed class TenantDomainTests
         Assert.False(domain.Id.IsEmpty);
 
         Assert.Equal(
-            tenantId.Value,
+            tenantId,
             domain.TenantId);
 
         Assert.Equal(
@@ -68,6 +67,10 @@ public sealed class TenantDomainTests
         Assert.False(domain.IsPrimary);
         Assert.Null(domain.VerifiedAtUtc);
         Assert.False(domain.IsDeleted);
+
+        Assert.Equal(
+            now,
+            domain.CreatedAtUtc);
     }
 
     [Fact]
@@ -123,6 +126,10 @@ public sealed class TenantDomainTests
             now.AddMinutes(10));
 
         Assert.True(domain.IsPrimary);
+
+        Assert.Equal(
+            TenantDomainStatus.Verified,
+            domain.Status);
     }
 
     [Fact]
