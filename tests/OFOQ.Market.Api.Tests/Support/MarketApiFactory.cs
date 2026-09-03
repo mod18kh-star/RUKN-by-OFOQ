@@ -18,12 +18,29 @@ internal sealed class MarketApiFactory :
         Environment.SetEnvironmentVariable(
             "ConnectionStrings__MarketDatabase",
             TestConnectionString);
+
+        Environment.SetEnvironmentVariable(
+            "Authentication__Jwt__Issuer",
+            TestAuthenticationConstants.Issuer);
+
+        Environment.SetEnvironmentVariable(
+            "Authentication__Jwt__Audience",
+            TestAuthenticationConstants.Audience);
+
+        Environment.SetEnvironmentVariable(
+            "Authentication__Jwt__SigningKey",
+            TestAuthenticationConstants.SigningKey);
+
+        Environment.SetEnvironmentVariable(
+            "Authentication__Jwt__AccessTokenMinutes",
+            "15");
     }
 
     protected override void ConfigureWebHost(
         IWebHostBuilder builder)
     {
-        builder.UseEnvironment("Testing");
+        builder.UseEnvironment(
+            "Testing");
 
         builder.ConfigureServices(
             services =>

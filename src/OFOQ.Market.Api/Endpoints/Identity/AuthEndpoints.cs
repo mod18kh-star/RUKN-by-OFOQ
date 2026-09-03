@@ -1,3 +1,6 @@
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using OFOQ.Market.Application.Identity.LoginUser;
 using OFOQ.Market.Application.Identity.RegisterUser;
 using OFOQ.Market.Contracts.Identity;
 
@@ -12,8 +15,21 @@ public static class AuthEndpoints
             endpoints.MapGroup("/api/auth");
 
         group.MapPost(
-            "/register",
-            RegisterAsync);
+                "/register",
+                RegisterAsync)
+            .RequireRateLimiting(
+                "auth-register");
+
+        group.MapPost(
+                "/login",
+                LoginAsync)
+            .RequireRateLimiting(
+                "auth-login");
+
+        group.MapGet(
+                "/me",
+                GetCurrentUser)
+            .RequireAuthorization();
 
         return endpoints;
     }
@@ -50,6 +66,7 @@ public static class AuthEndpoints
                 {
                     code =
                         "user_email_already_exists",
+
                     message =
                         "An account with this email already exists."
                 });
@@ -61,20 +78,84 @@ public static class AuthEndpoints
                 {
                     code =
                         "invalid_password",
+
                     message =
                         exception.Message
                 });
         }
-        catch (ArgumentException exception)
+        catch (ArgumentException)
         {
             return Results.BadRequest(
                 new
                 {
                     code =
                         "invalid_email",
+
                     message =
-                        exception.Message
+                        "The email address is invalid."
                 });
         }
+    }
+
+    private static async Task<IResult> LoginAsync(
+        LoginUserRequest request,
+        LoginUserHandler handler,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result =
+                await handler.HandleAsync(
+                    new LoginUserCommand(
+                        request.Email,
+                        request.Password),
+                    cancellationToken);
+
+            return Results.Ok(
+                new LoginUserResponse(
+                    result.UserId.Value,
+                    result.Email,
+                    result.AccessToken,
+                    result.ExpiresAtUtc));
+        }
+        catch (InvalidCredentialsException)
+        {
+            return Results.Json(
+                new
+                {
+                    code =
+                        "invalid_credentials",
+
+                    message =
+                        "Invalid email or password."
+                },
+                statusCode:
+                    StatusCodes.Status401Unauthorized);
+        }
+    }
+
+    private static IResult GetCurrentUser(
+        ClaimsPrincipal principal)
+    {
+        var userIdValue =
+            principal.FindFirstValue(
+                JwtRegisteredClaimNames.Sub);
+
+        var email =
+            principal.FindFirstValue(
+                JwtRegisteredClaimNames.Email);
+
+        if (!Guid.TryParse(
+                userIdValue,
+                out var userId)
+            || string.IsNullOrWhiteSpace(email))
+        {
+            return Results.Unauthorized();
+        }
+
+        return Results.Ok(
+            new CurrentUserResponse(
+                userId,
+                email));
     }
 }
