@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using OFOQ.Market.Application.Common.Persistence;
@@ -32,6 +33,10 @@ public static class DependencyInjection
                     });
             });
 
+        services.AddDataProtection()
+            .SetApplicationName(
+                "OFOQ.Market");
+
         services.AddScoped<
             ITenantRepository,
             TenantRepository>();
@@ -55,6 +60,14 @@ public static class DependencyInjection
         services.AddSingleton<
             IPasswordHasher,
             AspNetPasswordHasher>();
+
+        services.AddSingleton<
+            IMfaSecretProtector,
+            DataProtectionMfaSecretProtector>();
+
+        services.AddSingleton<
+            ITotpService,
+            OtpNetTotpService>();
 
         services.AddScoped<IUnitOfWork>(
             serviceProvider =>
