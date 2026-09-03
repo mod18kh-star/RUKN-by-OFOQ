@@ -81,6 +81,10 @@ public static class DependencyInjection
             IMfaLoginChallengeTokenService,
             MfaLoginChallengeTokenService>();
 
+        services.AddScoped<
+            ITransactionExecutor,
+            EfTransactionExecutor>();
+
         services.AddScoped<IUnitOfWork>(
             serviceProvider =>
                 serviceProvider.GetRequiredService<

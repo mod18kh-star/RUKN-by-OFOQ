@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using OFOQ.Market.Application.Identity.LoginUser;
 using OFOQ.Market.Application.Identity.Mfa.ConfirmEnrollment;
+using OFOQ.Market.Application.Identity.Mfa.Login.VerifyRecovery;
 using OFOQ.Market.Application.Identity.Mfa.Login.VerifyTotp;
 using OFOQ.Market.Application.Identity.Mfa.RecoveryCodes.Consume;
 using OFOQ.Market.Application.Identity.Mfa.RecoveryCodes.Generate;
@@ -34,6 +35,9 @@ public static class DependencyInjection
 
         services.AddScoped<
             VerifyMfaTotpHandler>();
+
+        services.AddScoped<
+            VerifyMfaRecoveryCodeHandler>();
 
         services.AddScoped<
             StartMfaEnrollmentHandler>();

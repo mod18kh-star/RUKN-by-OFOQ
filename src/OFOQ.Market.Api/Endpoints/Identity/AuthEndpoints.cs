@@ -1,6 +1,7 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using OFOQ.Market.Application.Identity.LoginUser;
+using OFOQ.Market.Application.Identity.Mfa.Login.VerifyRecovery;
 using OFOQ.Market.Application.Identity.Mfa.Login.VerifyTotp;
 using OFOQ.Market.Application.Identity.RegisterUser;
 using OFOQ.Market.Contracts.Identity;
@@ -31,6 +32,12 @@ public static class AuthEndpoints
         group.MapPost(
                 "/mfa/totp",
                 VerifyMfaTotpAsync)
+            .RequireRateLimiting(
+                "auth-mfa");
+
+        group.MapPost(
+                "/mfa/recovery",
+                VerifyMfaRecoveryCodeAsync)
             .RequireRateLimiting(
                 "auth-mfa");
 
@@ -176,16 +183,58 @@ public static class AuthEndpoints
         }
         catch (InvalidMfaLoginChallengeException)
         {
+            return Results.Json(
+                new
+                {
+                    code =
+                        "invalid_mfa_verification",
+
+                    message =
+                        "The MFA verification could not be completed."
+                },
+                statusCode:
+                    StatusCodes.Status401Unauthorized);
+        }
+    }
+
+    private static async Task<IResult> VerifyMfaRecoveryCodeAsync(
+        VerifyMfaRecoveryCodeRequest request,
+        VerifyMfaRecoveryCodeHandler handler,
+        HttpContext httpContext,
+        CancellationToken cancellationToken)
+    {
+        SetNoStoreHeaders(
+            httpContext);
+
+        try
+        {
+            var result =
+                await handler.HandleAsync(
+                    new VerifyMfaRecoveryCodeCommand(
+                        request.ChallengeToken,
+                        request.RecoveryCode),
+                    cancellationToken);
+
+            return Results.Ok(
+                new VerifyMfaRecoveryCodeResponse(
+                    result.UserId.Value,
+                    result.Email,
+                    result.AccessToken,
+                    result.ExpiresAtUtc));
+        }
+        catch (InvalidMfaRecoveryVerificationException)
+        {
             /*
              * Deliberately generic.
              *
-             * We do not reveal whether:
+             * Do not reveal whether:
              * - the challenge exists,
-             * - it expired,
-             * - it was consumed,
-             * - it was revoked,
+             * - the challenge expired,
+             * - the challenge was consumed,
+             * - the challenge was revoked,
              * - attempts were exhausted,
-             * - or the TOTP code was wrong/replayed.
+             * - the recovery code exists,
+             * - or the recovery code was already used.
              */
             return Results.Json(
                 new

@@ -64,7 +64,13 @@ internal sealed class MarketApiFactory :
                     IUserMfaRepository>();
 
                 services.RemoveAll<
+                    IUserMfaRecoveryCodeRepository>();
+
+                services.RemoveAll<
                     IMfaLoginChallengeRepository>();
+
+                services.RemoveAll<
+                    ITransactionExecutor>();
 
                 services.RemoveAll<
                     IUnitOfWork>();
@@ -106,6 +112,15 @@ internal sealed class MarketApiFactory :
                                 InMemoryUserMfaRepository>());
 
                 services.AddSingleton<
+                    InMemoryUserMfaRecoveryCodeRepository>();
+
+                services.AddSingleton<
+                    IUserMfaRecoveryCodeRepository>(
+                        provider =>
+                            provider.GetRequiredService<
+                                InMemoryUserMfaRecoveryCodeRepository>());
+
+                services.AddSingleton<
                     InMemoryMfaLoginChallengeRepository>();
 
                 services.AddSingleton<
@@ -113,6 +128,15 @@ internal sealed class MarketApiFactory :
                         provider =>
                             provider.GetRequiredService<
                                 InMemoryMfaLoginChallengeRepository>());
+
+                services.AddSingleton<
+                    FakeTransactionExecutor>();
+
+                services.AddSingleton<
+                    ITransactionExecutor>(
+                        provider =>
+                            provider.GetRequiredService<
+                                FakeTransactionExecutor>());
 
                 services.AddSingleton<
                     IPasswordHasher,
