@@ -3,5 +3,8 @@ namespace OFOQ.Market.Contracts.Identity;
 public sealed record LoginUserResponse(
     Guid UserId,
     string Email,
-    string AccessToken,
-    DateTimeOffset ExpiresAtUtc);
+    bool RequiresMfa,
+    string? AccessToken,
+    DateTimeOffset? AccessTokenExpiresAtUtc,
+    string? MfaChallengeToken,
+    DateTimeOffset? MfaChallengeExpiresAtUtc);

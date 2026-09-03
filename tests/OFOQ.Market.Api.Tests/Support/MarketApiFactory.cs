@@ -14,7 +14,6 @@ internal sealed class MarketApiFactory :
         "Host=127.0.0.1;Port=5432;Database=unused;Username=unused;Password=unused";
 
     // Test-only key.
-    // 32 bytes encoded as Base64.
     // Never use this value in production.
     private const string TestRecoveryCodeHmacKey =
         "MDEyMzQ1Njc4OUFCQ0RFRjAxMjM0NTY3ODlBQkNERUY=";
@@ -62,6 +61,12 @@ internal sealed class MarketApiFactory :
                     IUserRepository>();
 
                 services.RemoveAll<
+                    IUserMfaRepository>();
+
+                services.RemoveAll<
+                    IMfaLoginChallengeRepository>();
+
+                services.RemoveAll<
                     IUnitOfWork>();
 
                 services.RemoveAll<
@@ -84,6 +89,24 @@ internal sealed class MarketApiFactory :
                         provider =>
                             provider.GetRequiredService<
                                 InMemoryUserRepository>());
+
+                services.AddSingleton<
+                    InMemoryUserMfaRepository>();
+
+                services.AddSingleton<
+                    IUserMfaRepository>(
+                        provider =>
+                            provider.GetRequiredService<
+                                InMemoryUserMfaRepository>());
+
+                services.AddSingleton<
+                    InMemoryMfaLoginChallengeRepository>();
+
+                services.AddSingleton<
+                    IMfaLoginChallengeRepository>(
+                        provider =>
+                            provider.GetRequiredService<
+                                InMemoryMfaLoginChallengeRepository>());
 
                 services.AddSingleton<
                     IPasswordHasher,

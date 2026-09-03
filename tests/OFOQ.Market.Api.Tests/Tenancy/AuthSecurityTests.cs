@@ -2,8 +2,10 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+using Microsoft.Extensions.DependencyInjection;
 using OFOQ.Market.Api.Tests.Support;
 using OFOQ.Market.Contracts.Identity;
+using OFOQ.Market.Domain.Identity;
 
 namespace OFOQ.Market.Api.Tests.Identity;
 
@@ -36,7 +38,8 @@ public sealed class AuthSecurityTests
             await response.Content
                 .ReadFromJsonAsync<LoginUserResponse>();
 
-        Assert.NotNull(result);
+        Assert.NotNull(
+            result);
 
         Assert.NotEqual(
             Guid.Empty,
@@ -47,12 +50,133 @@ public sealed class AuthSecurityTests
             result.Email);
 
         Assert.False(
+            result.RequiresMfa);
+
+        Assert.False(
             string.IsNullOrWhiteSpace(
                 result.AccessToken));
 
+        Assert.NotNull(
+            result.AccessTokenExpiresAtUtc);
+
         Assert.True(
-            result.ExpiresAtUtc >
+            result.AccessTokenExpiresAtUtc >
             DateTimeOffset.UtcNow);
+
+        Assert.Null(
+            result.MfaChallengeToken);
+
+        Assert.Null(
+            result.MfaChallengeExpiresAtUtc);
+
+        Assert.NotNull(
+            response.Headers.CacheControl);
+
+        Assert.True(
+            response.Headers.CacheControl!.NoStore);
+    }
+
+    [Fact]
+    public async Task Login_WithEnabledMfa_ReturnsChallengeWithoutAccessToken()
+    {
+        await using var factory =
+            new MarketApiFactory();
+
+        using var client =
+            factory.CreateClient();
+
+        var registration =
+            await RegisterUserAsync(
+                client);
+
+        var userId =
+            UserId.From(
+                registration.UserId);
+
+        var now =
+            DateTimeOffset.UtcNow;
+
+        var mfa =
+            UserMfa.BeginEnrollment(
+                userId,
+                "TEST-PROTECTED-SECRET",
+                now.AddMinutes(-2),
+                registration.UserId);
+
+        mfa.ConfirmEnrollment(
+            100,
+            now.AddMinutes(-1),
+            registration.UserId);
+
+        var mfaRepository =
+            factory.Services
+                .GetRequiredService<
+                    InMemoryUserMfaRepository>();
+
+        await mfaRepository.AddAsync(
+            mfa);
+
+        var response =
+            await client.PostAsJsonAsync(
+                "/api/auth/login",
+                new LoginUserRequest(
+                    "user@example.com",
+                    "StrongPassword123"));
+
+        Assert.Equal(
+            HttpStatusCode.OK,
+            response.StatusCode);
+
+        var result =
+            await response.Content
+                .ReadFromJsonAsync<LoginUserResponse>();
+
+        Assert.NotNull(
+            result);
+
+        Assert.True(
+            result.RequiresMfa);
+
+        Assert.Null(
+            result.AccessToken);
+
+        Assert.Null(
+            result.AccessTokenExpiresAtUtc);
+
+        Assert.False(
+            string.IsNullOrWhiteSpace(
+                result.MfaChallengeToken));
+
+        Assert.Equal(
+            64,
+            result.MfaChallengeToken!.Length);
+
+        Assert.NotNull(
+            result.MfaChallengeExpiresAtUtc);
+
+        Assert.True(
+            result.MfaChallengeExpiresAtUtc >
+            DateTimeOffset.UtcNow);
+
+        Assert.NotNull(
+            response.Headers.CacheControl);
+
+        Assert.True(
+            response.Headers.CacheControl!.NoStore);
+
+        // An MFA challenge is not an access token.
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue(
+                "Bearer",
+                result.MfaChallengeToken);
+
+        var meResponse =
+            await client.GetAsync(
+                "/api/auth/me");
+
+        Assert.Equal(
+            HttpStatusCode.Unauthorized,
+            meResponse.StatusCode);
     }
 
     [Fact]
@@ -194,7 +318,7 @@ public sealed class AuthSecurityTests
         client.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue(
                 "Bearer",
-                login.AccessToken);
+                login.AccessToken!);
 
         var response =
             await client.GetAsync(
@@ -238,7 +362,8 @@ public sealed class AuthSecurityTests
                 client);
 
         var tokenParts =
-            login.AccessToken.Split('.');
+            login.AccessToken!
+                .Split('.');
 
         Assert.Equal(
             3,
@@ -406,8 +531,9 @@ public sealed class AuthSecurityTests
             response.StatusCode);
     }
 
-    private static async Task RegisterUserAsync(
-        HttpClient client)
+    private static async Task<RegisterUserResponse>
+        RegisterUserAsync(
+            HttpClient client)
     {
         var response =
             await client.PostAsJsonAsync(
@@ -419,10 +545,21 @@ public sealed class AuthSecurityTests
         Assert.Equal(
             HttpStatusCode.Created,
             response.StatusCode);
+
+        var result =
+            await response.Content
+                .ReadFromJsonAsync<
+                    RegisterUserResponse>();
+
+        Assert.NotNull(
+            result);
+
+        return result;
     }
 
-    private static async Task<LoginUserResponse> LoginAsync(
-        HttpClient client)
+    private static async Task<LoginUserResponse>
+        LoginAsync(
+            HttpClient client)
     {
         var response =
             await client.PostAsJsonAsync(
@@ -442,11 +579,19 @@ public sealed class AuthSecurityTests
         Assert.NotNull(
             result);
 
+        Assert.False(
+            result.RequiresMfa);
+
+        Assert.False(
+            string.IsNullOrWhiteSpace(
+                result.AccessToken));
+
         return result;
     }
 
-    private static async Task<string?> ReadErrorCodeAsync(
-        HttpResponseMessage response)
+    private static async Task<string?>
+        ReadErrorCodeAsync(
+            HttpResponseMessage response)
     {
         using var json =
             JsonDocument.Parse(

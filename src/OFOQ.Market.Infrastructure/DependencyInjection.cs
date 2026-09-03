@@ -77,6 +77,14 @@ public static class DependencyInjection
             ITotpService,
             OtpNetTotpService>();
 
+        services.AddSingleton<
+             IMfaLoginChallengeTokenService,
+             MfaLoginChallengeTokenService>();
+
+        services.AddSingleton<
+            IMfaLoginChallengeTokenService,
+            MfaLoginChallengeTokenService>();
+
         services.AddScoped<IUnitOfWork>(
             serviceProvider =>
                 serviceProvider.GetRequiredService<

@@ -100,8 +100,21 @@ public static class AuthEndpoints
     private static async Task<IResult> LoginAsync(
         LoginUserRequest request,
         LoginUserHandler handler,
+        HttpContext httpContext,
         CancellationToken cancellationToken)
     {
+        // Login responses may contain an access token
+        // or a short-lived MFA challenge.
+        // They must never be cached.
+        httpContext.Response.Headers.CacheControl =
+            "no-store";
+
+        httpContext.Response.Headers.Pragma =
+            "no-cache";
+
+        httpContext.Response.Headers.Expires =
+            "0";
+
         try
         {
             var result =
@@ -115,8 +128,11 @@ public static class AuthEndpoints
                 new LoginUserResponse(
                     result.UserId.Value,
                     result.Email,
+                    result.RequiresMfa,
                     result.AccessToken,
-                    result.ExpiresAtUtc));
+                    result.AccessTokenExpiresAtUtc,
+                    result.MfaChallengeToken,
+                    result.MfaChallengeExpiresAtUtc));
         }
         catch (InvalidCredentialsException)
         {
@@ -148,7 +164,8 @@ public static class AuthEndpoints
         if (!Guid.TryParse(
                 userIdValue,
                 out var userId)
-            || string.IsNullOrWhiteSpace(email))
+            || string.IsNullOrWhiteSpace(
+                email))
         {
             return Results.Unauthorized();
         }
