@@ -205,6 +205,11 @@ public sealed class RegisterUserHandlerTests
             return passwordHash ==
                 $"HASHED::{password}";
         }
+
+        public void PerformDummyVerification(
+            string password)
+        {
+        }
     }
 
     private sealed class FakeUnitOfWork :

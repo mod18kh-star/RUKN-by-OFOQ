@@ -27,7 +27,8 @@ public sealed class LoginUserHandler
         LoginUserCommand command,
         CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(command);
+        ArgumentNullException.ThrowIfNull(
+            command);
 
         if (string.IsNullOrEmpty(command.Password) ||
             command.Password.Length > 128)
@@ -53,18 +54,23 @@ public sealed class LoginUserHandler
                 email,
                 cancellationToken);
 
-        if (user is null ||
-            user.Status != UserStatus.Active)
+        if (user is null)
         {
+            _passwordHasher.PerformDummyVerification(
+                command.Password);
+
             throw new InvalidCredentialsException();
         }
 
+        // نفحص كلمة المرور حتى للحساب الموقوف أو المعطل
+        // حتى لا يصبح Status الحساب قناة جانبية لكشف معلومات.
         var passwordIsValid =
             _passwordHasher.Verify(
                 user.PasswordHash,
                 command.Password);
 
-        if (!passwordIsValid)
+        if (!passwordIsValid ||
+            user.Status != UserStatus.Active)
         {
             throw new InvalidCredentialsException();
         }

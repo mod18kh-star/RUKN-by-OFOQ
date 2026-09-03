@@ -18,4 +18,9 @@ internal sealed class FakePasswordHasher :
         return passwordHash ==
             $"TEST-HASH::{password}";
     }
+
+    public void PerformDummyVerification(
+        string password)
+    {
+    }
 }
