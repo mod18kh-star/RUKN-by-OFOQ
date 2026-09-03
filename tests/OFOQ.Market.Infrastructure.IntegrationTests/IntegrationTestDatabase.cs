@@ -65,8 +65,11 @@ internal sealed class IntegrationTestDatabase
         await dbContext.Database.ExecuteSqlRawAsync(
             """
             TRUNCATE TABLE
+                tenant_memberships,
                 tenant_domains,
+                users,
                 tenants
+            RESTART IDENTITY
             CASCADE;
             """,
             cancellationToken);

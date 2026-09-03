@@ -12,30 +12,44 @@ public static class DependencyInjection
         this IServiceCollection services,
         string connectionString)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(connectionString);
+        ArgumentException.ThrowIfNullOrWhiteSpace(
+            connectionString);
 
-        services.AddDbContext<MarketDbContext>(options =>
-        {
-            options.UseNpgsql(
-                connectionString,
-                npgsqlOptions =>
-                {
-                    npgsqlOptions.EnableRetryOnFailure(
-                        maxRetryCount: 5,
-                        maxRetryDelay: TimeSpan.FromSeconds(10),
-                        errorCodesToAdd: null);
-                });
-        });
+        services.AddDbContext<MarketDbContext>(
+            options =>
+            {
+                options.UseNpgsql(
+                    connectionString,
+                    npgsqlOptions =>
+                    {
+                        npgsqlOptions.EnableRetryOnFailure(
+                            maxRetryCount: 5,
+                            maxRetryDelay:
+                                TimeSpan.FromSeconds(10),
+                            errorCodesToAdd: null);
+                    });
+            });
 
-        services.AddScoped<ITenantRepository, TenantRepository>();
+        services.AddScoped<
+            ITenantRepository,
+            TenantRepository>();
 
         services.AddScoped<
             ITenantDomainRepository,
             TenantDomainRepository>();
 
+        services.AddScoped<
+            IUserRepository,
+            UserRepository>();
+
+        services.AddScoped<
+            ITenantMembershipRepository,
+            TenantMembershipRepository>();
+
         services.AddScoped<IUnitOfWork>(
             serviceProvider =>
-                serviceProvider.GetRequiredService<MarketDbContext>());
+                serviceProvider.GetRequiredService<
+                    MarketDbContext>());
 
         return services;
     }

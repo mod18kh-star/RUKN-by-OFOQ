@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using OFOQ.Market.Application.Common.Persistence;
+using OFOQ.Market.Domain.Identity;
 using OFOQ.Market.Domain.Tenancy;
 
 namespace OFOQ.Market.Infrastructure.Persistence;
@@ -14,11 +15,15 @@ public sealed class MarketDbContext :
     {
     }
 
-    public DbSet<Tenant> Tenants
-        => Set<Tenant>();
+    public DbSet<Tenant> Tenants => Set<Tenant>();
 
-    public DbSet<TenantDomain> TenantDomains
-        => Set<TenantDomain>();
+    public DbSet<TenantDomain> TenantDomains =>
+        Set<TenantDomain>();
+
+    public DbSet<User> Users => Set<User>();
+
+    public DbSet<TenantMembership> TenantMemberships =>
+        Set<TenantMembership>();
 
     protected override void OnModelCreating(
         ModelBuilder modelBuilder)
