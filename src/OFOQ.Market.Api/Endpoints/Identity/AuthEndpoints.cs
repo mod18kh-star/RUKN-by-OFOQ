@@ -1,6 +1,7 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using OFOQ.Market.Application.Identity.LoginUser;
+using OFOQ.Market.Application.Identity.Mfa.Login.VerifyTotp;
 using OFOQ.Market.Application.Identity.RegisterUser;
 using OFOQ.Market.Contracts.Identity;
 
@@ -12,7 +13,8 @@ public static class AuthEndpoints
         this IEndpointRouteBuilder endpoints)
     {
         var group =
-            endpoints.MapGroup("/api/auth");
+            endpoints.MapGroup(
+                "/api/auth");
 
         group.MapPost(
                 "/register",
@@ -25,6 +27,12 @@ public static class AuthEndpoints
                 LoginAsync)
             .RequireRateLimiting(
                 "auth-login");
+
+        group.MapPost(
+                "/mfa/totp",
+                VerifyMfaTotpAsync)
+            .RequireRateLimiting(
+                "auth-mfa");
 
         group.MapGet(
                 "/me",
@@ -103,17 +111,8 @@ public static class AuthEndpoints
         HttpContext httpContext,
         CancellationToken cancellationToken)
     {
-        // Login responses may contain an access token
-        // or a short-lived MFA challenge.
-        // They must never be cached.
-        httpContext.Response.Headers.CacheControl =
-            "no-store";
-
-        httpContext.Response.Headers.Pragma =
-            "no-cache";
-
-        httpContext.Response.Headers.Expires =
-            "0";
+        SetNoStoreHeaders(
+            httpContext);
 
         try
         {
@@ -150,6 +149,58 @@ public static class AuthEndpoints
         }
     }
 
+    private static async Task<IResult> VerifyMfaTotpAsync(
+        VerifyMfaTotpRequest request,
+        VerifyMfaTotpHandler handler,
+        HttpContext httpContext,
+        CancellationToken cancellationToken)
+    {
+        SetNoStoreHeaders(
+            httpContext);
+
+        try
+        {
+            var result =
+                await handler.HandleAsync(
+                    new VerifyMfaTotpCommand(
+                        request.ChallengeToken,
+                        request.Code),
+                    cancellationToken);
+
+            return Results.Ok(
+                new VerifyMfaTotpResponse(
+                    result.UserId.Value,
+                    result.Email,
+                    result.AccessToken,
+                    result.ExpiresAtUtc));
+        }
+        catch (InvalidMfaLoginChallengeException)
+        {
+            /*
+             * Deliberately generic.
+             *
+             * We do not reveal whether:
+             * - the challenge exists,
+             * - it expired,
+             * - it was consumed,
+             * - it was revoked,
+             * - attempts were exhausted,
+             * - or the TOTP code was wrong/replayed.
+             */
+            return Results.Json(
+                new
+                {
+                    code =
+                        "invalid_mfa_verification",
+
+                    message =
+                        "The MFA verification could not be completed."
+                },
+                statusCode:
+                    StatusCodes.Status401Unauthorized);
+        }
+    }
+
     private static IResult GetCurrentUser(
         ClaimsPrincipal principal)
     {
@@ -174,5 +225,18 @@ public static class AuthEndpoints
             new CurrentUserResponse(
                 userId,
                 email));
+    }
+
+    private static void SetNoStoreHeaders(
+        HttpContext httpContext)
+    {
+        httpContext.Response.Headers.CacheControl =
+            "no-store";
+
+        httpContext.Response.Headers.Pragma =
+            "no-cache";
+
+        httpContext.Response.Headers.Expires =
+            "0";
     }
 }

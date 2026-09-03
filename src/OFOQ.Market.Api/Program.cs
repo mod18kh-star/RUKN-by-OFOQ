@@ -107,7 +107,7 @@ builder.Services
             options.MapInboundClaims =
                 false;
 
-            // لا حاجة لحفظ الـBearer Token داخل AuthenticationProperties.
+            // لا حاجة لحفظ الـ Bearer Token داخل AuthenticationProperties.
             options.SaveToken =
                 false;
 
@@ -164,6 +164,37 @@ builder.Services.AddRateLimiter(
 
         options.AddPolicy(
             "auth-login",
+            httpContext =>
+                RateLimitPartition
+                    .GetSlidingWindowLimiter(
+                        partitionKey:
+                            httpContext.Connection
+                                .RemoteIpAddress?
+                                .ToString()
+                            ?? "unknown",
+
+                        factory:
+                            _ =>
+                                new SlidingWindowRateLimiterOptions
+                                {
+                                    PermitLimit =
+                                        5,
+
+                                    Window =
+                                        TimeSpan.FromMinutes(1),
+
+                                    SegmentsPerWindow =
+                                        6,
+
+                                    QueueLimit =
+                                        0,
+
+                                    AutoReplenishment =
+                                        true
+                                }));
+
+        options.AddPolicy(
+            "auth-mfa",
             httpContext =>
                 RateLimitPartition
                     .GetSlidingWindowLimiter(
