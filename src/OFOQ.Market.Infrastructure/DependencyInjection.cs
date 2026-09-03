@@ -1,8 +1,10 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using OFOQ.Market.Application.Common.Persistence;
+using OFOQ.Market.Application.Common.Security;
 using OFOQ.Market.Infrastructure.Persistence;
 using OFOQ.Market.Infrastructure.Persistence.Repositories;
+using OFOQ.Market.Infrastructure.Security;
 
 namespace OFOQ.Market.Infrastructure;
 
@@ -45,6 +47,10 @@ public static class DependencyInjection
         services.AddScoped<
             ITenantMembershipRepository,
             TenantMembershipRepository>();
+
+        services.AddSingleton<
+            IPasswordHasher,
+            AspNetPasswordHasher>();
 
         services.AddScoped<IUnitOfWork>(
             serviceProvider =>

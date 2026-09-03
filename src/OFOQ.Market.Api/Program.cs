@@ -1,8 +1,10 @@
+using OFOQ.Market.Api.Endpoints.Identity;
 using OFOQ.Market.Api.Endpoints.Tenancy;
 using OFOQ.Market.Application;
 using OFOQ.Market.Infrastructure;
 
-var builder = WebApplication.CreateBuilder(args);
+var builder =
+    WebApplication.CreateBuilder(args);
 
 var connectionString =
     builder.Configuration.GetConnectionString(
@@ -15,15 +17,20 @@ builder.Services.AddApplication();
 builder.Services.AddInfrastructure(
     connectionString);
 
-var app = builder.Build();
+var app =
+    builder.Build();
 
 app.MapGet(
     "/health",
-    () => Results.Ok(new
-    {
-        status = "ok",
-        service = "OFOQ.Market.Api"
-    }));
+    () =>
+        Results.Ok(
+            new
+            {
+                status = "ok",
+                service = "OFOQ.Market.Api"
+            }));
+
+app.MapAuthEndpoints();
 
 app.MapTenantEndpoints();
 

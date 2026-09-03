@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using OFOQ.Market.Application.Common.Persistence;
+using OFOQ.Market.Application.Common.Security;
 
 namespace OFOQ.Market.Api.Tests.Support;
 
@@ -28,7 +29,9 @@ internal sealed class MarketApiFactory :
             services =>
             {
                 services.RemoveAll<ITenantRepository>();
+                services.RemoveAll<IUserRepository>();
                 services.RemoveAll<IUnitOfWork>();
+                services.RemoveAll<IPasswordHasher>();
 
                 services.AddSingleton<
                     InMemoryTenantRepository>();
@@ -37,6 +40,18 @@ internal sealed class MarketApiFactory :
                     provider =>
                         provider.GetRequiredService<
                             InMemoryTenantRepository>());
+
+                services.AddSingleton<
+                    InMemoryUserRepository>();
+
+                services.AddSingleton<IUserRepository>(
+                    provider =>
+                        provider.GetRequiredService<
+                            InMemoryUserRepository>());
+
+                services.AddSingleton<
+                    IPasswordHasher,
+                    FakePasswordHasher>();
 
                 services.AddSingleton<
                     IUnitOfWork,

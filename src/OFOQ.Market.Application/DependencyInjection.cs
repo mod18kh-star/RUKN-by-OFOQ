@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using OFOQ.Market.Application.Identity.RegisterUser;
 using OFOQ.Market.Application.Tenancy.CreateTenant;
 using OFOQ.Market.Application.Tenancy.GetTenantById;
 
@@ -13,7 +14,10 @@ public static class DependencyInjection
             TimeProvider.System);
 
         services.AddScoped<CreateTenantHandler>();
+
         services.AddScoped<GetTenantByIdHandler>();
+
+        services.AddScoped<RegisterUserHandler>();
 
         return services;
     }
