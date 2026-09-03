@@ -45,6 +45,10 @@ public static class DependencyInjection
             UserRepository>();
 
         services.AddScoped<
+            IUserMfaRepository,
+            UserMfaRepository>();
+
+        services.AddScoped<
             ITenantMembershipRepository,
             TenantMembershipRepository>();
 

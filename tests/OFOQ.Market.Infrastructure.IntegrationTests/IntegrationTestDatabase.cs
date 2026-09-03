@@ -30,7 +30,8 @@ internal sealed class IntegrationTestDatabase
             configuration[
                 "ConnectionStrings:MarketTestDatabase"];
 
-        if (string.IsNullOrWhiteSpace(connectionString))
+        if (string.IsNullOrWhiteSpace(
+                connectionString))
         {
             throw new InvalidOperationException(
                 "The integration test database connection string was not found.");
@@ -47,10 +48,12 @@ internal sealed class IntegrationTestDatabase
     {
         var options =
             new DbContextOptionsBuilder<MarketDbContext>()
-                .UseNpgsql(_connectionString)
+                .UseNpgsql(
+                    _connectionString)
                 .Options;
 
-        return new MarketDbContext(options);
+        return new MarketDbContext(
+            options);
     }
 
     public async Task ResetAsync(
@@ -65,6 +68,7 @@ internal sealed class IntegrationTestDatabase
         await dbContext.Database.ExecuteSqlRawAsync(
             """
             TRUNCATE TABLE
+                user_mfa,
                 tenant_memberships,
                 tenant_domains,
                 users,

@@ -15,12 +15,17 @@ public sealed class MarketDbContext :
     {
     }
 
-    public DbSet<Tenant> Tenants => Set<Tenant>();
+    public DbSet<Tenant> Tenants =>
+        Set<Tenant>();
 
     public DbSet<TenantDomain> TenantDomains =>
         Set<TenantDomain>();
 
-    public DbSet<User> Users => Set<User>();
+    public DbSet<User> Users =>
+        Set<User>();
+
+    public DbSet<UserMfa> UserMfas =>
+        Set<UserMfa>();
 
     public DbSet<TenantMembership> TenantMemberships =>
         Set<TenantMembership>();
@@ -28,7 +33,8 @@ public sealed class MarketDbContext :
     protected override void OnModelCreating(
         ModelBuilder modelBuilder)
     {
-        base.OnModelCreating(modelBuilder);
+        base.OnModelCreating(
+            modelBuilder);
 
         modelBuilder.ApplyConfigurationsFromAssembly(
             typeof(MarketDbContext).Assembly);
