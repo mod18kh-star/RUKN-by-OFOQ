@@ -69,6 +69,7 @@ internal sealed class IntegrationTestDatabase
         await dbContext.Database.ExecuteSqlRawAsync(
             """
             TRUNCATE TABLE
+                mfa_login_challenges,
                 user_mfa_recovery_codes,
                 user_mfa,
                 tenant_memberships,

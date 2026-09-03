@@ -30,6 +30,9 @@ public sealed class MarketDbContext :
     public DbSet<UserMfaRecoveryCode> UserMfaRecoveryCodes =>
         Set<UserMfaRecoveryCode>();
 
+    public DbSet<MfaLoginChallenge> MfaLoginChallenges =>
+        Set<MfaLoginChallenge>();
+
     public DbSet<TenantMembership> TenantMemberships =>
         Set<TenantMembership>();
 

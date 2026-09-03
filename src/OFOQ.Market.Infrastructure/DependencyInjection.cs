@@ -58,6 +58,10 @@ public static class DependencyInjection
             UserMfaRecoveryCodeRepository>();
 
         services.AddScoped<
+            IMfaLoginChallengeRepository,
+            MfaLoginChallengeRepository>();
+
+        services.AddScoped<
             ITenantMembershipRepository,
             TenantMembershipRepository>();
 
