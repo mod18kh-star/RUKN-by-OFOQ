@@ -51,7 +51,8 @@ internal sealed class UserMfaRecoveryCodeRepository :
             UserMfaId userMfaId,
             CancellationToken cancellationToken = default)
     {
-        return await _dbContext.UserMfaRecoveryCodes
+        return await _dbContext
+            .UserMfaRecoveryCodes
             .Where(
                 recoveryCode =>
                     recoveryCode.UserMfaId ==
@@ -62,6 +63,19 @@ internal sealed class UserMfaRecoveryCodeRepository :
                 cancellationToken);
     }
 
+    public Task<bool> AnyForUserMfaAsync(
+        UserMfaId userMfaId,
+        CancellationToken cancellationToken = default)
+    {
+        return _dbContext
+            .UserMfaRecoveryCodes
+            .AnyAsync(
+                recoveryCode =>
+                    recoveryCode.UserMfaId ==
+                    userMfaId,
+                cancellationToken);
+    }
+
     public async Task AddRangeAsync(
         IEnumerable<UserMfaRecoveryCode> recoveryCodes,
         CancellationToken cancellationToken = default)
@@ -69,7 +83,8 @@ internal sealed class UserMfaRecoveryCodeRepository :
         ArgumentNullException.ThrowIfNull(
             recoveryCodes);
 
-        await _dbContext.UserMfaRecoveryCodes
+        await _dbContext
+            .UserMfaRecoveryCodes
             .AddRangeAsync(
                 recoveryCodes,
                 cancellationToken);
@@ -81,8 +96,50 @@ internal sealed class UserMfaRecoveryCodeRepository :
         ArgumentNullException.ThrowIfNull(
             recoveryCodes);
 
-        _dbContext.UserMfaRecoveryCodes
+        _dbContext
+            .UserMfaRecoveryCodes
             .RemoveRange(
                 recoveryCodes);
+    }
+
+    public async Task<bool> TryConsumeByHashAsync(
+        UserMfaId userMfaId,
+        string codeHash,
+        DateTimeOffset usedAtUtc,
+        Guid? updatedByUserId = null,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(
+            codeHash);
+
+        var affectedRows =
+            await _dbContext
+                .UserMfaRecoveryCodes
+                .Where(
+                    recoveryCode =>
+                        recoveryCode.UserMfaId ==
+                            userMfaId &&
+                        recoveryCode.CodeHash ==
+                            codeHash &&
+                        recoveryCode.UsedAtUtc ==
+                            null)
+                .ExecuteUpdateAsync(
+                    setters =>
+                        setters
+                            .SetProperty(
+                                recoveryCode =>
+                                    recoveryCode.UsedAtUtc,
+                                usedAtUtc)
+                            .SetProperty(
+                                recoveryCode =>
+                                    recoveryCode.UpdatedAtUtc,
+                                usedAtUtc)
+                            .SetProperty(
+                                recoveryCode =>
+                                    recoveryCode.UpdatedByUserId,
+                                updatedByUserId),
+                    cancellationToken);
+
+        return affectedRows == 1;
     }
 }

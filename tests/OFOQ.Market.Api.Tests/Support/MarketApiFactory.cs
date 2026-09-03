@@ -13,6 +13,12 @@ internal sealed class MarketApiFactory :
     private const string TestConnectionString =
         "Host=127.0.0.1;Port=5432;Database=unused;Username=unused;Password=unused";
 
+    // Test-only key.
+    // 32 bytes encoded as Base64.
+    // Never use this value in production.
+    private const string TestRecoveryCodeHmacKey =
+        "MDEyMzQ1Njc4OUFCQ0RFRjAxMjM0NTY3ODlBQkNERUY=";
+
     public MarketApiFactory()
     {
         Environment.SetEnvironmentVariable(
@@ -34,6 +40,10 @@ internal sealed class MarketApiFactory :
         Environment.SetEnvironmentVariable(
             "Authentication__Jwt__AccessTokenMinutes",
             "15");
+
+        Environment.SetEnvironmentVariable(
+            "Authentication__Mfa__RecoveryCodeHmacKey",
+            TestRecoveryCodeHmacKey);
     }
 
     protected override void ConfigureWebHost(
@@ -45,26 +55,35 @@ internal sealed class MarketApiFactory :
         builder.ConfigureServices(
             services =>
             {
-                services.RemoveAll<ITenantRepository>();
-                services.RemoveAll<IUserRepository>();
-                services.RemoveAll<IUnitOfWork>();
-                services.RemoveAll<IPasswordHasher>();
+                services.RemoveAll<
+                    ITenantRepository>();
+
+                services.RemoveAll<
+                    IUserRepository>();
+
+                services.RemoveAll<
+                    IUnitOfWork>();
+
+                services.RemoveAll<
+                    IPasswordHasher>();
 
                 services.AddSingleton<
                     InMemoryTenantRepository>();
 
-                services.AddSingleton<ITenantRepository>(
-                    provider =>
-                        provider.GetRequiredService<
-                            InMemoryTenantRepository>());
+                services.AddSingleton<
+                    ITenantRepository>(
+                        provider =>
+                            provider.GetRequiredService<
+                                InMemoryTenantRepository>());
 
                 services.AddSingleton<
                     InMemoryUserRepository>();
 
-                services.AddSingleton<IUserRepository>(
-                    provider =>
-                        provider.GetRequiredService<
-                            InMemoryUserRepository>());
+                services.AddSingleton<
+                    IUserRepository>(
+                        provider =>
+                            provider.GetRequiredService<
+                                InMemoryUserRepository>());
 
                 services.AddSingleton<
                     IPasswordHasher,

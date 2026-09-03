@@ -1,6 +1,9 @@
 using Microsoft.Extensions.DependencyInjection;
 using OFOQ.Market.Application.Identity.LoginUser;
 using OFOQ.Market.Application.Identity.Mfa.ConfirmEnrollment;
+using OFOQ.Market.Application.Identity.Mfa.RecoveryCodes.Consume;
+using OFOQ.Market.Application.Identity.Mfa.RecoveryCodes.Generate;
+using OFOQ.Market.Application.Identity.Mfa.RecoveryCodes.Regenerate;
 using OFOQ.Market.Application.Identity.Mfa.StartEnrollment;
 using OFOQ.Market.Application.Identity.RegisterUser;
 using OFOQ.Market.Application.Tenancy.CreateTenant;
@@ -33,6 +36,15 @@ public static class DependencyInjection
 
         services.AddScoped<
             ConfirmMfaEnrollmentHandler>();
+
+        services.AddScoped<
+            GenerateRecoveryCodesHandler>();
+
+        services.AddScoped<
+            RegenerateRecoveryCodesHandler>();
+
+        services.AddScoped<
+            ConsumeRecoveryCodeHandler>();
 
         return services;
     }

@@ -17,10 +17,21 @@ public interface IUserMfaRecoveryCodeRepository
         UserMfaId userMfaId,
         CancellationToken cancellationToken = default);
 
+    Task<bool> AnyForUserMfaAsync(
+        UserMfaId userMfaId,
+        CancellationToken cancellationToken = default);
+
     Task AddRangeAsync(
         IEnumerable<UserMfaRecoveryCode> recoveryCodes,
         CancellationToken cancellationToken = default);
 
     void RemoveRange(
         IEnumerable<UserMfaRecoveryCode> recoveryCodes);
+
+    Task<bool> TryConsumeByHashAsync(
+        UserMfaId userMfaId,
+        string codeHash,
+        DateTimeOffset usedAtUtc,
+        Guid? updatedByUserId = null,
+        CancellationToken cancellationToken = default);
 }

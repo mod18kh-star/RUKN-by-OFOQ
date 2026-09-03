@@ -9,6 +9,7 @@ using OFOQ.Market.Api.Security;
 using OFOQ.Market.Application;
 using OFOQ.Market.Application.Common.Security;
 using OFOQ.Market.Infrastructure;
+using OFOQ.Market.Infrastructure.Security;
 
 var builder =
     WebApplication.CreateBuilder(args);
@@ -18,6 +19,12 @@ var connectionString =
         "MarketDatabase")
     ?? throw new InvalidOperationException(
         "Connection string 'MarketDatabase' was not found.");
+
+var recoveryCodeHmacKey =
+    builder.Configuration[
+        "Authentication:Mfa:RecoveryCodeHmacKey"]
+    ?? throw new InvalidOperationException(
+        "Recovery code HMAC key was not configured.");
 
 var jwtIssuer =
     builder.Configuration[
@@ -52,10 +59,17 @@ if (!int.TryParse(
 var jwtSettings =
     new JwtSettings
     {
-        Issuer = jwtIssuer,
-        Audience = jwtAudience,
-        SigningKey = jwtSigningKey,
-        AccessTokenMinutes = accessTokenMinutes
+        Issuer =
+            jwtIssuer,
+
+        Audience =
+            jwtAudience,
+
+        SigningKey =
+            jwtSigningKey,
+
+        AccessTokenMinutes =
+            accessTokenMinutes
     };
 
 jwtSettings.Validate();
@@ -68,6 +82,9 @@ builder.Services.AddApplication();
 
 builder.Services.AddInfrastructure(
     connectionString);
+
+builder.Services.AddRecoveryCodeSecurity(
+    recoveryCodeHmacKey);
 
 builder.Services.AddSingleton(
     jwtSettings);
@@ -129,7 +146,6 @@ builder.Services
                         SecurityAlgorithms.HmacSha256
                     ],
 
-                    // سماحية صغيرة فقط لفارق الوقت بين الأجهزة.
                     ClockSkew =
                         TimeSpan.FromSeconds(30),
 
@@ -146,7 +162,6 @@ builder.Services.AddRateLimiter(
         options.RejectionStatusCode =
             StatusCodes.Status429TooManyRequests;
 
-        // حماية أولية ضد brute-force على تسجيل الدخول.
         options.AddPolicy(
             "auth-login",
             httpContext =>
@@ -162,19 +177,22 @@ builder.Services.AddRateLimiter(
                             _ =>
                                 new SlidingWindowRateLimiterOptions
                                 {
-                                    PermitLimit = 5,
+                                    PermitLimit =
+                                        5,
 
                                     Window =
                                         TimeSpan.FromMinutes(1),
 
-                                    SegmentsPerWindow = 6,
+                                    SegmentsPerWindow =
+                                        6,
 
-                                    QueueLimit = 0,
+                                    QueueLimit =
+                                        0,
 
-                                    AutoReplenishment = true
+                                    AutoReplenishment =
+                                        true
                                 }));
 
-        // حماية إنشاء الحسابات من السبام والإساءة.
         options.AddPolicy(
             "auth-register",
             httpContext =>
@@ -190,16 +208,20 @@ builder.Services.AddRateLimiter(
                             _ =>
                                 new SlidingWindowRateLimiterOptions
                                 {
-                                    PermitLimit = 3,
+                                    PermitLimit =
+                                        3,
 
                                     Window =
                                         TimeSpan.FromMinutes(1),
 
-                                    SegmentsPerWindow = 6,
+                                    SegmentsPerWindow =
+                                        6,
 
-                                    QueueLimit = 0,
+                                    QueueLimit =
+                                        0,
 
-                                    AutoReplenishment = true
+                                    AutoReplenishment =
+                                        true
                                 }));
     });
 
@@ -218,8 +240,11 @@ app.MapGet(
         Results.Ok(
             new
             {
-                status = "ok",
-                service = "OFOQ.Market.Api"
+                status =
+                    "ok",
+
+                service =
+                    "OFOQ.Market.Api"
             }));
 
 app.MapAuthEndpoints();
