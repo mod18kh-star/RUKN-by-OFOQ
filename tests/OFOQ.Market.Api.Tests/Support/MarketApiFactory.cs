@@ -72,6 +72,12 @@ internal sealed class MarketApiFactory :
                 services.RemoveAll<
                     IPasswordHasher>();
 
+                services.RemoveAll<
+                    IMfaSecretProtector>();
+
+                services.RemoveAll<
+                    ITotpService>();
+
                 services.AddSingleton<
                     InMemoryTenantRepository>();
 
@@ -111,6 +117,14 @@ internal sealed class MarketApiFactory :
                 services.AddSingleton<
                     IPasswordHasher,
                     FakePasswordHasher>();
+
+                services.AddSingleton<
+                    IMfaSecretProtector,
+                    FakeMfaSecretProtector>();
+
+                services.AddSingleton<
+                    ITotpService,
+                    FakeTotpService>();
 
                 services.AddSingleton<
                     IUnitOfWork,
