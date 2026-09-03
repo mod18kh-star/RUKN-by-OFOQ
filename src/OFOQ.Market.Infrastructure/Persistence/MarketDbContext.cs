@@ -27,6 +27,9 @@ public sealed class MarketDbContext :
     public DbSet<UserMfa> UserMfas =>
         Set<UserMfa>();
 
+    public DbSet<UserMfaRecoveryCode> UserMfaRecoveryCodes =>
+        Set<UserMfaRecoveryCode>();
+
     public DbSet<TenantMembership> TenantMemberships =>
         Set<TenantMembership>();
 

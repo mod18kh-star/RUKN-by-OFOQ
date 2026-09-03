@@ -15,7 +15,8 @@ internal sealed class IntegrationTestDatabase
     private IntegrationTestDatabase(
         string connectionString)
     {
-        _connectionString = connectionString;
+        _connectionString =
+            connectionString;
     }
 
     public static IntegrationTestDatabase Create()
@@ -68,6 +69,7 @@ internal sealed class IntegrationTestDatabase
         await dbContext.Database.ExecuteSqlRawAsync(
             """
             TRUNCATE TABLE
+                user_mfa_recovery_codes,
                 user_mfa,
                 tenant_memberships,
                 tenant_domains,

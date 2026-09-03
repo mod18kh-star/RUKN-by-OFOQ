@@ -1,0 +1,88 @@
+using Microsoft.EntityFrameworkCore;
+using OFOQ.Market.Application.Common.Persistence;
+using OFOQ.Market.Domain.Identity;
+
+namespace OFOQ.Market.Infrastructure.Persistence.Repositories;
+
+internal sealed class UserMfaRecoveryCodeRepository :
+    IUserMfaRecoveryCodeRepository
+{
+    private readonly MarketDbContext _dbContext;
+
+    public UserMfaRecoveryCodeRepository(
+        MarketDbContext dbContext)
+    {
+        _dbContext =
+            dbContext;
+    }
+
+    public Task<UserMfaRecoveryCode?> GetByIdAsync(
+        UserMfaRecoveryCodeId recoveryCodeId,
+        CancellationToken cancellationToken = default)
+    {
+        return _dbContext.UserMfaRecoveryCodes
+            .SingleOrDefaultAsync(
+                recoveryCode =>
+                    recoveryCode.Id ==
+                    recoveryCodeId,
+                cancellationToken);
+    }
+
+    public Task<UserMfaRecoveryCode?> GetByHashAsync(
+        UserMfaId userMfaId,
+        string codeHash,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(
+            codeHash);
+
+        return _dbContext.UserMfaRecoveryCodes
+            .SingleOrDefaultAsync(
+                recoveryCode =>
+                    recoveryCode.UserMfaId ==
+                        userMfaId &&
+                    recoveryCode.CodeHash ==
+                        codeHash,
+                cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<UserMfaRecoveryCode>>
+        GetUnusedByUserMfaIdAsync(
+            UserMfaId userMfaId,
+            CancellationToken cancellationToken = default)
+    {
+        return await _dbContext.UserMfaRecoveryCodes
+            .Where(
+                recoveryCode =>
+                    recoveryCode.UserMfaId ==
+                        userMfaId &&
+                    recoveryCode.UsedAtUtc ==
+                        null)
+            .ToListAsync(
+                cancellationToken);
+    }
+
+    public async Task AddRangeAsync(
+        IEnumerable<UserMfaRecoveryCode> recoveryCodes,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(
+            recoveryCodes);
+
+        await _dbContext.UserMfaRecoveryCodes
+            .AddRangeAsync(
+                recoveryCodes,
+                cancellationToken);
+    }
+
+    public void RemoveRange(
+        IEnumerable<UserMfaRecoveryCode> recoveryCodes)
+    {
+        ArgumentNullException.ThrowIfNull(
+            recoveryCodes);
+
+        _dbContext.UserMfaRecoveryCodes
+            .RemoveRange(
+                recoveryCodes);
+    }
+}
