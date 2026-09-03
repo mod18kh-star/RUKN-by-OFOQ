@@ -132,7 +132,8 @@ public sealed class LoginUserHandler
             _accessTokenService.Create(
                 user.Id,
                 user.Email.Value,
-                now);
+                now,
+                AccessTokenAuthenticationLevel.PasswordOnly);
 
         return new LoginUserResult(
             user.Id,

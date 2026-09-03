@@ -74,6 +74,10 @@ public sealed class LoginUserHandlerTests
             accessTokenService.CreateCount);
 
         Assert.Equal(
+            AccessTokenAuthenticationLevel.PasswordOnly,
+            accessTokenService.LastAuthenticationLevel);
+
+        Assert.Equal(
             0,
             unitOfWork.SaveChangesCount);
     }
@@ -135,6 +139,9 @@ public sealed class LoginUserHandlerTests
             0,
             accessTokenService.CreateCount);
 
+        Assert.Null(
+            accessTokenService.LastAuthenticationLevel);
+
         Assert.Equal(
             1,
             unitOfWork.SaveChangesCount);
@@ -172,10 +179,15 @@ public sealed class LoginUserHandlerTests
                 "PROTECTED-SECRET",
                 FixedNow.AddMinutes(-10));
 
+        var accessTokenService =
+            new FakeAccessTokenService();
+
         var handler =
             CreateHandler(
                 user,
-                pendingMfa);
+                pendingMfa,
+                accessTokenService:
+                    accessTokenService);
 
         var result =
             await handler.HandleAsync(
@@ -192,6 +204,10 @@ public sealed class LoginUserHandlerTests
 
         Assert.Null(
             result.MfaChallengeToken);
+
+        Assert.Equal(
+            AccessTokenAuthenticationLevel.PasswordOnly,
+            accessTokenService.LastAuthenticationLevel);
     }
 
     [Fact]
@@ -293,6 +309,9 @@ public sealed class LoginUserHandlerTests
         Assert.Equal(
             0,
             accessTokenService.CreateCount);
+
+        Assert.Null(
+            accessTokenService.LastAuthenticationLevel);
 
         Assert.Equal(
             0,
@@ -584,12 +603,19 @@ public sealed class LoginUserHandlerTests
     {
         public int CreateCount { get; private set; }
 
+        public AccessTokenAuthenticationLevel?
+            LastAuthenticationLevel { get; private set; }
+
         public AccessTokenResult Create(
             UserId userId,
             string email,
-            DateTimeOffset nowUtc)
+            DateTimeOffset nowUtc,
+            AccessTokenAuthenticationLevel authenticationLevel)
         {
             CreateCount++;
+
+            LastAuthenticationLevel =
+                authenticationLevel;
 
             return new AccessTokenResult(
                 "ACCESS-TOKEN",

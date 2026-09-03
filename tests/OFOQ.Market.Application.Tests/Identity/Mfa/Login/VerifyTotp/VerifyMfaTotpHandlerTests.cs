@@ -20,9 +20,16 @@ public sealed class VerifyMfaTotpHandlerTests
     [Fact]
     public async Task ValidTotp_ConsumesChallengeAndReturnsAccessToken()
     {
-        var user = CreateUser();
-        var mfa = CreateEnabledMfa(user.Id);
-        var challenge = CreateChallenge(user.Id);
+        var user =
+            CreateUser();
+
+        var mfa =
+            CreateEnabledMfa(
+                user.Id);
+
+        var challenge =
+            CreateChallenge(
+                user.Id);
 
         var unitOfWork =
             new FakeUnitOfWork();
@@ -67,6 +74,10 @@ public sealed class VerifyMfaTotpHandlerTests
             accessTokenService.CreateCount);
 
         Assert.Equal(
+            AccessTokenAuthenticationLevel.MultiFactor,
+            accessTokenService.LastAuthenticationLevel);
+
+        Assert.Equal(
             "ACCESS-TOKEN",
             result.AccessToken);
 
@@ -82,9 +93,16 @@ public sealed class VerifyMfaTotpHandlerTests
     [Fact]
     public async Task InvalidTotp_IncrementsFailedAttemptAndDoesNotIssueToken()
     {
-        var user = CreateUser();
-        var mfa = CreateEnabledMfa(user.Id);
-        var challenge = CreateChallenge(user.Id);
+        var user =
+            CreateUser();
+
+        var mfa =
+            CreateEnabledMfa(
+                user.Id);
+
+        var challenge =
+            CreateChallenge(
+                user.Id);
 
         var unitOfWork =
             new FakeUnitOfWork();
@@ -125,14 +143,24 @@ public sealed class VerifyMfaTotpHandlerTests
         Assert.Equal(
             0,
             accessTokenService.CreateCount);
+
+        Assert.Null(
+            accessTokenService.LastAuthenticationLevel);
     }
 
     [Fact]
     public async Task ReplayedTotp_IsRejectedAndCountsAsFailedAttempt()
     {
-        var user = CreateUser();
-        var mfa = CreateEnabledMfa(user.Id);
-        var challenge = CreateChallenge(user.Id);
+        var user =
+            CreateUser();
+
+        var mfa =
+            CreateEnabledMfa(
+                user.Id);
+
+        var challenge =
+            CreateChallenge(
+                user.Id);
 
         var unitOfWork =
             new FakeUnitOfWork();
@@ -173,14 +201,24 @@ public sealed class VerifyMfaTotpHandlerTests
         Assert.Equal(
             0,
             accessTokenService.CreateCount);
+
+        Assert.Null(
+            accessTokenService.LastAuthenticationLevel);
     }
 
     [Fact]
     public async Task MalformedChallenge_IsRejectedWithoutDatabaseMutation()
     {
-        var user = CreateUser();
-        var mfa = CreateEnabledMfa(user.Id);
-        var challenge = CreateChallenge(user.Id);
+        var user =
+            CreateUser();
+
+        var mfa =
+            CreateEnabledMfa(
+                user.Id);
+
+        var challenge =
+            CreateChallenge(
+                user.Id);
 
         var unitOfWork =
             new FakeUnitOfWork();
@@ -221,13 +259,20 @@ public sealed class VerifyMfaTotpHandlerTests
         Assert.Equal(
             0,
             accessTokenService.CreateCount);
+
+        Assert.Null(
+            accessTokenService.LastAuthenticationLevel);
     }
 
     [Fact]
     public async Task ExpiredChallenge_IsRejectedWithoutIssuingToken()
     {
-        var user = CreateUser();
-        var mfa = CreateEnabledMfa(user.Id);
+        var user =
+            CreateUser();
+
+        var mfa =
+            CreateEnabledMfa(
+                user.Id);
 
         var challenge =
             MfaLoginChallenge.Create(
@@ -268,6 +313,9 @@ public sealed class VerifyMfaTotpHandlerTests
             0,
             accessTokenService.CreateCount);
 
+        Assert.Null(
+            accessTokenService.LastAuthenticationLevel);
+
         Assert.Equal(
             0,
             unitOfWork.SaveChangesCount);
@@ -276,9 +324,16 @@ public sealed class VerifyMfaTotpHandlerTests
     [Fact]
     public async Task FifthInvalidAttempt_ExhaustsChallenge()
     {
-        var user = CreateUser();
-        var mfa = CreateEnabledMfa(user.Id);
-        var challenge = CreateChallenge(user.Id);
+        var user =
+            CreateUser();
+
+        var mfa =
+            CreateEnabledMfa(
+                user.Id);
+
+        var challenge =
+            CreateChallenge(
+                user.Id);
 
         challenge.RegisterFailedAttempt(
             FixedNow.AddMinutes(-4));
@@ -335,14 +390,24 @@ public sealed class VerifyMfaTotpHandlerTests
         Assert.Equal(
             0,
             accessTokenService.CreateCount);
+
+        Assert.Null(
+            accessTokenService.LastAuthenticationLevel);
     }
 
     [Fact]
     public async Task EmptyTotpCode_CountsAsFailedAttempt()
     {
-        var user = CreateUser();
-        var mfa = CreateEnabledMfa(user.Id);
-        var challenge = CreateChallenge(user.Id);
+        var user =
+            CreateUser();
+
+        var mfa =
+            CreateEnabledMfa(
+                user.Id);
+
+        var challenge =
+            CreateChallenge(
+                user.Id);
 
         var unitOfWork =
             new FakeUnitOfWork();
@@ -380,6 +445,9 @@ public sealed class VerifyMfaTotpHandlerTests
         Assert.Equal(
             0,
             accessTokenService.CreateCount);
+
+        Assert.Null(
+            accessTokenService.LastAuthenticationLevel);
     }
 
     private static VerifyMfaTotpHandler CreateHandler(
@@ -457,7 +525,8 @@ public sealed class VerifyMfaTotpHandlerTests
         public FakeChallengeRepository(
             MfaLoginChallenge challenge)
         {
-            _challenge = challenge;
+            _challenge =
+                challenge;
         }
 
         public Task<MfaLoginChallenge?> GetByIdAsync(
@@ -512,7 +581,8 @@ public sealed class VerifyMfaTotpHandlerTests
         public FakeUserRepository(
             User user)
         {
-            _user = user;
+            _user =
+                user;
         }
 
         public Task<User?> GetByIdAsync(
@@ -560,7 +630,8 @@ public sealed class VerifyMfaTotpHandlerTests
         public FakeUserMfaRepository(
             UserMfa mfa)
         {
-            _mfa = mfa;
+            _mfa =
+                mfa;
         }
 
         public Task<UserMfa?> GetByIdAsync(
@@ -588,7 +659,8 @@ public sealed class VerifyMfaTotpHandlerTests
             CancellationToken cancellationToken = default)
         {
             return Task.FromResult(
-                _mfa.UserId == userId);
+                _mfa.UserId ==
+                userId);
         }
 
         public Task AddAsync(
@@ -611,7 +683,8 @@ public sealed class VerifyMfaTotpHandlerTests
             string? token,
             out string tokenHash)
         {
-            if (token == "RAW-CHALLENGE")
+            if (token ==
+                "RAW-CHALLENGE")
             {
                 tokenHash =
                     "HASHED-CHALLENGE";
@@ -684,12 +757,19 @@ public sealed class VerifyMfaTotpHandlerTests
     {
         public int CreateCount { get; private set; }
 
+        public AccessTokenAuthenticationLevel?
+            LastAuthenticationLevel { get; private set; }
+
         public AccessTokenResult Create(
             UserId userId,
             string email,
-            DateTimeOffset nowUtc)
+            DateTimeOffset nowUtc,
+            AccessTokenAuthenticationLevel authenticationLevel)
         {
             CreateCount++;
+
+            LastAuthenticationLevel =
+                authenticationLevel;
 
             return new AccessTokenResult(
                 "ACCESS-TOKEN",
@@ -720,7 +800,8 @@ public sealed class VerifyMfaTotpHandlerTests
         public FixedTimeProvider(
             DateTimeOffset utcNow)
         {
-            _utcNow = utcNow;
+            _utcNow =
+                utcNow;
         }
 
         public override DateTimeOffset GetUtcNow()

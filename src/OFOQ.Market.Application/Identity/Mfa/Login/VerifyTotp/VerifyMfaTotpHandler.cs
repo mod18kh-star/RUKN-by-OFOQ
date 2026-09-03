@@ -199,11 +199,12 @@ public sealed class VerifyMfaTotpHandler
             .SaveChangesAsync(
                 cancellationToken);
 
-        var accessToken =
-            _accessTokenService.Create(
-                user.Id,
-                user.Email.Value,
-                now);
+    var accessToken =
+    _accessTokenService.Create(
+        user.Id,
+        user.Email.Value,
+        now,
+        AccessTokenAuthenticationLevel.MultiFactor);
 
         return new VerifyMfaTotpResult(
             user.Id,

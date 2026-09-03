@@ -78,10 +78,6 @@ public static class DependencyInjection
             OtpNetTotpService>();
 
         services.AddSingleton<
-             IMfaLoginChallengeTokenService,
-             MfaLoginChallengeTokenService>();
-
-        services.AddSingleton<
             IMfaLoginChallengeTokenService,
             MfaLoginChallengeTokenService>();
 
