@@ -69,7 +69,7 @@ public sealed class UserMfaTests
     }
 
     [Fact]
-    public void Enable_EnablesMfa()
+    public void RestartEnrollment_ReplacesSecret_WhenPending()
     {
         var mfa =
             CreatePendingMfa();
@@ -77,7 +77,53 @@ public sealed class UserMfaTests
         var now =
             DateTimeOffset.UtcNow;
 
-        mfa.Enable(
+        mfa.RestartEnrollment(
+            "NEW-PROTECTED-SECRET",
+            now);
+
+        Assert.Equal(
+            "NEW-PROTECTED-SECRET",
+            mfa.ProtectedSecret);
+
+        Assert.Equal(
+            UserMfaStatus.PendingEnrollment,
+            mfa.Status);
+
+        Assert.Null(
+            mfa.EnabledAtUtc);
+
+        Assert.Null(
+            mfa.LastAcceptedTimeStep);
+
+        Assert.Equal(
+            now,
+            mfa.UpdatedAtUtc);
+    }
+
+    [Fact]
+    public void RestartEnrollment_RejectsWhenAlreadyEnabled()
+    {
+        var mfa =
+            CreateEnabledMfa();
+
+        Assert.Throws<InvalidOperationException>(
+            () =>
+                mfa.RestartEnrollment(
+                    "NEW-PROTECTED-SECRET",
+                    DateTimeOffset.UtcNow));
+    }
+
+    [Fact]
+    public void ConfirmEnrollment_EnablesMfaAndStoresVerifiedStep()
+    {
+        var mfa =
+            CreatePendingMfa();
+
+        var now =
+            DateTimeOffset.UtcNow;
+
+        mfa.ConfirmEnrollment(
+            123456,
             now);
 
         Assert.Equal(
@@ -89,12 +135,16 @@ public sealed class UserMfaTests
             mfa.EnabledAtUtc);
 
         Assert.Equal(
+            123456,
+            mfa.LastAcceptedTimeStep);
+
+        Assert.Equal(
             now,
             mfa.UpdatedAtUtc);
     }
 
     [Fact]
-    public void Enable_RejectsSecondEnable()
+    public void ConfirmEnrollment_RejectsSecondConfirmation()
     {
         var mfa =
             CreatePendingMfa();
@@ -102,17 +152,32 @@ public sealed class UserMfaTests
         var now =
             DateTimeOffset.UtcNow;
 
-        mfa.Enable(
+        mfa.ConfirmEnrollment(
+            123456,
             now);
 
         Assert.Throws<InvalidOperationException>(
             () =>
-                mfa.Enable(
+                mfa.ConfirmEnrollment(
+                    123457,
                     now.AddSeconds(1)));
     }
 
     [Fact]
-    public void AcceptTimeStep_StoresAcceptedStep()
+    public void ConfirmEnrollment_RejectsNegativeTimeStep()
+    {
+        var mfa =
+            CreatePendingMfa();
+
+        Assert.Throws<ArgumentOutOfRangeException>(
+            () =>
+                mfa.ConfirmEnrollment(
+                    -1,
+                    DateTimeOffset.UtcNow));
+    }
+
+    [Fact]
+    public void AcceptTimeStep_StoresNewerAcceptedStep()
     {
         var mfa =
             CreateEnabledMfa();
@@ -121,11 +186,11 @@ public sealed class UserMfaTests
             DateTimeOffset.UtcNow;
 
         mfa.AcceptTimeStep(
-            123456,
+            123457,
             now);
 
         Assert.Equal(
-            123456,
+            123457,
             mfa.LastAcceptedTimeStep);
 
         Assert.Equal(
@@ -139,18 +204,11 @@ public sealed class UserMfaTests
         var mfa =
             CreateEnabledMfa();
 
-        var now =
-            DateTimeOffset.UtcNow;
-
-        mfa.AcceptTimeStep(
-            123456,
-            now);
-
         Assert.Throws<InvalidOperationException>(
             () =>
                 mfa.AcceptTimeStep(
                     123456,
-                    now.AddSeconds(1)));
+                    DateTimeOffset.UtcNow));
     }
 
     [Fact]
@@ -159,18 +217,11 @@ public sealed class UserMfaTests
         var mfa =
             CreateEnabledMfa();
 
-        var now =
-            DateTimeOffset.UtcNow;
-
-        mfa.AcceptTimeStep(
-            123456,
-            now);
-
         Assert.Throws<InvalidOperationException>(
             () =>
                 mfa.AcceptTimeStep(
                     123455,
-                    now.AddSeconds(1)));
+                    DateTimeOffset.UtcNow));
     }
 
     [Fact]
@@ -212,7 +263,8 @@ public sealed class UserMfaTests
         var mfa =
             CreatePendingMfa();
 
-        mfa.Enable(
+        mfa.ConfirmEnrollment(
+            123456,
             DateTimeOffset.UtcNow);
 
         return mfa;

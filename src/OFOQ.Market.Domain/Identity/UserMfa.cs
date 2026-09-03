@@ -57,13 +57,8 @@ public sealed class UserMfa :
                 nameof(userId));
         }
 
-        if (string.IsNullOrWhiteSpace(
-                protectedSecret))
-        {
-            throw new ArgumentException(
-                "Protected MFA secret is required.",
-                nameof(protectedSecret));
-        }
+        ValidateProtectedSecret(
+            protectedSecret);
 
         return new UserMfa(
             UserMfaId.New(),
@@ -73,7 +68,36 @@ public sealed class UserMfa :
             createdByUserId);
     }
 
-    public void Enable(
+    public void RestartEnrollment(
+        string protectedSecret,
+        DateTimeOffset updatedAtUtc,
+        Guid? updatedByUserId = null)
+    {
+        if (Status == UserMfaStatus.Enabled)
+        {
+            throw new InvalidOperationException(
+                "Enabled MFA cannot be restarted through enrollment.");
+        }
+
+        ValidateProtectedSecret(
+            protectedSecret);
+
+        ProtectedSecret =
+            protectedSecret;
+
+        EnabledAtUtc =
+            null;
+
+        LastAcceptedTimeStep =
+            null;
+
+        MarkUpdated(
+            updatedAtUtc,
+            updatedByUserId);
+    }
+
+    public void ConfirmEnrollment(
+        long verifiedTimeStep,
         DateTimeOffset enabledAtUtc,
         Guid? updatedByUserId = null)
     {
@@ -83,11 +107,20 @@ public sealed class UserMfa :
                 "MFA is already enabled.");
         }
 
+        if (verifiedTimeStep < 0)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(verifiedTimeStep));
+        }
+
         Status =
             UserMfaStatus.Enabled;
 
         EnabledAtUtc =
             enabledAtUtc;
+
+        LastAcceptedTimeStep =
+            verifiedTimeStep;
 
         MarkUpdated(
             enabledAtUtc,
@@ -126,6 +159,18 @@ public sealed class UserMfa :
             updatedByUserId);
     }
 
+    private static void ValidateProtectedSecret(
+        string protectedSecret)
+    {
+        if (string.IsNullOrWhiteSpace(
+                protectedSecret))
+        {
+            throw new ArgumentException(
+                "Protected MFA secret is required.",
+                nameof(protectedSecret));
+        }
+    }
+
     private void MarkUpdated(
         DateTimeOffset updatedAtUtc,
         Guid? updatedByUserId)
@@ -136,4 +181,4 @@ public sealed class UserMfa :
         UpdatedByUserId =
             updatedByUserId;
     }
-}
+}   

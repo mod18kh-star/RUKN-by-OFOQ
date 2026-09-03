@@ -51,7 +51,8 @@ internal sealed class UserMfaConfiguration :
 
         builder.Property(
                 userMfa => userMfa.LastAcceptedTimeStep)
-            .HasColumnName("last_accepted_time_step");
+            .HasColumnName("last_accepted_time_step")
+            .IsConcurrencyToken();
 
         builder.Property(
                 userMfa => userMfa.CreatedAtUtc)

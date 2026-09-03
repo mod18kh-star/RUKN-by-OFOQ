@@ -1,5 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using OFOQ.Market.Application.Identity.LoginUser;
+using OFOQ.Market.Application.Identity.Mfa.ConfirmEnrollment;
+using OFOQ.Market.Application.Identity.Mfa.StartEnrollment;
 using OFOQ.Market.Application.Identity.RegisterUser;
 using OFOQ.Market.Application.Tenancy.CreateTenant;
 using OFOQ.Market.Application.Tenancy.GetTenantById;
@@ -14,13 +16,23 @@ public static class DependencyInjection
         services.AddSingleton(
             TimeProvider.System);
 
-        services.AddScoped<CreateTenantHandler>();
+        services.AddScoped<
+            CreateTenantHandler>();
 
-        services.AddScoped<GetTenantByIdHandler>();
+        services.AddScoped<
+            GetTenantByIdHandler>();
 
-        services.AddScoped<RegisterUserHandler>();
+        services.AddScoped<
+            RegisterUserHandler>();
 
-        services.AddScoped<LoginUserHandler>();
+        services.AddScoped<
+            LoginUserHandler>();
+
+        services.AddScoped<
+            StartMfaEnrollmentHandler>();
+
+        services.AddScoped<
+            ConfirmMfaEnrollmentHandler>();
 
         return services;
     }

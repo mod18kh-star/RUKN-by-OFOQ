@@ -62,6 +62,9 @@ public sealed class UserMfaPersistenceTests
 
         Assert.Null(
             saved.LastAcceptedTimeStep);
+
+        Assert.Null(
+            saved.EnabledAtUtc);
     }
 
     [Fact]
@@ -164,7 +167,7 @@ public sealed class UserMfaPersistenceTests
     }
 
     [Fact]
-    public async Task Database_PersistsLastAcceptedTotpTimeStep()
+    public async Task Database_PersistsConfirmedMfaAndLastAcceptedTimeStep()
     {
         await _database.ResetAsync();
 
@@ -183,7 +186,8 @@ public sealed class UserMfaPersistenceTests
                 "PROTECTED-SECRET",
                 now);
 
-        mfa.Enable(
+        mfa.ConfirmEnrollment(
+            987653,
             now);
 
         mfa.AcceptTimeStep(
