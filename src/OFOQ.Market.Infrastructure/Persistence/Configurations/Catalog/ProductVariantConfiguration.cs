@@ -18,6 +18,19 @@ public sealed class ProductVariantConfiguration :
             variant =>
                 variant.Id);
 
+                
+                builder.HasAlternateKey(
+                    variant =>
+                        new
+                        {
+                            variant.TenantId,
+                            variant.ProductId,
+                            variant.Id
+                        })
+                .HasName(
+                    "ak_catalog_product_variants_tenant_product_id");
+                    
+
         builder.Property(
                 variant =>
                     variant.Id)

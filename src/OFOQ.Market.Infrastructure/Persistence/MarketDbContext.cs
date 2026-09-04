@@ -61,6 +61,15 @@ public sealed class MarketDbContext :
 
     public DbSet<ProductVariant> ProductVariants =>
         Set<ProductVariant>();
+        
+     public DbSet<ProductOption> ProductOptions =>
+          Set<ProductOption>();
+
+    public DbSet<ProductOptionValue> ProductOptionValues =>
+        Set<ProductOptionValue>();
+
+    public DbSet<ProductVariantOptionValue> ProductVariantOptionValues =>
+        Set<ProductVariantOptionValue>();
 
     public override int SaveChanges(
         bool acceptAllChangesOnSuccess)

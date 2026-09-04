@@ -61,6 +61,18 @@ public static class DependencyInjection
             IProductVariantRepository,
             ProductVariantRepository>();
 
+            services.AddScoped<
+             IProductOptionRepository,
+             ProductOptionRepository>();
+
+        services.AddScoped<
+            IProductOptionValueRepository,
+            ProductOptionValueRepository>();
+
+        services.AddScoped<
+            IProductVariantOptionValueRepository,
+            ProductVariantOptionValueRepository>();
+
         services.AddScoped<
             IUserRepository,
             UserRepository>();
