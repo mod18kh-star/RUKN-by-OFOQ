@@ -295,6 +295,8 @@ app.MapProductEndpoints();
 
 app.MapProductOptionEndpoints();
 
+app.MapProductVariantEndpoints();
+
 app.Run();
 
 public partial class Program;

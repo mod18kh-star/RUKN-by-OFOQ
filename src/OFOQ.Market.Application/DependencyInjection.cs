@@ -11,6 +11,8 @@ using OFOQ.Market.Application.Catalog.Products.Options.CreateOption;
 using OFOQ.Market.Application.Catalog.Products.Options.CreateValue;
 using OFOQ.Market.Application.Catalog.Products.Options.GetOptions;
 using OFOQ.Market.Application.Catalog.Products.UpdateProduct;
+using OFOQ.Market.Application.Catalog.Products.Variants.CreateVariant;
+using OFOQ.Market.Application.Catalog.Products.Variants.GetVariants;
 using OFOQ.Market.Application.Identity.LoginUser;
 using OFOQ.Market.Application.Identity.Mfa.ConfirmEnrollment;
 using OFOQ.Market.Application.Identity.Mfa.Login.VerifyRecovery;
@@ -78,6 +80,13 @@ public static class DependencyInjection
 
         services.AddScoped<
             GetProductOptionsHandler>();
+
+        // Structured product variants
+        services.AddScoped<
+            CreateProductVariantHandler>();
+
+        services.AddScoped<
+            GetProductVariantsHandler>();
 
         // Identity
         services.AddScoped<
