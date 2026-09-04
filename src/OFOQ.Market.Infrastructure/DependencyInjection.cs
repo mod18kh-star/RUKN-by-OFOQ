@@ -46,6 +46,14 @@ public static class DependencyInjection
             TenantDomainRepository>();
 
         services.AddScoped<
+            ITenantMembershipRepository,
+            TenantMembershipRepository>();
+
+        services.AddScoped<
+            ICategoryRepository,
+            CategoryRepository>();
+
+        services.AddScoped<
             IUserRepository,
             UserRepository>();
 
@@ -60,10 +68,6 @@ public static class DependencyInjection
         services.AddScoped<
             IMfaLoginChallengeRepository,
             MfaLoginChallengeRepository>();
-
-        services.AddScoped<
-            ITenantMembershipRepository,
-            TenantMembershipRepository>();
 
         services.AddSingleton<
             IPasswordHasher,

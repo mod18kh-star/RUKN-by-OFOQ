@@ -45,7 +45,8 @@ internal sealed class IntegrationTestDatabase
             connectionString);
     }
 
-    public MarketDbContext CreateContext()
+    public MarketDbContext CreateContext(
+        TestCurrentTenant? currentTenant = null)
     {
         var options =
             new DbContextOptionsBuilder<MarketDbContext>()
@@ -54,7 +55,8 @@ internal sealed class IntegrationTestDatabase
                 .Options;
 
         return new MarketDbContext(
-            options);
+            options,
+            currentTenant);
     }
 
     public async Task ResetAsync(
@@ -69,6 +71,7 @@ internal sealed class IntegrationTestDatabase
         await dbContext.Database.ExecuteSqlRawAsync(
             """
             TRUNCATE TABLE
+                catalog_categories,
                 mfa_login_challenges,
                 user_mfa_recovery_codes,
                 user_mfa,
