@@ -13,6 +13,8 @@ using OFOQ.Market.Application;
 using OFOQ.Market.Application.Common.Security;
 using OFOQ.Market.Infrastructure;
 using OFOQ.Market.Infrastructure.Security;
+using OFOQ.Market.Api.Endpoints.Commerce;
+
 
 var builder =
     WebApplication.CreateBuilder(args);
@@ -296,6 +298,8 @@ app.MapProductEndpoints();
 app.MapProductOptionEndpoints();
 
 app.MapProductVariantEndpoints();
+
+app.MapCartEndpoints();
 
 app.Run();
 

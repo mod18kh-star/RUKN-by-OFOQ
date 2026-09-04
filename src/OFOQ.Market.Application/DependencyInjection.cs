@@ -25,6 +25,7 @@ using OFOQ.Market.Application.Identity.Mfa.StartEnrollment;
 using OFOQ.Market.Application.Identity.RegisterUser;
 using OFOQ.Market.Application.Tenancy.CreateTenant;
 using OFOQ.Market.Application.Tenancy.GetTenantById;
+using OFOQ.Market.Application.Commerce.Carts.GetCart;
 
 namespace OFOQ.Market.Application;
 
@@ -109,8 +110,10 @@ public static class DependencyInjection
         // -------------------------------------------------
 
         services.AddScoped<
-            AddToCartHandler>();
+        AddToCartHandler>();
 
+        services.AddScoped<
+            GetCartHandler>();
         // -------------------------------------------------
         // Identity
         // -------------------------------------------------
