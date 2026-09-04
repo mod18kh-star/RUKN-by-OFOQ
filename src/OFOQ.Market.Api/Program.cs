@@ -3,17 +3,16 @@ using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
+using OFOQ.Market.Api.Endpoints.Catalog;
 using OFOQ.Market.Api.Endpoints.Identity;
 using OFOQ.Market.Api.Endpoints.Tenancy;
 using OFOQ.Market.Api.Security;
+using OFOQ.Market.Api.Security.Authorization;
+using OFOQ.Market.Api.Security.Tenancy;
 using OFOQ.Market.Application;
 using OFOQ.Market.Application.Common.Security;
 using OFOQ.Market.Infrastructure;
 using OFOQ.Market.Infrastructure.Security;
-using OFOQ.Market.Api.Security.Authorization;
-using OFOQ.Market.Api.Security.Tenancy;
-using OFOQ.Market.Api.Endpoints.Catalog;
-
 
 var builder =
     WebApplication.CreateBuilder(args);
@@ -103,15 +102,12 @@ builder.Services
     .AddJwtBearer(
         options =>
         {
-            // لا نكشف تفاصيل فشل JWT للعميل.
             options.IncludeErrorDetails =
                 false;
 
-            // نحافظ على أسماء Claims الأصلية مثل sub و email.
             options.MapInboundClaims =
                 false;
 
-            // لا حاجة لحفظ الـ Bearer Token داخل AuthenticationProperties.
             options.SaveToken =
                 false;
 
@@ -294,6 +290,8 @@ app.MapTenantEndpoints();
 app.MapTenantBackOfficeEndpoints();
 
 app.MapCategoryEndpoints();
+
+app.MapProductEndpoints();
 
 app.Run();
 
