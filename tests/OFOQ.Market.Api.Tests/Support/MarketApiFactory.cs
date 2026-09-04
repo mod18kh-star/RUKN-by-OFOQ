@@ -58,6 +58,9 @@ internal sealed class MarketApiFactory :
                     ITenantRepository>();
 
                 services.RemoveAll<
+                    ITenantMembershipRepository>();
+
+                services.RemoveAll<
                     IUserRepository>();
 
                 services.RemoveAll<
@@ -92,6 +95,15 @@ internal sealed class MarketApiFactory :
                         provider =>
                             provider.GetRequiredService<
                                 InMemoryTenantRepository>());
+
+                services.AddSingleton<
+                    InMemoryTenantMembershipRepository>();
+
+                services.AddSingleton<
+                    ITenantMembershipRepository>(
+                        provider =>
+                            provider.GetRequiredService<
+                                InMemoryTenantMembershipRepository>());
 
                 services.AddSingleton<
                     InMemoryUserRepository>();

@@ -10,6 +10,9 @@ using OFOQ.Market.Application;
 using OFOQ.Market.Application.Common.Security;
 using OFOQ.Market.Infrastructure;
 using OFOQ.Market.Infrastructure.Security;
+using OFOQ.Market.Api.Security.Authorization;
+using OFOQ.Market.Api.Security.Tenancy;
+
 
 var builder =
     WebApplication.CreateBuilder(args);
@@ -154,7 +157,7 @@ builder.Services
                 };
         });
 
-builder.Services.AddAuthorization();
+builder.Services.AddOfoqAuthorization();
 
 builder.Services.AddRateLimiter(
     options =>
@@ -259,11 +262,16 @@ builder.Services.AddRateLimiter(
 var app =
     builder.Build();
 
+app.UseRouting();
+
+app.UseMiddleware<
+    TenantRouteContextMiddleware>();
+
 app.UseAuthentication();
 
-app.UseAuthorization();
-
 app.UseRateLimiter();
+
+app.UseAuthorization();
 
 app.MapGet(
     "/health",
@@ -281,6 +289,8 @@ app.MapGet(
 app.MapAuthEndpoints();
 
 app.MapTenantEndpoints();
+
+app.MapTenantBackOfficeEndpoints();
 
 app.Run();
 

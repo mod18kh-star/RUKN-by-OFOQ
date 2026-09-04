@@ -13,17 +13,20 @@ public sealed class TenantMembershipRepository :
     public TenantMembershipRepository(
         MarketDbContext dbContext)
     {
-        _dbContext = dbContext;
+        _dbContext =
+            dbContext;
     }
 
     public Task<TenantMembership?> GetByIdAsync(
         TenantMembershipId membershipId,
         CancellationToken cancellationToken = default)
     {
-        return _dbContext.TenantMemberships
+        return _dbContext
+            .TenantMemberships
             .FirstOrDefaultAsync(
                 membership =>
-                    membership.Id == membershipId,
+                    membership.Id ==
+                    membershipId,
                 cancellationToken);
     }
 
@@ -32,11 +35,14 @@ public sealed class TenantMembershipRepository :
         UserId userId,
         CancellationToken cancellationToken = default)
     {
-        return _dbContext.TenantMemberships
+        return _dbContext
+            .TenantMemberships
             .FirstOrDefaultAsync(
                 membership =>
-                    membership.TenantId == tenantId &&
-                    membership.UserId == userId,
+                    membership.TenantId ==
+                        tenantId &&
+                    membership.UserId ==
+                        userId,
                 cancellationToken);
     }
 
@@ -45,11 +51,14 @@ public sealed class TenantMembershipRepository :
             TenantId tenantId,
             CancellationToken cancellationToken = default)
     {
-        return await _dbContext.TenantMemberships
+        return await _dbContext
+            .TenantMemberships
             .Where(
                 membership =>
-                    membership.TenantId == tenantId)
-            .ToListAsync(cancellationToken);
+                    membership.TenantId ==
+                    tenantId)
+            .ToListAsync(
+                cancellationToken);
     }
 
     public async Task<IReadOnlyList<TenantMembership>>
@@ -57,11 +66,14 @@ public sealed class TenantMembershipRepository :
             UserId userId,
             CancellationToken cancellationToken = default)
     {
-        return await _dbContext.TenantMemberships
+        return await _dbContext
+            .TenantMemberships
             .Where(
                 membership =>
-                    membership.UserId == userId)
-            .ToListAsync(cancellationToken);
+                    membership.UserId ==
+                    userId)
+            .ToListAsync(
+                cancellationToken);
     }
 
     public Task<bool> ExistsAsync(
@@ -69,12 +81,20 @@ public sealed class TenantMembershipRepository :
         UserId userId,
         CancellationToken cancellationToken = default)
     {
-        return _dbContext.TenantMemberships
-            .IgnoreQueryFilters()
+        /*
+         * Do NOT IgnoreQueryFilters here.
+         *
+         * A soft-deleted membership must behave as if it does
+         * not exist for authorization/business operations.
+         */
+        return _dbContext
+            .TenantMemberships
             .AnyAsync(
                 membership =>
-                    membership.TenantId == tenantId &&
-                    membership.UserId == userId,
+                    membership.TenantId ==
+                        tenantId &&
+                    membership.UserId ==
+                        userId,
                 cancellationToken);
     }
 
@@ -82,10 +102,13 @@ public sealed class TenantMembershipRepository :
         TenantMembership membership,
         CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(membership);
+        ArgumentNullException.ThrowIfNull(
+            membership);
 
-        await _dbContext.TenantMemberships.AddAsync(
-            membership,
-            cancellationToken);
+        await _dbContext
+            .TenantMemberships
+            .AddAsync(
+                membership,
+                cancellationToken);
     }
 }
