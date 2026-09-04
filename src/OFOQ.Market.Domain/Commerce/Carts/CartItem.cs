@@ -11,6 +11,11 @@ public sealed class CartItem :
 {
     public const int MaximumQuantity = 999;
 
+    private decimal _unitPriceAmount;
+
+    private string _unitPriceCurrencyCode =
+        string.Empty;
+
     private CartItem()
     {
     }
@@ -67,8 +72,8 @@ public sealed class CartItem :
         ProductVariantId =
             productVariantId;
 
-        UnitPrice =
-            unitPrice;
+        ApplyUnitPrice(
+            unitPrice);
 
         Quantity =
             ValidateQuantity(
@@ -89,12 +94,15 @@ public sealed class CartItem :
 
     public ProductVariantId ProductVariantId { get; private set; }
 
-    public Money UnitPrice { get; private set; }
+    public Money UnitPrice =>
+        Money.Create(
+            _unitPriceAmount,
+            _unitPriceCurrencyCode);
 
     public int Quantity { get; private set; }
 
     public decimal LineTotal =>
-        UnitPrice.Amount * Quantity;
+        _unitPriceAmount * Quantity;
 
     public DateTimeOffset CreatedAtUtc { get; private set; }
 
@@ -180,12 +188,22 @@ public sealed class CartItem :
             return;
         }
 
-        UnitPrice =
-            unitPrice;
+        ApplyUnitPrice(
+            unitPrice);
 
         MarkUpdated(
             updatedAtUtc,
             updatedByUserId);
+    }
+
+    private void ApplyUnitPrice(
+        Money unitPrice)
+    {
+        _unitPriceAmount =
+            unitPrice.Amount;
+
+        _unitPriceCurrencyCode =
+            unitPrice.Currency.Value;
     }
 
     private static int ValidateQuantity(
