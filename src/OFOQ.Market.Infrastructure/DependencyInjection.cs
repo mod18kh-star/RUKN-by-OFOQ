@@ -54,6 +54,14 @@ public static class DependencyInjection
             CategoryRepository>();
 
         services.AddScoped<
+            IProductRepository,
+            ProductRepository>();
+
+        services.AddScoped<
+            IProductVariantRepository,
+            ProductVariantRepository>();
+
+        services.AddScoped<
             IUserRepository,
             UserRepository>();
 

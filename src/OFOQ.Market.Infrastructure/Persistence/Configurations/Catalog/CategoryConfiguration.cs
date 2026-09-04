@@ -18,17 +18,25 @@ public sealed class CategoryConfiguration :
             category =>
                 category.Id);
 
+        builder.HasAlternateKey(
+                category =>
+                    new
+                    {
+                        category.TenantId,
+                        category.Id
+                    })
+            .HasName(
+                "ak_catalog_categories_tenant_id_id");
+
         builder.Property(
                 category =>
                     category.Id)
             .HasColumnName(
                 "id")
             .HasConversion(
-                id =>
-                    id.Value,
+                id => id.Value,
                 value =>
-                    CategoryId.From(
-                        value))
+                    CategoryId.From(value))
             .ValueGeneratedNever();
 
         builder.Property(
@@ -37,11 +45,9 @@ public sealed class CategoryConfiguration :
             .HasColumnName(
                 "tenant_id")
             .HasConversion(
-                id =>
-                    id.Value,
+                id => id.Value,
                 value =>
-                    TenantId.From(
-                        value))
+                    TenantId.From(value))
             .IsRequired();
 
         builder.Property(
@@ -49,8 +55,7 @@ public sealed class CategoryConfiguration :
                     category.Name)
             .HasColumnName(
                 "name")
-            .HasMaxLength(
-                160)
+            .HasMaxLength(160)
             .IsRequired();
 
         builder.Property(
@@ -58,8 +63,7 @@ public sealed class CategoryConfiguration :
                     category.Slug)
             .HasColumnName(
                 "slug")
-            .HasMaxLength(
-                120)
+            .HasMaxLength(120)
             .IsRequired();
 
         builder.Property(
@@ -83,8 +87,7 @@ public sealed class CategoryConfiguration :
                     category.SortOrder)
             .HasColumnName(
                 "sort_order")
-            .HasDefaultValue(
-                0)
+            .HasDefaultValue(0)
             .IsRequired();
 
         builder.Property(
@@ -92,8 +95,7 @@ public sealed class CategoryConfiguration :
                     category.IsVisible)
             .HasColumnName(
                 "is_visible")
-            .HasDefaultValue(
-                true)
+            .HasDefaultValue(true)
             .IsRequired();
 
         builder.Property(
@@ -126,8 +128,7 @@ public sealed class CategoryConfiguration :
                     category.IsDeleted)
             .HasColumnName(
                 "is_deleted")
-            .HasDefaultValue(
-                false)
+            .HasDefaultValue(false)
             .IsRequired();
 
         builder.Property(

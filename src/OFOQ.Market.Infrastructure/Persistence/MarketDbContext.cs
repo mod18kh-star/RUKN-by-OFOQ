@@ -21,8 +21,7 @@ public sealed class MarketDbContext :
         ICurrentTenant? currentTenant = null)
         : base(options)
     {
-        _currentTenant =
-            currentTenant;
+        _currentTenant = currentTenant;
     }
 
     public bool HasCurrentTenant =>
@@ -56,6 +55,12 @@ public sealed class MarketDbContext :
 
     public DbSet<Category> Categories =>
         Set<Category>();
+
+    public DbSet<Product> Products =>
+        Set<Product>();
+
+    public DbSet<ProductVariant> ProductVariants =>
+        Set<ProductVariant>();
 
     public override int SaveChanges(
         bool acceptAllChangesOnSuccess)
@@ -193,9 +198,7 @@ public sealed class MarketDbContext :
                 .ToArray();
 
         if (tenantEntries.Length == 0)
-        {
             return;
-        }
 
         if (!HasCurrentTenant ||
             CurrentTenantId.IsEmpty)

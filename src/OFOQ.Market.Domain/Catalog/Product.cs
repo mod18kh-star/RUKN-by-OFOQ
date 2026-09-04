@@ -10,6 +10,10 @@ public sealed class Product :
     IAuditable,
     ISoftDeletable
 {
+    private decimal _priceAmount;
+    private string _currencyCode = string.Empty;
+    private decimal? _compareAtPriceAmount;
+
     private Product()
     {
     }
@@ -27,45 +31,21 @@ public sealed class Product :
         Guid? createdByUserId)
         : base(id)
     {
-        TenantId =
-            tenantId;
+        TenantId = tenantId;
+        Name = NormalizeName(name);
+        Slug = NormalizeSlug(slug);
+        Description = NormalizeDescription(description);
+        CategoryId = categoryId;
 
-        Name =
-            NormalizeName(
-                name);
-
-        Slug =
-            NormalizeSlug(
-                slug);
-
-        Description =
-            NormalizeDescription(
-                description);
-
-        CategoryId =
-            categoryId;
-
-        ValidatePricing(
+        ApplyPricing(
             price,
             compareAtPrice);
 
-        Price =
-            price;
+        Status = ProductStatus.Draft;
+        IsVisible = false;
 
-        CompareAtPrice =
-            compareAtPrice;
-
-        Status =
-            ProductStatus.Draft;
-
-        IsVisible =
-            false;
-
-        CreatedAtUtc =
-            createdAtUtc;
-
-        CreatedByUserId =
-            createdByUserId;
+        CreatedAtUtc = createdAtUtc;
+        CreatedByUserId = createdByUserId;
     }
 
     public TenantId TenantId { get; private set; }
@@ -80,9 +60,17 @@ public sealed class Product :
 
     public CategoryId? CategoryId { get; private set; }
 
-    public Money Price { get; private set; }
+    public Money Price =>
+        Money.Create(
+            _priceAmount,
+            _currencyCode);
 
-    public Money? CompareAtPrice { get; private set; }
+    public Money? CompareAtPrice =>
+        _compareAtPriceAmount.HasValue
+            ? Money.Create(
+                _compareAtPriceAmount.Value,
+                _currencyCode)
+            : null;
 
     public ProductStatus Status { get; private set; }
 
@@ -139,17 +127,12 @@ public sealed class Product :
         Guid? updatedByUserId = null)
     {
         var normalized =
-            NormalizeName(
-                name);
+            NormalizeName(name);
 
-        if (Name ==
-            normalized)
-        {
+        if (Name == normalized)
             return;
-        }
 
-        Name =
-            normalized;
+        Name = normalized;
 
         MarkUpdated(
             updatedAtUtc,
@@ -162,17 +145,12 @@ public sealed class Product :
         Guid? updatedByUserId = null)
     {
         var normalized =
-            NormalizeSlug(
-                slug);
+            NormalizeSlug(slug);
 
-        if (Slug ==
-            normalized)
-        {
+        if (Slug == normalized)
             return;
-        }
 
-        Slug =
-            normalized;
+        Slug = normalized;
 
         MarkUpdated(
             updatedAtUtc,
@@ -188,14 +166,10 @@ public sealed class Product :
             NormalizeDescription(
                 description);
 
-        if (Description ==
-            normalized)
-        {
+        if (Description == normalized)
             return;
-        }
 
-        Description =
-            normalized;
+        Description = normalized;
 
         MarkUpdated(
             updatedAtUtc,
@@ -207,14 +181,10 @@ public sealed class Product :
         DateTimeOffset updatedAtUtc,
         Guid? updatedByUserId = null)
     {
-        if (CategoryId ==
-            categoryId)
-        {
+        if (CategoryId == categoryId)
             return;
-        }
 
-        CategoryId =
-            categoryId;
+        CategoryId = categoryId;
 
         MarkUpdated(
             updatedAtUtc,
@@ -231,19 +201,15 @@ public sealed class Product :
             price,
             compareAtPrice);
 
-        if (Price ==
-                price &&
-            CompareAtPrice ==
-                compareAtPrice)
+        if (Price == price &&
+            CompareAtPrice == compareAtPrice)
         {
             return;
         }
 
-        Price =
-            price;
-
-        CompareAtPrice =
-            compareAtPrice;
+        ApplyPricing(
+            price,
+            compareAtPrice);
 
         MarkUpdated(
             updatedAtUtc,
@@ -256,18 +222,14 @@ public sealed class Product :
     {
         EnsureNotDeleted();
 
-        if (Status ==
-                ProductStatus.Published &&
+        if (Status == ProductStatus.Published &&
             IsVisible)
         {
             return;
         }
 
-        Status =
-            ProductStatus.Published;
-
-        IsVisible =
-            true;
+        Status = ProductStatus.Published;
+        IsVisible = true;
 
         MarkUpdated(
             updatedAtUtc,
@@ -280,18 +242,14 @@ public sealed class Product :
     {
         EnsureNotDeleted();
 
-        if (Status ==
-                ProductStatus.Draft &&
+        if (Status == ProductStatus.Draft &&
             !IsVisible)
         {
             return;
         }
 
-        Status =
-            ProductStatus.Draft;
-
-        IsVisible =
-            false;
+        Status = ProductStatus.Draft;
+        IsVisible = false;
 
         MarkUpdated(
             updatedAtUtc,
@@ -304,18 +262,14 @@ public sealed class Product :
     {
         EnsureNotDeleted();
 
-        if (Status ==
-                ProductStatus.Archived &&
+        if (Status == ProductStatus.Archived &&
             !IsVisible)
         {
             return;
         }
 
-        Status =
-            ProductStatus.Archived;
-
-        IsVisible =
-            false;
+        Status = ProductStatus.Archived;
+        IsVisible = false;
 
         MarkUpdated(
             updatedAtUtc,
@@ -328,20 +282,16 @@ public sealed class Product :
     {
         EnsureNotDeleted();
 
-        if (Status !=
-            ProductStatus.Published)
+        if (Status != ProductStatus.Published)
         {
             throw new InvalidOperationException(
                 "Only a published product can be visible.");
         }
 
         if (IsVisible)
-        {
             return;
-        }
 
-        IsVisible =
-            true;
+        IsVisible = true;
 
         MarkUpdated(
             updatedAtUtc,
@@ -355,12 +305,9 @@ public sealed class Product :
         EnsureNotDeleted();
 
         if (!IsVisible)
-        {
             return;
-        }
 
-        IsVisible =
-            false;
+        IsVisible = false;
 
         MarkUpdated(
             updatedAtUtc,
@@ -372,25 +319,35 @@ public sealed class Product :
         Guid? deletedByUserId = null)
     {
         if (IsDeleted)
-        {
             return;
-        }
 
-        IsDeleted =
-            true;
+        IsDeleted = true;
+        IsVisible = false;
 
-        IsVisible =
-            false;
-
-        DeletedAtUtc =
-            deletedAtUtc;
-
-        DeletedByUserId =
-            deletedByUserId;
+        DeletedAtUtc = deletedAtUtc;
+        DeletedByUserId = deletedByUserId;
 
         MarkUpdated(
             deletedAtUtc,
             deletedByUserId);
+    }
+
+    private void ApplyPricing(
+        Money price,
+        Money? compareAtPrice)
+    {
+        ValidatePricing(
+            price,
+            compareAtPrice);
+
+        _priceAmount =
+            price.Amount;
+
+        _currencyCode =
+            price.Currency.Value;
+
+        _compareAtPriceAmount =
+            compareAtPrice?.Amount;
     }
 
     private static void ValidatePricing(
@@ -405,9 +362,7 @@ public sealed class Product :
         }
 
         if (!compareAtPrice.HasValue)
-        {
             return;
-        }
 
         var comparePrice =
             compareAtPrice.Value;
@@ -442,18 +397,14 @@ public sealed class Product :
         DateTimeOffset updatedAtUtc,
         Guid? updatedByUserId)
     {
-        UpdatedAtUtc =
-            updatedAtUtc;
-
-        UpdatedByUserId =
-            updatedByUserId;
+        UpdatedAtUtc = updatedAtUtc;
+        UpdatedByUserId = updatedByUserId;
     }
 
     private static string NormalizeName(
         string name)
     {
-        if (string.IsNullOrWhiteSpace(
-                name))
+        if (string.IsNullOrWhiteSpace(name))
         {
             throw new ArgumentException(
                 "Product name is required.",
@@ -476,8 +427,7 @@ public sealed class Product :
     private static string NormalizeSlug(
         string slug)
     {
-        if (string.IsNullOrWhiteSpace(
-                slug))
+        if (string.IsNullOrWhiteSpace(slug))
         {
             throw new ArgumentException(
                 "Product slug is required.",
@@ -511,8 +461,7 @@ public sealed class Product :
 
         foreach (var character in normalized)
         {
-            if (!char.IsLetterOrDigit(
-                    character) &&
+            if (!char.IsLetterOrDigit(character) &&
                 character != '-')
             {
                 throw new ArgumentException(
@@ -527,11 +476,8 @@ public sealed class Product :
     private static string? NormalizeDescription(
         string? description)
     {
-        if (string.IsNullOrWhiteSpace(
-                description))
-        {
+        if (string.IsNullOrWhiteSpace(description))
             return null;
-        }
 
         var normalized =
             description.Trim();

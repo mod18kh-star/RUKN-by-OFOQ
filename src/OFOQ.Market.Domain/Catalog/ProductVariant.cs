@@ -9,6 +9,16 @@ public sealed class ProductVariant :
     IAuditable,
     ISoftDeletable
 {
+    private string _skuValue = string.Empty;
+
+    private decimal? _priceOverrideAmount;
+    private string? _priceOverrideCurrencyCode;
+
+    private bool _trackInventory;
+    private int _quantity;
+    private int _lowStockThreshold;
+    private bool _continueSellingWhenOutOfStock;
+
     private ProductVariant()
     {
     }
@@ -26,36 +36,28 @@ public sealed class ProductVariant :
         Guid? createdByUserId)
         : base(id)
     {
-        TenantId =
-            tenantId;
-
-        ProductId =
-            productId;
+        TenantId = tenantId;
+        ProductId = productId;
 
         Name =
-            NormalizeName(
-                name);
+            NormalizeName(name);
 
-        Sku =
-            sku;
+        _skuValue =
+            sku.Value;
 
         IsDefault =
             isDefault;
 
-        PriceOverride =
-            priceOverride;
+        ApplyPriceOverride(
+            priceOverride);
 
-        Inventory =
-            inventory;
+        ApplyInventory(
+            inventory);
 
-        IsEnabled =
-            true;
+        IsEnabled = true;
 
-        CreatedAtUtc =
-            createdAtUtc;
-
-        CreatedByUserId =
-            createdByUserId;
+        CreatedAtUtc = createdAtUtc;
+        CreatedByUserId = createdByUserId;
     }
 
     public TenantId TenantId { get; private set; }
@@ -65,13 +67,27 @@ public sealed class ProductVariant :
     public string Name { get; private set; } =
         string.Empty;
 
-    public ProductSku Sku { get; private set; }
+    public ProductSku Sku =>
+        ProductSku.Create(
+            _skuValue);
 
     public bool IsDefault { get; private set; }
 
-    public Money? PriceOverride { get; private set; }
+    public Money? PriceOverride =>
+        _priceOverrideAmount.HasValue &&
+        !string.IsNullOrWhiteSpace(
+            _priceOverrideCurrencyCode)
+            ? Money.Create(
+                _priceOverrideAmount.Value,
+                _priceOverrideCurrencyCode)
+            : null;
 
-    public Inventory Inventory { get; private set; }
+    public Inventory Inventory =>
+        Inventory.Create(
+            _trackInventory,
+            _quantity,
+            _lowStockThreshold,
+            _continueSellingWhenOutOfStock);
 
     public bool IsEnabled { get; private set; }
 
@@ -154,17 +170,12 @@ public sealed class ProductVariant :
         EnsureCanModify();
 
         var normalized =
-            NormalizeName(
-                name);
+            NormalizeName(name);
 
-        if (Name ==
-            normalized)
-        {
+        if (Name == normalized)
             return;
-        }
 
-        Name =
-            normalized;
+        Name = normalized;
 
         MarkUpdated(
             updatedAtUtc,
@@ -185,14 +196,11 @@ public sealed class ProductVariant :
                 nameof(sku));
         }
 
-        if (Sku ==
-            sku)
-        {
+        if (Sku == sku)
             return;
-        }
 
-        Sku =
-            sku;
+        _skuValue =
+            sku.Value;
 
         MarkUpdated(
             updatedAtUtc,
@@ -217,8 +225,8 @@ public sealed class ProductVariant :
             return;
         }
 
-        PriceOverride =
-            priceOverride;
+        ApplyPriceOverride(
+            priceOverride);
 
         MarkUpdated(
             updatedAtUtc,
@@ -232,9 +240,9 @@ public sealed class ProductVariant :
     {
         EnsureCanModify();
 
-        Inventory =
+        ApplyInventory(
             Inventory.Increase(
-                quantity);
+                quantity));
 
         MarkUpdated(
             updatedAtUtc,
@@ -248,9 +256,9 @@ public sealed class ProductVariant :
     {
         EnsureCanModify();
 
-        Inventory =
+        ApplyInventory(
             Inventory.Decrease(
-                quantity);
+                quantity));
 
         MarkUpdated(
             updatedAtUtc,
@@ -264,9 +272,9 @@ public sealed class ProductVariant :
     {
         EnsureCanModify();
 
-        Inventory =
+        ApplyInventory(
             Inventory.SetQuantity(
-                quantity);
+                quantity));
 
         MarkUpdated(
             updatedAtUtc,
@@ -282,11 +290,11 @@ public sealed class ProductVariant :
     {
         EnsureCanModify();
 
-        Inventory =
+        ApplyInventory(
             Inventory.Configure(
                 trackInventory,
                 lowStockThreshold,
-                continueSellingWhenOutOfStock);
+                continueSellingWhenOutOfStock));
 
         MarkUpdated(
             updatedAtUtc,
@@ -300,12 +308,9 @@ public sealed class ProductVariant :
         EnsureNotDeleted();
 
         if (IsEnabled)
-        {
             return;
-        }
 
-        IsEnabled =
-            true;
+        IsEnabled = true;
 
         MarkUpdated(
             updatedAtUtc,
@@ -319,12 +324,9 @@ public sealed class ProductVariant :
         EnsureNotDeleted();
 
         if (!IsEnabled)
-        {
             return;
-        }
 
-        IsEnabled =
-            false;
+        IsEnabled = false;
 
         MarkUpdated(
             updatedAtUtc,
@@ -336,25 +338,50 @@ public sealed class ProductVariant :
         Guid? deletedByUserId = null)
     {
         if (IsDeleted)
-        {
             return;
-        }
 
-        IsDeleted =
-            true;
+        IsDeleted = true;
+        IsEnabled = false;
 
-        IsEnabled =
-            false;
-
-        DeletedAtUtc =
-            deletedAtUtc;
-
-        DeletedByUserId =
-            deletedByUserId;
+        DeletedAtUtc = deletedAtUtc;
+        DeletedByUserId = deletedByUserId;
 
         MarkUpdated(
             deletedAtUtc,
             deletedByUserId);
+    }
+
+    private void ApplyPriceOverride(
+        Money? priceOverride)
+    {
+        if (!priceOverride.HasValue)
+        {
+            _priceOverrideAmount = null;
+            _priceOverrideCurrencyCode = null;
+            return;
+        }
+
+        _priceOverrideAmount =
+            priceOverride.Value.Amount;
+
+        _priceOverrideCurrencyCode =
+            priceOverride.Value.Currency.Value;
+    }
+
+    private void ApplyInventory(
+        Inventory inventory)
+    {
+        _trackInventory =
+            inventory.TrackInventory;
+
+        _quantity =
+            inventory.Quantity;
+
+        _lowStockThreshold =
+            inventory.LowStockThreshold;
+
+        _continueSellingWhenOutOfStock =
+            inventory.ContinueSellingWhenOutOfStock;
     }
 
     private static void ValidatePriceOverride(
@@ -362,9 +389,7 @@ public sealed class ProductVariant :
         Money? priceOverride)
     {
         if (!priceOverride.HasValue)
-        {
             return;
-        }
 
         if (priceOverride.Value.Currency !=
             productCurrency)
@@ -399,18 +424,14 @@ public sealed class ProductVariant :
         DateTimeOffset updatedAtUtc,
         Guid? updatedByUserId)
     {
-        UpdatedAtUtc =
-            updatedAtUtc;
-
-        UpdatedByUserId =
-            updatedByUserId;
+        UpdatedAtUtc = updatedAtUtc;
+        UpdatedByUserId = updatedByUserId;
     }
 
     private static string NormalizeName(
         string name)
     {
-        if (string.IsNullOrWhiteSpace(
-                name))
+        if (string.IsNullOrWhiteSpace(name))
         {
             throw new ArgumentException(
                 "Product variant name is required.",
