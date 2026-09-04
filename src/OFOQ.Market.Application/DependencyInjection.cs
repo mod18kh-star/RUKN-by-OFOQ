@@ -13,6 +13,7 @@ using OFOQ.Market.Application.Catalog.Products.Options.GetOptions;
 using OFOQ.Market.Application.Catalog.Products.UpdateProduct;
 using OFOQ.Market.Application.Catalog.Products.Variants.CreateVariant;
 using OFOQ.Market.Application.Catalog.Products.Variants.GetVariants;
+using OFOQ.Market.Application.Commerce.Carts.AddItem;
 using OFOQ.Market.Application.Identity.LoginUser;
 using OFOQ.Market.Application.Identity.Mfa.ConfirmEnrollment;
 using OFOQ.Market.Application.Identity.Mfa.Login.VerifyRecovery;
@@ -35,14 +36,20 @@ public static class DependencyInjection
         services.AddSingleton(
             TimeProvider.System);
 
+        // -------------------------------------------------
         // Tenancy
+        // -------------------------------------------------
+
         services.AddScoped<
             CreateTenantHandler>();
 
         services.AddScoped<
             GetTenantByIdHandler>();
 
+        // -------------------------------------------------
         // Categories
+        // -------------------------------------------------
+
         services.AddScoped<
             CreateCategoryHandler>();
 
@@ -52,7 +59,10 @@ public static class DependencyInjection
         services.AddScoped<
             GetCategoryByIdHandler>();
 
+        // -------------------------------------------------
         // Products
+        // -------------------------------------------------
+
         services.AddScoped<
             CreateProductHandler>();
 
@@ -71,7 +81,10 @@ public static class DependencyInjection
         services.AddScoped<
             UpdateProductInventoryHandler>();
 
+        // -------------------------------------------------
         // Structured product options
+        // -------------------------------------------------
+
         services.AddScoped<
             CreateProductOptionHandler>();
 
@@ -81,14 +94,27 @@ public static class DependencyInjection
         services.AddScoped<
             GetProductOptionsHandler>();
 
+        // -------------------------------------------------
         // Structured product variants
+        // -------------------------------------------------
+
         services.AddScoped<
             CreateProductVariantHandler>();
 
         services.AddScoped<
             GetProductVariantsHandler>();
 
+        // -------------------------------------------------
+        // Commerce / Cart
+        // -------------------------------------------------
+
+        services.AddScoped<
+            AddToCartHandler>();
+
+        // -------------------------------------------------
         // Identity
+        // -------------------------------------------------
+
         services.AddScoped<
             RegisterUserHandler>();
 
