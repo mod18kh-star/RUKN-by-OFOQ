@@ -1,15 +1,22 @@
 using System.Net;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+using Microsoft.Extensions.DependencyInjection;
 using OFOQ.Market.Api.Tests.Support;
+using OFOQ.Market.Application.Common.Persistence;
+using OFOQ.Market.Application.Common.Security;
+using OFOQ.Market.Contracts.Identity;
 using OFOQ.Market.Contracts.Tenancy;
+using OFOQ.Market.Domain.Identity;
+using OFOQ.Market.Domain.Tenancy;
 
 namespace OFOQ.Market.Api.Tests.Tenancy;
 
 public sealed class TenantEndpointsTests
 {
     [Fact]
-    public async Task PostTenant_ReturnsCreated()
+    public async Task PostTenant_WithoutAccessToken_ReturnsUnauthorized()
     {
         await using var factory =
             new MarketApiFactory();
@@ -17,15 +24,39 @@ public sealed class TenantEndpointsTests
         using var client =
             factory.CreateClient();
 
-        var request =
-            new CreateTenantRequest(
-                "Turks Store",
-                "TURKS");
+        var response =
+            await client.PostAsJsonAsync(
+                "/api/tenants",
+                new CreateTenantRequest(
+                    "Turks Store",
+                    "turks"));
+
+        Assert.Equal(
+            HttpStatusCode.Unauthorized,
+            response.StatusCode);
+    }
+
+    [Fact]
+    public async Task PostTenant_WithPasswordOnlyToken_CreatesTenantAndOwnerMembership()
+    {
+        await using var factory =
+            new MarketApiFactory();
+
+        using var client =
+            factory.CreateClient();
+
+        var user =
+            await AuthenticateUserAsync(
+                factory,
+                client,
+                "owner@example.com");
 
         var response =
             await client.PostAsJsonAsync(
                 "/api/tenants",
-                request);
+                new CreateTenantRequest(
+                    "Turks Store",
+                    "TURKS"));
 
         Assert.Equal(
             HttpStatusCode.Created,
@@ -33,13 +64,69 @@ public sealed class TenantEndpointsTests
 
         var result =
             await response.Content
-                .ReadFromJsonAsync<CreateTenantResponse>();
+                .ReadFromJsonAsync<
+                    CreateTenantResponse>();
 
-        Assert.NotNull(result);
-        Assert.NotEqual(Guid.Empty, result.TenantId);
-        Assert.Equal("Turks Store", result.Name);
-        Assert.Equal("turks", result.Slug);
-        Assert.Equal("Draft", result.Status);
+        Assert.NotNull(
+            result);
+
+        Assert.NotEqual(
+            Guid.Empty,
+            result.TenantId);
+
+        Assert.Equal(
+            "Turks Store",
+            result.Name);
+
+        Assert.Equal(
+            "turks",
+            result.Slug);
+
+        Assert.Equal(
+            "Draft",
+            result.Status);
+
+        var tenantRepository =
+            factory.Services
+                .GetRequiredService<
+                    ITenantRepository>();
+
+        var tenant =
+            await tenantRepository.GetByIdAsync(
+                TenantId.From(
+                    result.TenantId));
+
+        Assert.NotNull(
+            tenant);
+
+        Assert.Equal(
+            user.Id.Value,
+            tenant.CreatedByUserId);
+
+        var membershipRepository =
+            factory.Services
+                .GetRequiredService<
+                    InMemoryTenantMembershipRepository>();
+
+        var membership =
+            Assert.Single(
+                membershipRepository.Items);
+
+        Assert.Equal(
+            result.TenantId,
+            membership.TenantId.Value);
+
+        Assert.Equal(
+            user.Id,
+            membership.UserId);
+
+        Assert.Equal(
+            TenantRole.Owner,
+            membership.Role);
+
+        Assert.Equal(
+            user.Id.Value,
+            membership.CreatedByUserId);
     }
 
     [Fact]
@@ -51,11 +138,21 @@ public sealed class TenantEndpointsTests
         using var client =
             factory.CreateClient();
 
-        await client.PostAsJsonAsync(
-            "/api/tenants",
-            new CreateTenantRequest(
-                "First Store",
-                "turks"));
+        await AuthenticateUserAsync(
+            factory,
+            client,
+            "owner@example.com");
+
+        var firstResponse =
+            await client.PostAsJsonAsync(
+                "/api/tenants",
+                new CreateTenantRequest(
+                    "First Store",
+                    "turks"));
+
+        Assert.Equal(
+            HttpStatusCode.Created,
+            firstResponse.StatusCode);
 
         var response =
             await client.PostAsJsonAsync(
@@ -70,13 +167,63 @@ public sealed class TenantEndpointsTests
 
         using var json =
             JsonDocument.Parse(
-                await response.Content.ReadAsStringAsync());
+                await response.Content
+                    .ReadAsStringAsync());
 
         Assert.Equal(
             "tenant_slug_already_exists",
             json.RootElement
-                .GetProperty("code")
+                .GetProperty(
+                    "code")
                 .GetString());
+    }
+
+    [Fact]
+    public async Task PostTenant_WhenLiveUserIsSuspended_ReturnsForbidden()
+    {
+        await using var factory =
+            new MarketApiFactory();
+
+        using var client =
+            factory.CreateClient();
+
+        var user =
+            await AuthenticateUserAsync(
+                factory,
+                client,
+                "owner@example.com");
+
+        /*
+         * Token was issued while Active.
+         * The live account is suspended afterwards.
+         */
+        user.Suspend(
+            DateTimeOffset.UtcNow);
+
+        var response =
+            await client.PostAsJsonAsync(
+                "/api/tenants",
+                new CreateTenantRequest(
+                    "Blocked Store",
+                    "blocked-store"));
+
+        Assert.Equal(
+            HttpStatusCode.Forbidden,
+            response.StatusCode);
+
+        var tenantRepository =
+            factory.Services
+                .GetRequiredService<
+                    ITenantRepository>();
+
+        var tenant =
+            await tenantRepository
+                .GetBySlugAsync(
+                    TenantSlug.Create(
+                        "blocked-store"));
+
+        Assert.Null(
+            tenant);
     }
 
     [Fact]
@@ -87,6 +234,11 @@ public sealed class TenantEndpointsTests
 
         using var client =
             factory.CreateClient();
+
+        await AuthenticateUserAsync(
+            factory,
+            client,
+            "owner@example.com");
 
         var createResponse =
             await client.PostAsJsonAsync(
@@ -101,9 +253,11 @@ public sealed class TenantEndpointsTests
 
         var created =
             await createResponse.Content
-                .ReadFromJsonAsync<CreateTenantResponse>();
+                .ReadFromJsonAsync<
+                    CreateTenantResponse>();
 
-        Assert.NotNull(created);
+        Assert.NotNull(
+            created);
 
         var response =
             await client.GetAsync(
@@ -115,13 +269,27 @@ public sealed class TenantEndpointsTests
 
         var result =
             await response.Content
-                .ReadFromJsonAsync<GetTenantByIdResponse>();
+                .ReadFromJsonAsync<
+                    GetTenantByIdResponse>();
 
-        Assert.NotNull(result);
-        Assert.Equal(created.TenantId, result.TenantId);
-        Assert.Equal("Turks Store", result.Name);
-        Assert.Equal("turks", result.Slug);
-        Assert.Equal("Draft", result.Status);
+        Assert.NotNull(
+            result);
+
+        Assert.Equal(
+            created.TenantId,
+            result.TenantId);
+
+        Assert.Equal(
+            "Turks Store",
+            result.Name);
+
+        Assert.Equal(
+            "turks",
+            result.Slug);
+
+        Assert.Equal(
+            "Draft",
+            result.Status);
     }
 
     [Fact]
@@ -158,5 +326,72 @@ public sealed class TenantEndpointsTests
         Assert.Equal(
             HttpStatusCode.BadRequest,
             response.StatusCode);
+    }
+
+    private static async Task<User> AuthenticateUserAsync(
+        MarketApiFactory factory,
+        HttpClient client,
+        string email)
+    {
+        const string password =
+            "StrongPassword123";
+
+        var registrationResponse =
+            await client.PostAsJsonAsync(
+                "/api/auth/register",
+                new RegisterUserRequest(
+                    email,
+                    password));
+
+        Assert.Equal(
+            HttpStatusCode.Created,
+            registrationResponse.StatusCode);
+
+        var registration =
+            await registrationResponse.Content
+                .ReadFromJsonAsync<
+                    RegisterUserResponse>();
+
+        Assert.NotNull(
+            registration);
+
+        var userRepository =
+            factory.Services
+                .GetRequiredService<
+                    IUserRepository>();
+
+        var user =
+            await userRepository
+                .GetByIdAsync(
+                    UserId.From(
+                        registration.UserId));
+
+        Assert.NotNull(
+            user);
+
+        /*
+         * Password-only assurance is intentionally sufficient
+         * for store creation/onboarding.
+         *
+         * Back Office remains MFA-only.
+         */
+        var accessTokenService =
+            factory.Services
+                .GetRequiredService<
+                    IAccessTokenService>();
+
+        var accessToken =
+            accessTokenService.Create(
+                user.Id,
+                user.Email.Value,
+                DateTimeOffset.UtcNow,
+                AccessTokenAuthenticationLevel.PasswordOnly);
+
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue(
+                "Bearer",
+                accessToken.Token);
+
+        return user;
     }
 }
