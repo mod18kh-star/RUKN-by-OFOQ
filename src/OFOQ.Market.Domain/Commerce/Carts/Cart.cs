@@ -10,8 +10,11 @@ public sealed class Cart :
     ITenantDataScoped,
     IAuditable
 {
-    private readonly List<CartItem>
-        _items = [];
+    private readonly List<CartItem> _items = [];
+
+    private Guid? _customerUserId;
+
+    private string? _currencyCode;
 
     private Cart()
     {
@@ -43,8 +46,8 @@ public sealed class Cart :
         TenantId =
             tenantId;
 
-        CustomerUserId =
-            customerUserId;
+        _customerUserId =
+            customerUserId?.Value;
 
         Status =
             CartStatus.Active;
@@ -58,11 +61,20 @@ public sealed class Cart :
 
     public TenantId TenantId { get; private set; }
 
-    public UserId? CustomerUserId { get; private set; }
+    public UserId? CustomerUserId =>
+        _customerUserId.HasValue
+            ? UserId.From(
+                _customerUserId.Value)
+            : null;
 
     public CartStatus Status { get; private set; }
 
-    public CurrencyCode? Currency { get; private set; }
+    public CurrencyCode? Currency =>
+        string.IsNullOrWhiteSpace(
+            _currencyCode)
+            ? null
+            : CurrencyCode.Create(
+                _currencyCode);
 
     public IReadOnlyCollection<CartItem> Items =>
         _items.AsReadOnly();
@@ -259,7 +271,7 @@ public sealed class Cart :
 
         _items.Clear();
 
-        Currency =
+        _currencyCode =
             null;
 
         MarkUpdated(
@@ -321,15 +333,19 @@ public sealed class Cart :
     private void EnsureCurrency(
         CurrencyCode currency)
     {
-        if (!Currency.HasValue)
+        if (string.IsNullOrWhiteSpace(
+                _currencyCode))
         {
-            Currency =
-                currency;
+            _currencyCode =
+                currency.Value;
 
             return;
         }
 
-        if (Currency.Value != currency)
+        if (!string.Equals(
+                _currencyCode,
+                currency.Value,
+                StringComparison.Ordinal))
         {
             throw new InvalidOperationException(
                 "A cart cannot contain items with different currencies.");
@@ -340,7 +356,7 @@ public sealed class Cart :
     {
         if (_items.Count == 0)
         {
-            Currency =
+            _currencyCode =
                 null;
         }
     }

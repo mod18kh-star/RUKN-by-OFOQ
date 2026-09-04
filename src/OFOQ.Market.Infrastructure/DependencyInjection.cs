@@ -74,6 +74,10 @@ public static class DependencyInjection
             ProductVariantOptionValueRepository>();
 
         services.AddScoped<
+            IProductVariantOptionValueRepository,
+            ProductVariantOptionValueRepository>();
+
+        services.AddScoped<
             IUserRepository,
             UserRepository>();
 

@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using OFOQ.Market.Application.Common.Persistence;
 using OFOQ.Market.Application.Common.Tenancy;
 using OFOQ.Market.Domain.Catalog;
+using OFOQ.Market.Domain.Commerce.Carts;
 using OFOQ.Market.Domain.Common;
 using OFOQ.Market.Domain.Identity;
 using OFOQ.Market.Domain.Tenancy;
@@ -21,7 +22,8 @@ public sealed class MarketDbContext :
         ICurrentTenant? currentTenant = null)
         : base(options)
     {
-        _currentTenant = currentTenant;
+        _currentTenant =
+            currentTenant;
     }
 
     public bool HasCurrentTenant =>
@@ -32,11 +34,22 @@ public sealed class MarketDbContext :
         _currentTenant?.TenantId
         ?? default;
 
+    // -------------------------------------------------
+    // Tenancy
+    // -------------------------------------------------
+
     public DbSet<Tenant> Tenants =>
         Set<Tenant>();
 
     public DbSet<TenantDomain> TenantDomains =>
         Set<TenantDomain>();
+
+    public DbSet<TenantMembership> TenantMemberships =>
+        Set<TenantMembership>();
+
+    // -------------------------------------------------
+    // Identity
+    // -------------------------------------------------
 
     public DbSet<User> Users =>
         Set<User>();
@@ -50,8 +63,9 @@ public sealed class MarketDbContext :
     public DbSet<MfaLoginChallenge> MfaLoginChallenges =>
         Set<MfaLoginChallenge>();
 
-    public DbSet<TenantMembership> TenantMemberships =>
-        Set<TenantMembership>();
+    // -------------------------------------------------
+    // Catalog
+    // -------------------------------------------------
 
     public DbSet<Category> Categories =>
         Set<Category>();
@@ -61,15 +75,29 @@ public sealed class MarketDbContext :
 
     public DbSet<ProductVariant> ProductVariants =>
         Set<ProductVariant>();
-        
-     public DbSet<ProductOption> ProductOptions =>
-          Set<ProductOption>();
+
+    public DbSet<ProductOption> ProductOptions =>
+        Set<ProductOption>();
 
     public DbSet<ProductOptionValue> ProductOptionValues =>
         Set<ProductOptionValue>();
 
     public DbSet<ProductVariantOptionValue> ProductVariantOptionValues =>
         Set<ProductVariantOptionValue>();
+
+    // -------------------------------------------------
+    // Commerce
+    // -------------------------------------------------
+
+    public DbSet<Cart> Carts =>
+        Set<Cart>();
+
+    public DbSet<CartItem> CartItems =>
+        Set<CartItem>();
+
+    // -------------------------------------------------
+    // Save changes
+    // -------------------------------------------------
 
     public override int SaveChanges(
         bool acceptAllChangesOnSuccess)
@@ -91,6 +119,10 @@ public sealed class MarketDbContext :
             cancellationToken);
     }
 
+    // -------------------------------------------------
+    // Model
+    // -------------------------------------------------
+
     protected override void OnModelCreating(
         ModelBuilder modelBuilder)
     {
@@ -103,6 +135,10 @@ public sealed class MarketDbContext :
         ApplyTenantDataQueryFilters(
             modelBuilder);
     }
+
+    // -------------------------------------------------
+    // Tenant query filters
+    // -------------------------------------------------
 
     private void ApplyTenantDataQueryFilters(
         ModelBuilder modelBuilder)
@@ -131,9 +167,8 @@ public sealed class MarketDbContext :
         }
     }
 
-    private LambdaExpression
-        CreateTenantDataQueryFilter(
-            Type entityType)
+    private LambdaExpression CreateTenantDataQueryFilter(
+        Type entityType)
     {
         var entityParameter =
             Expression.Parameter(
@@ -191,6 +226,10 @@ public sealed class MarketDbContext :
             entityParameter);
     }
 
+    // -------------------------------------------------
+    // Tenant write protection
+    // -------------------------------------------------
+
     private void EnforceTenantWriteScope()
     {
         var tenantEntries =
@@ -207,7 +246,9 @@ public sealed class MarketDbContext :
                 .ToArray();
 
         if (tenantEntries.Length == 0)
+        {
             return;
+        }
 
         if (!HasCurrentTenant ||
             CurrentTenantId.IsEmpty)
