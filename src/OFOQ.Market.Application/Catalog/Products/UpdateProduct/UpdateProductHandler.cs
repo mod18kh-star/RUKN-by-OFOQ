@@ -1,12 +1,11 @@
+using OFOQ.Market.Application.Catalog.Products.CreateProduct;
 using OFOQ.Market.Application.Common.Persistence;
 using OFOQ.Market.Application.Common.Tenancy;
 using OFOQ.Market.Domain.Catalog;
-using CatalogInventory = OFOQ.Market.Domain.Catalog.Inventory;
 
+namespace OFOQ.Market.Application.Catalog.Products.UpdateProduct;
 
-namespace OFOQ.Market.Application.Catalog.Products.CreateProduct;
-
-public sealed class CreateProductHandler
+public sealed class UpdateProductHandler
 {
     private readonly IProductRepository
         _productRepository;
@@ -26,7 +25,7 @@ public sealed class CreateProductHandler
     private readonly TimeProvider
         _timeProvider;
 
-    public CreateProductHandler(
+    public UpdateProductHandler(
         IProductRepository productRepository,
         IProductVariantRepository variantRepository,
         ICategoryRepository categoryRepository,
@@ -34,39 +33,50 @@ public sealed class CreateProductHandler
         IUnitOfWork unitOfWork,
         TimeProvider timeProvider)
     {
-        _productRepository = productRepository;
-        _variantRepository = variantRepository;
-        _categoryRepository = categoryRepository;
-        _currentTenant = currentTenant;
-        _unitOfWork = unitOfWork;
-        _timeProvider = timeProvider;
+        _productRepository =
+            productRepository;
+
+        _variantRepository =
+            variantRepository;
+
+        _categoryRepository =
+            categoryRepository;
+
+        _currentTenant =
+            currentTenant;
+
+        _unitOfWork =
+            unitOfWork;
+
+        _timeProvider =
+            timeProvider;
     }
 
-    public async Task<ProductResult> HandleAsync(
-        CreateProductCommand command,
+    public async Task<ProductResult?> HandleAsync(
+        UpdateProductCommand command,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(
             command);
 
-        if (!_currentTenant.IsAvailable ||
-            !_currentTenant.TenantId.HasValue)
-        {
-            throw new TenantScopeViolationException(
-                "A tenant context is required to create a product.");
-        }
+        EnsureTenant();
 
-        var tenantId =
-            _currentTenant.TenantId.Value;
-
-        var slugExists =
+        var product =
             await _productRepository
-                .SlugExistsAsync(
-                    command.Slug,
-                    excludingProductId: null,
+                .GetByIdAsync(
+                    command.ProductId,
                     cancellationToken);
 
-        if (slugExists)
+        if (product is null)
+        {
+            return null;
+        }
+
+        if (await _productRepository
+            .SlugExistsAsync(
+                command.Slug,
+                product.Id,
+                cancellationToken))
         {
             throw new ProductSlugAlreadyExistsException(
                 command.Slug);
@@ -80,12 +90,6 @@ public sealed class CreateProductHandler
                         command.CategoryId.Value,
                         cancellationToken);
 
-            /*
-             * Repository is tenant-scoped.
-             *
-             * A Category from another tenant therefore appears
-             * exactly like a nonexistent Category.
-             */
             if (category is null)
             {
                 throw new ProductCategoryNotFoundException(
@@ -93,18 +97,32 @@ public sealed class CreateProductHandler
             }
         }
 
+        var variants =
+            await _variantRepository
+                .GetByProductIdAsync(
+                    product.Id,
+                    cancellationToken);
+
+        var defaultVariant =
+            variants.SingleOrDefault(
+                variant =>
+                    variant.IsDefault);
+
+        if (defaultVariant is null)
+        {
+            throw new ProductDefaultVariantNotFoundException(
+                product.Id);
+        }
+
         var sku =
             ProductSku.Create(
                 command.Sku);
 
-        var skuExists =
-            await _variantRepository
-                .SkuExistsAsync(
-                    sku,
-                    excludingVariantId: null,
-                    cancellationToken);
-
-        if (skuExists)
+        if (await _variantRepository
+            .SkuExistsAsync(
+                sku,
+                defaultVariant.Id,
+                cancellationToken))
         {
             throw new ProductSkuAlreadyExistsException(
                 sku.Value);
@@ -126,77 +144,75 @@ public sealed class CreateProductHandler
                     currency)
                 : null;
 
-        var inventory =
-        CatalogInventory.Create(
-            command.TrackInventory,
-            command.Quantity,
-            command.LowStockThreshold,
-            command.ContinueSellingWhenOutOfStock);
+        /*
+         * Existing non-default variants may have their own
+         * price override. A currency change must not leave
+         * those variants in another currency.
+         */
+        var incompatibleVariant =
+            variants.FirstOrDefault(
+                variant =>
+                    variant.PriceOverride.HasValue &&
+                    variant.PriceOverride.Value.Currency !=
+                    currency);
+
+        if (incompatibleVariant is not null)
+        {
+            throw new ArgumentException(
+                "Product currency cannot be changed while a variant has a price override in another currency.");
+        }
 
         var now =
             _timeProvider.GetUtcNow();
 
-        var product =
-            Product.Create(
-                tenantId,
-                command.Name,
-                command.Slug,
-                price,
-                now,
-                categoryId:
-                    command.CategoryId,
-                description:
-                    command.Description,
-                compareAtPrice:
-                    compareAtPrice,
-                createdByUserId:
-                    command.ActorUserId.Value);
+        product.Rename(
+            command.Name,
+            now,
+            command.ActorUserId.Value);
 
-        /*
-         * Even products without selectable options receive one
-         * default variant.
-         *
-         * This gives every sellable product one SKU and one
-         * inventory record from day one.
-         */
-        var defaultVariant =
-            ProductVariant.Create(
-                tenantId,
-                product.Id,
-                "Default",
-                sku,
-                currency,
-                inventory,
-                now,
-                priceOverride: null,
-                isDefault: true,
-                createdByUserId:
-                    command.ActorUserId.Value);
+        product.ChangeSlug(
+            command.Slug,
+            now,
+            command.ActorUserId.Value);
 
-        await _productRepository
-            .AddAsync(
-                product,
-                cancellationToken);
+        product.ChangeDescription(
+            command.Description,
+            now,
+            command.ActorUserId.Value);
 
-        await _variantRepository
-            .AddAsync(
-                defaultVariant,
-                cancellationToken);
+        product.ChangeCategory(
+            command.CategoryId,
+            now,
+            command.ActorUserId.Value);
 
-        /*
-         * One SaveChanges means Product + initial Variant are
-         * persisted atomically by EF Core.
-         */
+        product.SetPricing(
+            price,
+            compareAtPrice,
+            now,
+            command.ActorUserId.Value);
+
+        defaultVariant.ChangeSku(
+            sku,
+            now,
+            command.ActorUserId.Value);
+
         await _unitOfWork
             .SaveChangesAsync(
                 cancellationToken);
 
         return Map(
             product,
-            new[]
-            {
-                defaultVariant
-            });
+            variants);
+    }
+
+    private void EnsureTenant()
+    {
+        if (!_currentTenant.IsAvailable ||
+            !_currentTenant.TenantId.HasValue)
+        {
+            throw new TenantScopeViolationException(
+                "A tenant context is required to update a product.");
+        }
     }
 
     private static ProductResult Map(

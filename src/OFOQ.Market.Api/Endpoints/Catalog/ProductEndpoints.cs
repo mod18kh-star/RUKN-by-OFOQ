@@ -1,9 +1,12 @@
 using System.IdentityModel.Tokens.Jwt;
 using OFOQ.Market.Api.Security.Authorization;
 using OFOQ.Market.Application.Catalog.Products;
+using OFOQ.Market.Application.Catalog.Products.ChangeState;
 using OFOQ.Market.Application.Catalog.Products.CreateProduct;
 using OFOQ.Market.Application.Catalog.Products.GetProductById;
 using OFOQ.Market.Application.Catalog.Products.GetProducts;
+using OFOQ.Market.Application.Catalog.Products.Inventory;
+using OFOQ.Market.Application.Catalog.Products.UpdateProduct;
 using OFOQ.Market.Application.Common.Tenancy;
 using OFOQ.Market.Contracts.Catalog;
 using OFOQ.Market.Domain.Catalog;
@@ -37,6 +40,34 @@ public static class ProductEndpoints
             "/{productId:guid}",
             GetProductByIdAsync);
 
+        group.MapPut(
+            "/{productId:guid}",
+            UpdateProductAsync);
+
+        group.MapPut(
+            "/{productId:guid}/inventory",
+            UpdateInventoryAsync);
+
+        group.MapPost(
+            "/{productId:guid}/publish",
+            PublishProductAsync);
+
+        group.MapPost(
+            "/{productId:guid}/draft",
+            MoveProductToDraftAsync);
+
+        group.MapPost(
+            "/{productId:guid}/archive",
+            ArchiveProductAsync);
+
+        group.MapPost(
+            "/{productId:guid}/show",
+            ShowProductAsync);
+
+        group.MapPost(
+            "/{productId:guid}/hide",
+            HideProductAsync);
+
         return endpoints;
     }
 
@@ -46,42 +77,27 @@ public static class ProductEndpoints
         HttpContext httpContext,
         CancellationToken cancellationToken)
     {
-        var subject =
-            httpContext.User
-                .FindFirst(
-                    JwtRegisteredClaimNames.Sub)?
-                .Value;
+        var actor =
+            GetActorUserId(
+                httpContext);
 
-        if (!Guid.TryParse(
-                subject,
-                out var actorGuid) ||
-            actorGuid == Guid.Empty)
+        if (!actor.HasValue)
         {
             return Results.Unauthorized();
         }
 
-        CategoryId? categoryId =
-            null;
+        CategoryId? categoryId;
 
-        if (request.CategoryId.HasValue)
+        try
         {
-            if (request.CategoryId.Value ==
-                Guid.Empty)
-            {
-                return Results.BadRequest(
-                    new
-                    {
-                        code =
-                            "invalid_category_id",
-
-                        message =
-                            "Category ID must be a valid non-empty GUID."
-                    });
-            }
-
             categoryId =
-                CategoryId.From(
-                    request.CategoryId.Value);
+                ParseCategoryId(
+                    request.CategoryId);
+        }
+        catch (ArgumentException exception)
+        {
+            return ValidationError(
+                exception.Message);
         }
 
         try
@@ -101,50 +117,28 @@ public static class ProductEndpoints
                         request.Quantity,
                         request.LowStockThreshold,
                         request.ContinueSellingWhenOutOfStock,
-                        UserId.From(
-                            actorGuid)),
+                        actor.Value),
                     cancellationToken);
 
             return Results.Created(
                 $"/api/tenants/{httpContext.Request.RouteValues["tenantId"]}/backoffice/products/{result.ProductId.Value}",
-                Map(
-                    result));
+                Map(result));
         }
         catch (ProductSlugAlreadyExistsException exception)
         {
-            return Results.Conflict(
-                new
-                {
-                    code =
-                        "product_slug_already_exists",
-
-                    message =
-                        exception.Message
-                });
+            return Conflict(
+                "product_slug_already_exists",
+                exception.Message);
         }
         catch (ProductSkuAlreadyExistsException exception)
         {
-            return Results.Conflict(
-                new
-                {
-                    code =
-                        "product_sku_already_exists",
-
-                    message =
-                        exception.Message
-                });
+            return Conflict(
+                "product_sku_already_exists",
+                exception.Message);
         }
         catch (ProductCategoryNotFoundException)
         {
-            return Results.BadRequest(
-                new
-                {
-                    code =
-                        "product_category_not_found",
-
-                    message =
-                        "The requested product category was not found."
-                });
+            return ProductCategoryNotFound();
         }
         catch (TenantScopeViolationException)
         {
@@ -152,15 +146,286 @@ public static class ProductEndpoints
         }
         catch (ArgumentException exception)
         {
-            return Results.BadRequest(
-                new
-                {
-                    code =
-                        "validation_error",
+            return ValidationError(
+                exception.Message);
+        }
+    }
 
-                    message =
-                        exception.Message
-                });
+    private static async Task<IResult> UpdateProductAsync(
+        Guid productId,
+        UpdateProductRequest request,
+        UpdateProductHandler handler,
+        HttpContext httpContext,
+        CancellationToken cancellationToken)
+    {
+        var actor =
+            GetActorUserId(
+                httpContext);
+
+        if (!actor.HasValue)
+        {
+            return Results.Unauthorized();
+        }
+
+        if (productId == Guid.Empty)
+        {
+            return InvalidProductId();
+        }
+
+        CategoryId? categoryId;
+
+        try
+        {
+            categoryId =
+                ParseCategoryId(
+                    request.CategoryId);
+        }
+        catch (ArgumentException exception)
+        {
+            return ValidationError(
+                exception.Message);
+        }
+
+        try
+        {
+            var result =
+                await handler.HandleAsync(
+                    new UpdateProductCommand(
+                        ProductId.From(productId),
+                        request.Name,
+                        request.Slug,
+                        request.Description,
+                        categoryId,
+                        request.Price,
+                        request.CompareAtPrice,
+                        request.Currency,
+                        request.Sku,
+                        actor.Value),
+                    cancellationToken);
+
+            if (result is null)
+            {
+                return ProductNotFound();
+            }
+
+            return Results.Ok(
+                Map(result));
+        }
+        catch (ProductSlugAlreadyExistsException exception)
+        {
+            return Conflict(
+                "product_slug_already_exists",
+                exception.Message);
+        }
+        catch (ProductSkuAlreadyExistsException exception)
+        {
+            return Conflict(
+                "product_sku_already_exists",
+                exception.Message);
+        }
+        catch (ProductCategoryNotFoundException)
+        {
+            return ProductCategoryNotFound();
+        }
+        catch (ProductDefaultVariantNotFoundException exception)
+        {
+            return Conflict(
+                "product_default_variant_not_found",
+                exception.Message);
+        }
+        catch (TenantScopeViolationException)
+        {
+            return Results.Forbid();
+        }
+        catch (ArgumentException exception)
+        {
+            return ValidationError(
+                exception.Message);
+        }
+    }
+
+    private static async Task<IResult> UpdateInventoryAsync(
+        Guid productId,
+        UpdateProductInventoryRequest request,
+        UpdateProductInventoryHandler handler,
+        HttpContext httpContext,
+        CancellationToken cancellationToken)
+    {
+        var actor =
+            GetActorUserId(
+                httpContext);
+
+        if (!actor.HasValue)
+        {
+            return Results.Unauthorized();
+        }
+
+        if (productId == Guid.Empty)
+        {
+            return InvalidProductId();
+        }
+
+        try
+        {
+            var result =
+                await handler.HandleAsync(
+                    new UpdateProductInventoryCommand(
+                        ProductId.From(productId),
+                        request.TrackInventory,
+                        request.Quantity,
+                        request.LowStockThreshold,
+                        request.ContinueSellingWhenOutOfStock,
+                        actor.Value),
+                    cancellationToken);
+
+            if (result is null)
+            {
+                return ProductNotFound();
+            }
+
+            return Results.Ok(
+                Map(result));
+        }
+        catch (ProductDefaultVariantNotFoundException exception)
+        {
+            return Conflict(
+                "product_default_variant_not_found",
+                exception.Message);
+        }
+        catch (TenantScopeViolationException)
+        {
+            return Results.Forbid();
+        }
+        catch (ArgumentException exception)
+        {
+            return ValidationError(
+                exception.Message);
+        }
+       
+    }
+
+    private static Task<IResult> PublishProductAsync(
+        Guid productId,
+        ChangeProductStateHandler handler,
+        HttpContext httpContext,
+        CancellationToken cancellationToken)
+    {
+        return ChangeStateAsync(
+            productId,
+            ProductStateAction.Publish,
+            handler,
+            httpContext,
+            cancellationToken);
+    }
+
+    private static Task<IResult> MoveProductToDraftAsync(
+        Guid productId,
+        ChangeProductStateHandler handler,
+        HttpContext httpContext,
+        CancellationToken cancellationToken)
+    {
+        return ChangeStateAsync(
+            productId,
+            ProductStateAction.MoveToDraft,
+            handler,
+            httpContext,
+            cancellationToken);
+    }
+
+    private static Task<IResult> ArchiveProductAsync(
+        Guid productId,
+        ChangeProductStateHandler handler,
+        HttpContext httpContext,
+        CancellationToken cancellationToken)
+    {
+        return ChangeStateAsync(
+            productId,
+            ProductStateAction.Archive,
+            handler,
+            httpContext,
+            cancellationToken);
+    }
+
+    private static Task<IResult> ShowProductAsync(
+        Guid productId,
+        ChangeProductStateHandler handler,
+        HttpContext httpContext,
+        CancellationToken cancellationToken)
+    {
+        return ChangeStateAsync(
+            productId,
+            ProductStateAction.Show,
+            handler,
+            httpContext,
+            cancellationToken);
+    }
+
+    private static Task<IResult> HideProductAsync(
+        Guid productId,
+        ChangeProductStateHandler handler,
+        HttpContext httpContext,
+        CancellationToken cancellationToken)
+    {
+        return ChangeStateAsync(
+            productId,
+            ProductStateAction.Hide,
+            handler,
+            httpContext,
+            cancellationToken);
+    }
+
+    private static async Task<IResult> ChangeStateAsync(
+        Guid productId,
+        ProductStateAction action,
+        ChangeProductStateHandler handler,
+        HttpContext httpContext,
+        CancellationToken cancellationToken)
+    {
+        var actor =
+            GetActorUserId(
+                httpContext);
+
+        if (!actor.HasValue)
+        {
+            return Results.Unauthorized();
+        }
+
+        if (productId == Guid.Empty)
+        {
+            return InvalidProductId();
+        }
+
+        try
+        {
+            var result =
+                await handler.HandleAsync(
+                    ProductId.From(productId),
+                    action,
+                    actor.Value,
+                    cancellationToken);
+
+            if (result is null)
+            {
+                return ProductNotFound();
+            }
+
+            return Results.Ok(
+                Map(result));
+        }
+        catch (TenantScopeViolationException)
+        {
+            return Results.Forbid();
+        }
+        catch (InvalidOperationException exception)
+        {
+            return Conflict(
+                "invalid_product_state",
+                exception.Message);
+        }
+        catch (ArgumentException exception)
+        {
+            return ValidationError(
+                exception.Message);
         }
     }
 
@@ -176,8 +441,7 @@ public static class ProductEndpoints
 
             return Results.Ok(
                 results
-                    .Select(
-                        Map)
+                    .Select(Map)
                     .ToArray());
         }
         catch (TenantScopeViolationException)
@@ -193,46 +457,65 @@ public static class ProductEndpoints
     {
         if (productId == Guid.Empty)
         {
-            return Results.BadRequest(
-                new
-                {
-                    code =
-                        "invalid_product_id",
-
-                    message =
-                        "Product ID must be a valid non-empty GUID."
-                });
+            return InvalidProductId();
         }
 
         try
         {
             var result =
                 await handler.HandleAsync(
-                    ProductId.From(
-                        productId),
+                    ProductId.From(productId),
                     cancellationToken);
 
-            if (result is null)
-            {
-                return Results.NotFound(
-                    new
-                    {
-                        code =
-                            "product_not_found",
-
-                        message =
-                            "Product was not found."
-                    });
-            }
-
-            return Results.Ok(
-                Map(
-                    result));
+            return result is null
+                ? ProductNotFound()
+                : Results.Ok(
+                    Map(result));
         }
         catch (TenantScopeViolationException)
         {
             return Results.Forbid();
         }
+    }
+
+    private static UserId? GetActorUserId(
+        HttpContext httpContext)
+    {
+        var subject =
+            httpContext.User
+                .FindFirst(
+                    JwtRegisteredClaimNames.Sub)?
+                .Value;
+
+        if (!Guid.TryParse(
+                subject,
+                out var actorGuid) ||
+            actorGuid == Guid.Empty)
+        {
+            return null;
+        }
+
+        return UserId.From(
+            actorGuid);
+    }
+
+    private static CategoryId? ParseCategoryId(
+        Guid? categoryId)
+    {
+        if (!categoryId.HasValue)
+        {
+            return null;
+        }
+
+        if (categoryId.Value ==
+            Guid.Empty)
+        {
+            throw new ArgumentException(
+                "Category ID must be a valid non-empty GUID.");
+        }
+
+        return CategoryId.From(
+            categoryId.Value);
     }
 
     private static ProductResponse Map(
@@ -267,5 +550,69 @@ public static class ProductEndpoints
                             variant.IsAvailableForSale,
                             variant.IsEnabled))
                 .ToArray());
+    }
+
+    private static IResult InvalidProductId()
+    {
+        return Results.BadRequest(
+            new
+            {
+                code =
+                    "invalid_product_id",
+
+                message =
+                    "Product ID must be a valid non-empty GUID."
+            });
+    }
+
+    private static IResult ProductNotFound()
+    {
+        return Results.NotFound(
+            new
+            {
+                code =
+                    "product_not_found",
+
+                message =
+                    "Product was not found."
+            });
+    }
+
+    private static IResult ProductCategoryNotFound()
+    {
+        return Results.BadRequest(
+            new
+            {
+                code =
+                    "product_category_not_found",
+
+                message =
+                    "The requested product category was not found."
+            });
+    }
+
+    private static IResult ValidationError(
+        string message)
+    {
+        return Results.BadRequest(
+            new
+            {
+                code =
+                    "validation_error",
+
+                message
+            });
+    }
+
+    private static IResult Conflict(
+        string code,
+        string message)
+    {
+        return Results.Conflict(
+            new
+            {
+                code,
+                message
+            });
     }
 }

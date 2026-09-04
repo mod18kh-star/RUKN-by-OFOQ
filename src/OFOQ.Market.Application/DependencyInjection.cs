@@ -2,9 +2,12 @@ using Microsoft.Extensions.DependencyInjection;
 using OFOQ.Market.Application.Catalog.Categories.CreateCategory;
 using OFOQ.Market.Application.Catalog.Categories.GetCategories;
 using OFOQ.Market.Application.Catalog.Categories.GetCategoryById;
+using OFOQ.Market.Application.Catalog.Products.ChangeState;
 using OFOQ.Market.Application.Catalog.Products.CreateProduct;
 using OFOQ.Market.Application.Catalog.Products.GetProductById;
 using OFOQ.Market.Application.Catalog.Products.GetProducts;
+using OFOQ.Market.Application.Catalog.Products.Inventory;
+using OFOQ.Market.Application.Catalog.Products.UpdateProduct;
 using OFOQ.Market.Application.Identity.LoginUser;
 using OFOQ.Market.Application.Identity.Mfa.ConfirmEnrollment;
 using OFOQ.Market.Application.Identity.Mfa.Login.VerifyRecovery;
@@ -50,6 +53,15 @@ public static class DependencyInjection
 
         services.AddScoped<
             GetProductByIdHandler>();
+
+        services.AddScoped<
+            UpdateProductHandler>();
+
+        services.AddScoped<
+            ChangeProductStateHandler>();
+
+        services.AddScoped<
+            UpdateProductInventoryHandler>();
 
         services.AddScoped<
             RegisterUserHandler>();
