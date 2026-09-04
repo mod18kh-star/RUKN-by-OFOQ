@@ -1,4 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
+using OFOQ.Market.Application.Catalog.Categories.CreateCategory;
+using OFOQ.Market.Application.Catalog.Categories.GetCategories;
+using OFOQ.Market.Application.Catalog.Categories.GetCategoryById;
 using OFOQ.Market.Application.Identity.LoginUser;
 using OFOQ.Market.Application.Identity.Mfa.ConfirmEnrollment;
 using OFOQ.Market.Application.Identity.Mfa.Login.VerifyRecovery;
@@ -26,6 +29,15 @@ public static class DependencyInjection
 
         services.AddScoped<
             GetTenantByIdHandler>();
+
+        services.AddScoped<
+            CreateCategoryHandler>();
+
+        services.AddScoped<
+            GetCategoriesHandler>();
+
+        services.AddScoped<
+            GetCategoryByIdHandler>();
 
         services.AddScoped<
             RegisterUserHandler>();

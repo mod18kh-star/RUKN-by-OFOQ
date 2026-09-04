@@ -61,6 +61,9 @@ internal sealed class MarketApiFactory :
                     ITenantMembershipRepository>();
 
                 services.RemoveAll<
+                    ICategoryRepository>();
+
+                services.RemoveAll<
                     IUserRepository>();
 
                 services.RemoveAll<
@@ -104,6 +107,19 @@ internal sealed class MarketApiFactory :
                         provider =>
                             provider.GetRequiredService<
                                 InMemoryTenantMembershipRepository>());
+
+                /*
+                 * Category data must persist across requests
+                 * inside the same test factory, while the
+                 * repository itself remains request-scoped
+                 * because it depends on ICurrentTenant.
+                 */
+                services.AddSingleton<
+                    InMemoryCategoryStore>();
+
+                services.AddScoped<
+                    ICategoryRepository,
+                    InMemoryCategoryRepository>();
 
                 services.AddSingleton<
                     InMemoryUserRepository>();

@@ -12,6 +12,7 @@ using OFOQ.Market.Infrastructure;
 using OFOQ.Market.Infrastructure.Security;
 using OFOQ.Market.Api.Security.Authorization;
 using OFOQ.Market.Api.Security.Tenancy;
+using OFOQ.Market.Api.Endpoints.Catalog;
 
 
 var builder =
@@ -291,6 +292,8 @@ app.MapAuthEndpoints();
 app.MapTenantEndpoints();
 
 app.MapTenantBackOfficeEndpoints();
+
+app.MapCategoryEndpoints();
 
 app.Run();
 
