@@ -14,6 +14,10 @@ using OFOQ.Market.Application.Catalog.Products.UpdateProduct;
 using OFOQ.Market.Application.Catalog.Products.Variants.CreateVariant;
 using OFOQ.Market.Application.Catalog.Products.Variants.GetVariants;
 using OFOQ.Market.Application.Commerce.Carts.AddItem;
+using OFOQ.Market.Application.Commerce.Carts.ClearCart;
+using OFOQ.Market.Application.Commerce.Carts.GetCart;
+using OFOQ.Market.Application.Commerce.Carts.RemoveItem;
+using OFOQ.Market.Application.Commerce.Carts.UpdateItemQuantity;
 using OFOQ.Market.Application.Identity.LoginUser;
 using OFOQ.Market.Application.Identity.Mfa.ConfirmEnrollment;
 using OFOQ.Market.Application.Identity.Mfa.Login.VerifyRecovery;
@@ -25,7 +29,6 @@ using OFOQ.Market.Application.Identity.Mfa.StartEnrollment;
 using OFOQ.Market.Application.Identity.RegisterUser;
 using OFOQ.Market.Application.Tenancy.CreateTenant;
 using OFOQ.Market.Application.Tenancy.GetTenantById;
-using OFOQ.Market.Application.Commerce.Carts.GetCart;
 
 namespace OFOQ.Market.Application;
 
@@ -110,10 +113,20 @@ public static class DependencyInjection
         // -------------------------------------------------
 
         services.AddScoped<
-        AddToCartHandler>();
+            AddToCartHandler>();
 
         services.AddScoped<
             GetCartHandler>();
+
+        services.AddScoped<
+            UpdateCartItemQuantityHandler>();
+
+        services.AddScoped<
+            RemoveCartItemHandler>();
+
+        services.AddScoped<
+            ClearCartHandler>();
+
         // -------------------------------------------------
         // Identity
         // -------------------------------------------------
