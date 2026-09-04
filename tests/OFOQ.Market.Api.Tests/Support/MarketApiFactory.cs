@@ -52,6 +52,10 @@ internal sealed class MarketApiFactory :
         builder.ConfigureServices(
             services =>
             {
+                // -------------------------------------------------
+                // Remove real persistence registrations
+                // -------------------------------------------------
+
                 // Tenancy
                 services.RemoveAll<
                     ITenantRepository>();
@@ -77,6 +81,10 @@ internal sealed class MarketApiFactory :
 
                 services.RemoveAll<
                     IProductVariantOptionValueRepository>();
+
+                // Commerce
+                services.RemoveAll<
+                    ICartRepository>();
 
                 // Identity
                 services.RemoveAll<
@@ -186,6 +194,17 @@ internal sealed class MarketApiFactory :
                 services.AddScoped<
                     IProductVariantOptionValueRepository,
                     InMemoryProductVariantOptionValueRepository>();
+
+                // -------------------------------------------------
+                // Cart fakes
+                // -------------------------------------------------
+
+                services.AddSingleton<
+                    InMemoryCartStore>();
+
+                services.AddScoped<
+                    ICartRepository,
+                    InMemoryCartRepository>();
 
                 // -------------------------------------------------
                 // User / identity fakes
