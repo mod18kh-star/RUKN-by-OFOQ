@@ -19,6 +19,10 @@ using OFOQ.Market.Application.Identity.Mfa.StartEnrollment;
 using OFOQ.Market.Application.Identity.RegisterUser;
 using OFOQ.Market.Application.Tenancy.CreateTenant;
 using OFOQ.Market.Application.Tenancy.GetTenantById;
+using OFOQ.Market.Application.Catalog.Products.Options.CreateOption;
+using OFOQ.Market.Application.Catalog.Products.Options.CreateValue;
+using OFOQ.Market.Application.Catalog.Products.Options.GetOptions;
+
 
 namespace OFOQ.Market.Application;
 
