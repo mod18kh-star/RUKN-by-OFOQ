@@ -1,10 +1,14 @@
 using System.IdentityModel.Tokens.Jwt;
 using OFOQ.Market.Application.Commerce.Carts;
 using OFOQ.Market.Application.Commerce.Carts.AddItem;
+using OFOQ.Market.Application.Commerce.Carts.ClearCart;
 using OFOQ.Market.Application.Commerce.Carts.GetCart;
+using OFOQ.Market.Application.Commerce.Carts.RemoveItem;
+using OFOQ.Market.Application.Commerce.Carts.UpdateItemQuantity;
 using OFOQ.Market.Application.Common.Tenancy;
 using OFOQ.Market.Contracts.Commerce.Carts;
 using OFOQ.Market.Domain.Catalog;
+using OFOQ.Market.Domain.Commerce.Carts;
 using OFOQ.Market.Domain.Identity;
 
 namespace OFOQ.Market.Api.Endpoints.Commerce;
@@ -29,6 +33,18 @@ public static class CartEndpoints
         group.MapPost(
             "/items",
             AddItemAsync);
+
+        group.MapPut(
+            "/items/{itemId:guid}",
+            UpdateItemQuantityAsync);
+
+        group.MapDelete(
+            "/items/{itemId:guid}",
+            RemoveItemAsync);
+
+        group.MapDelete(
+            "/",
+            ClearCartAsync);
 
         return endpoints;
     }
@@ -140,51 +156,223 @@ public static class CartEndpoints
         }
         catch (CartProductNotAvailableException exception)
         {
-            return Results.NotFound(
-                new
-                {
-                    code =
-                        "cart_product_not_available",
-
-                    message =
-                        exception.Message
-                });
+            return ProductNotAvailable(
+                exception.Message);
         }
         catch (CartVariantNotAvailableException exception)
         {
-            return Results.NotFound(
-                new
-                {
-                    code =
-                        "cart_variant_not_available",
-
-                    message =
-                        exception.Message
-                });
+            return VariantNotAvailable(
+                exception.Message);
         }
         catch (CartInsufficientStockException exception)
         {
-            return Results.Conflict(
-                new
-                {
-                    code =
-                        "cart_insufficient_stock",
-
-                    message =
-                        exception.Message
-                });
+            return InsufficientStock(
+                exception.Message);
         }
         catch (StructuredVariantRequiredException exception)
+        {
+            return StructuredVariantRequired(
+                exception.Message);
+        }
+        catch (TenantScopeViolationException)
+        {
+            return Results.Forbid();
+        }
+        catch (ArgumentException exception)
+        {
+            return ValidationError(
+                exception.Message);
+        }
+    }
+
+    private static async Task<IResult> UpdateItemQuantityAsync(
+        Guid itemId,
+        UpdateCartItemQuantityRequest request,
+        UpdateCartItemQuantityHandler handler,
+        HttpContext httpContext,
+        CancellationToken cancellationToken)
+    {
+        var customerUserId =
+            GetUserId(
+                httpContext);
+
+        if (!customerUserId.HasValue)
+        {
+            return Results.Unauthorized();
+        }
+
+        if (itemId ==
+            Guid.Empty)
         {
             return Results.BadRequest(
                 new
                 {
                     code =
-                        "structured_variant_required",
+                        "invalid_cart_item_id",
 
                     message =
-                        exception.Message
+                        "Cart item ID must be a valid non-empty GUID."
                 });
+        }
+
+        if (request.Quantity <= 0)
+        {
+            return ValidationError(
+                "Quantity must be greater than zero.");
+        }
+
+        try
+        {
+            var result =
+                await handler.HandleAsync(
+                    new UpdateCartItemQuantityCommand(
+                        customerUserId.Value,
+                        CartItemId.From(
+                            itemId),
+                        request.Quantity),
+                    cancellationToken);
+
+            return Results.Ok(
+                Map(result));
+        }
+        catch (CartNotFoundException exception)
+        {
+            return CartNotFound(
+                exception.Message);
+        }
+        catch (CartItemNotFoundException exception)
+        {
+            return CartItemNotFound(
+                exception.Message);
+        }
+        catch (CartProductNotAvailableException exception)
+        {
+            return ProductNotAvailable(
+                exception.Message);
+        }
+        catch (CartVariantNotAvailableException exception)
+        {
+            return VariantNotAvailable(
+                exception.Message);
+        }
+        catch (CartInsufficientStockException exception)
+        {
+            return InsufficientStock(
+                exception.Message);
+        }
+        catch (StructuredVariantRequiredException exception)
+        {
+            return StructuredVariantRequired(
+                exception.Message);
+        }
+        catch (TenantScopeViolationException)
+        {
+            return Results.Forbid();
+        }
+        catch (ArgumentException exception)
+        {
+            return ValidationError(
+                exception.Message);
+        }
+    }
+
+    private static async Task<IResult> RemoveItemAsync(
+        Guid itemId,
+        RemoveCartItemHandler handler,
+        HttpContext httpContext,
+        CancellationToken cancellationToken)
+    {
+        var customerUserId =
+            GetUserId(
+                httpContext);
+
+        if (!customerUserId.HasValue)
+        {
+            return Results.Unauthorized();
+        }
+
+        if (itemId ==
+            Guid.Empty)
+        {
+            return Results.BadRequest(
+                new
+                {
+                    code =
+                        "invalid_cart_item_id",
+
+                    message =
+                        "Cart item ID must be a valid non-empty GUID."
+                });
+        }
+
+        try
+        {
+            var result =
+                await handler.HandleAsync(
+                    new RemoveCartItemCommand(
+                        customerUserId.Value,
+                        CartItemId.From(
+                            itemId)),
+                    cancellationToken);
+
+            return Results.Ok(
+                Map(result));
+        }
+        catch (CartNotFoundException exception)
+        {
+            return CartNotFound(
+                exception.Message);
+        }
+        catch (CartItemNotFoundException exception)
+        {
+            return CartItemNotFound(
+                exception.Message);
+        }
+        catch (TenantScopeViolationException)
+        {
+            return Results.Forbid();
+        }
+        catch (ArgumentException exception)
+        {
+            return ValidationError(
+                exception.Message);
+        }
+    }
+
+    private static async Task<IResult> ClearCartAsync(
+        ClearCartHandler handler,
+        HttpContext httpContext,
+        CancellationToken cancellationToken)
+    {
+        var customerUserId =
+            GetUserId(
+                httpContext);
+
+        if (!customerUserId.HasValue)
+        {
+            return Results.Unauthorized();
+        }
+
+        try
+        {
+            var result =
+                await handler.HandleAsync(
+                    new ClearCartCommand(
+                        customerUserId.Value),
+                    cancellationToken);
+
+            /*
+             * DELETE /cart is idempotent.
+             * No active cart means there was already
+             * nothing to clear.
+             */
+            if (result is null)
+            {
+                return Results.NoContent();
+            }
+
+            return Results.Ok(
+                Map(result));
         }
         catch (TenantScopeViolationException)
         {
@@ -239,6 +427,84 @@ public static class CartEndpoints
                             item.Quantity,
                             item.LineTotal))
                 .ToArray());
+    }
+
+    private static IResult CartNotFound(
+        string message)
+    {
+        return Results.NotFound(
+            new
+            {
+                code =
+                    "cart_not_found",
+
+                message
+            });
+    }
+
+    private static IResult CartItemNotFound(
+        string message)
+    {
+        return Results.NotFound(
+            new
+            {
+                code =
+                    "cart_item_not_found",
+
+                message
+            });
+    }
+
+    private static IResult ProductNotAvailable(
+        string message)
+    {
+        return Results.NotFound(
+            new
+            {
+                code =
+                    "cart_product_not_available",
+
+                message
+            });
+    }
+
+    private static IResult VariantNotAvailable(
+        string message)
+    {
+        return Results.NotFound(
+            new
+            {
+                code =
+                    "cart_variant_not_available",
+
+                message
+            });
+    }
+
+    private static IResult InsufficientStock(
+        string message)
+    {
+        return Results.Conflict(
+            new
+            {
+                code =
+                    "cart_insufficient_stock",
+
+                message
+            });
+    }
+
+    private static IResult StructuredVariantRequired(
+        string message)
+    {
+        return Results.BadRequest(
+            new
+            {
+                code =
+                    "structured_variant_required",
+
+                message
+            });
     }
 
     private static IResult ValidationError(
