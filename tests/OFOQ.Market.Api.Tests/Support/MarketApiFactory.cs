@@ -64,6 +64,12 @@ internal sealed class MarketApiFactory :
                     ICategoryRepository>();
 
                 services.RemoveAll<
+                    IProductRepository>();
+
+                services.RemoveAll<
+                    IProductVariantRepository>();
+
+                services.RemoveAll<
                     IUserRepository>();
 
                 services.RemoveAll<
@@ -109,10 +115,11 @@ internal sealed class MarketApiFactory :
                                 InMemoryTenantMembershipRepository>());
 
                 /*
-                 * Category data must persist across requests
-                 * inside the same test factory, while the
-                 * repository itself remains request-scoped
-                 * because it depends on ICurrentTenant.
+                 * Category data persists for the lifetime
+                 * of the test factory.
+                 *
+                 * Repository remains request-scoped because
+                 * it depends on ICurrentTenant.
                  */
                 services.AddSingleton<
                     InMemoryCategoryStore>();
@@ -120,6 +127,26 @@ internal sealed class MarketApiFactory :
                 services.AddScoped<
                     ICategoryRepository,
                     InMemoryCategoryRepository>();
+
+                /*
+                 * Product data follows the same model.
+                 *
+                 * Store = factory lifetime.
+                 * Repository = request lifetime.
+                 */
+                services.AddSingleton<
+                    InMemoryProductStore>();
+
+                services.AddScoped<
+                    IProductRepository,
+                    InMemoryProductRepository>();
+
+                services.AddSingleton<
+                    InMemoryProductVariantStore>();
+
+                services.AddScoped<
+                    IProductVariantRepository,
+                    InMemoryProductVariantRepository>();
 
                 services.AddSingleton<
                     InMemoryUserRepository>();
