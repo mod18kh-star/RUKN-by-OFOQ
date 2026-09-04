@@ -13,8 +13,6 @@ internal sealed class MarketApiFactory :
     private const string TestConnectionString =
         "Host=127.0.0.1;Port=5432;Database=unused;Username=unused;Password=unused";
 
-    // Test-only key.
-    // Never use this value in production.
     private const string TestRecoveryCodeHmacKey =
         "MDEyMzQ1Njc4OUFCQ0RFRjAxMjM0NTY3ODlBQkNERUY=";
 
@@ -70,6 +68,15 @@ internal sealed class MarketApiFactory :
                     IProductVariantRepository>();
 
                 services.RemoveAll<
+                    IProductOptionRepository>();
+
+                services.RemoveAll<
+                    IProductOptionValueRepository>();
+
+                services.RemoveAll<
+                    IProductVariantOptionValueRepository>();
+
+                services.RemoveAll<
                     IUserRepository>();
 
                 services.RemoveAll<
@@ -114,13 +121,6 @@ internal sealed class MarketApiFactory :
                             provider.GetRequiredService<
                                 InMemoryTenantMembershipRepository>());
 
-                /*
-                 * Category data persists for the lifetime
-                 * of the test factory.
-                 *
-                 * Repository remains request-scoped because
-                 * it depends on ICurrentTenant.
-                 */
                 services.AddSingleton<
                     InMemoryCategoryStore>();
 
@@ -128,12 +128,6 @@ internal sealed class MarketApiFactory :
                     ICategoryRepository,
                     InMemoryCategoryRepository>();
 
-                /*
-                 * Product data follows the same model.
-                 *
-                 * Store = factory lifetime.
-                 * Repository = request lifetime.
-                 */
                 services.AddSingleton<
                     InMemoryProductStore>();
 
@@ -147,6 +141,20 @@ internal sealed class MarketApiFactory :
                 services.AddScoped<
                     IProductVariantRepository,
                     InMemoryProductVariantRepository>();
+
+                services.AddSingleton<
+                    InMemoryProductOptionStore>();
+
+                services.AddScoped<
+                    IProductOptionRepository,
+                    InMemoryProductOptionRepository>();
+
+                services.AddSingleton<
+                    InMemoryProductOptionValueStore>();
+
+                services.AddScoped<
+                    IProductOptionValueRepository,
+                    InMemoryProductOptionValueRepository>();
 
                 services.AddSingleton<
                     InMemoryUserRepository>();

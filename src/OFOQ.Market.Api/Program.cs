@@ -293,6 +293,8 @@ app.MapCategoryEndpoints();
 
 app.MapProductEndpoints();
 
+app.MapProductOptionEndpoints();
+
 app.Run();
 
 public partial class Program;
