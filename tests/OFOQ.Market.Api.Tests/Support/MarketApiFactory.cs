@@ -52,12 +52,14 @@ internal sealed class MarketApiFactory :
         builder.ConfigureServices(
             services =>
             {
+                // Tenancy
                 services.RemoveAll<
                     ITenantRepository>();
 
                 services.RemoveAll<
                     ITenantMembershipRepository>();
 
+                // Catalog
                 services.RemoveAll<
                     ICategoryRepository>();
 
@@ -76,6 +78,7 @@ internal sealed class MarketApiFactory :
                 services.RemoveAll<
                     IProductVariantOptionValueRepository>();
 
+                // Identity
                 services.RemoveAll<
                     IUserRepository>();
 
@@ -88,6 +91,7 @@ internal sealed class MarketApiFactory :
                 services.RemoveAll<
                     IMfaLoginChallengeRepository>();
 
+                // Infrastructure abstractions
                 services.RemoveAll<
                     ITransactionExecutor>();
 
@@ -102,6 +106,10 @@ internal sealed class MarketApiFactory :
 
                 services.RemoveAll<
                     ITotpService>();
+
+                // -------------------------------------------------
+                // Tenancy fakes
+                // -------------------------------------------------
 
                 services.AddSingleton<
                     InMemoryTenantRepository>();
@@ -121,12 +129,20 @@ internal sealed class MarketApiFactory :
                             provider.GetRequiredService<
                                 InMemoryTenantMembershipRepository>());
 
+                // -------------------------------------------------
+                // Category fakes
+                // -------------------------------------------------
+
                 services.AddSingleton<
                     InMemoryCategoryStore>();
 
                 services.AddScoped<
                     ICategoryRepository,
                     InMemoryCategoryRepository>();
+
+                // -------------------------------------------------
+                // Product fakes
+                // -------------------------------------------------
 
                 services.AddSingleton<
                     InMemoryProductStore>();
@@ -142,6 +158,10 @@ internal sealed class MarketApiFactory :
                     IProductVariantRepository,
                     InMemoryProductVariantRepository>();
 
+                // -------------------------------------------------
+                // Structured product option fakes
+                // -------------------------------------------------
+
                 services.AddSingleton<
                     InMemoryProductOptionStore>();
 
@@ -155,6 +175,21 @@ internal sealed class MarketApiFactory :
                 services.AddScoped<
                     IProductOptionValueRepository,
                     InMemoryProductOptionValueRepository>();
+
+                // -------------------------------------------------
+                // Variant option assignment fakes
+                // -------------------------------------------------
+
+                services.AddSingleton<
+                    InMemoryProductVariantOptionValueStore>();
+
+                services.AddScoped<
+                    IProductVariantOptionValueRepository,
+                    InMemoryProductVariantOptionValueRepository>();
+
+                // -------------------------------------------------
+                // User / identity fakes
+                // -------------------------------------------------
 
                 services.AddSingleton<
                     InMemoryUserRepository>();
@@ -191,6 +226,10 @@ internal sealed class MarketApiFactory :
                         provider =>
                             provider.GetRequiredService<
                                 InMemoryMfaLoginChallengeRepository>());
+
+                // -------------------------------------------------
+                // Transaction / security fakes
+                // -------------------------------------------------
 
                 services.AddSingleton<
                     FakeTransactionExecutor>();
