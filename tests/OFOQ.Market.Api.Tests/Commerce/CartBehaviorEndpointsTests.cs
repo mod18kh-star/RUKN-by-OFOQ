@@ -575,6 +575,69 @@ public sealed class CartBehaviorEndpointsTests
             error.Code);
     }
 
+    [Fact]
+    public async Task AddItem_WithPlaceholderVariantForStructuredProduct_ReturnsBadRequest()
+    {
+        await using var factory =
+            new MarketApiFactory();
+
+        using var client =
+            factory.CreateClient();
+
+        var setup =
+            await CreateAuthenticatedSetupAsync(
+                factory,
+                client);
+
+        var catalog =
+            CreateProductAndVariant(
+                factory,
+                setup.Tenant,
+                productPrice: 25m,
+                variantPriceOverride: null,
+                quantity: 10);
+
+        var now =
+            DateTimeOffset.UtcNow;
+
+        var option =
+            ProductOption.Create(
+                setup.Tenant.Id,
+                catalog.Product.Id,
+                "Color",
+                sortOrder: 0,
+                createdAtUtc: now);
+
+        AddOption(
+            factory,
+            option);
+
+        var response =
+            await client.PostAsJsonAsync(
+                ItemsUrl(
+                    setup.Tenant.Id),
+                new AddToCartRequest(
+                    catalog.Product.Id.Value,
+                    catalog.Variant.Id.Value,
+                    1));
+
+        Assert.Equal(
+            HttpStatusCode.BadRequest,
+            response.StatusCode);
+
+        var error =
+            await response.Content
+                .ReadFromJsonAsync<
+                    ErrorResponse>();
+
+        Assert.NotNull(
+            error);
+
+        Assert.Equal(
+            "structured_variant_required",
+            error.Code);
+    }
+
     private static ProductSetup CreateProductAndVariant(
         MarketApiFactory factory,
         Tenant tenant,
@@ -665,6 +728,22 @@ public sealed class CartBehaviorEndpointsTests
         {
             store.Items.Add(
                 variant);
+        }
+    }
+
+    private static void AddOption(
+        MarketApiFactory factory,
+        ProductOption option)
+    {
+        var store =
+            factory.Services
+                .GetRequiredService<
+                    InMemoryProductOptionStore>();
+
+        lock (store.SyncRoot)
+        {
+            store.Items.Add(
+                option);
         }
     }
 
