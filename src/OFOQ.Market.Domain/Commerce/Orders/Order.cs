@@ -16,7 +16,7 @@ public sealed class Order :
 
     private Guid _customerUserId;
 
-    private Guid _sourceCartId;
+    private CartId _sourceCartId;
 
     private string _currencyCode =
         string.Empty;
@@ -71,7 +71,7 @@ public sealed class Order :
             customerUserId.Value;
 
         _sourceCartId =
-            sourceCartId.Value;
+            sourceCartId;
 
         _currencyCode =
             currency.Value;
@@ -93,8 +93,7 @@ public sealed class Order :
             _customerUserId);
 
     public CartId SourceCartId =>
-        CartId.From(
-            _sourceCartId);
+        _sourceCartId;
 
     public CurrencyCode Currency =>
         CurrencyCode.Create(

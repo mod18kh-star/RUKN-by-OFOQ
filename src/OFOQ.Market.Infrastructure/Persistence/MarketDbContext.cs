@@ -7,6 +7,7 @@ using OFOQ.Market.Domain.Commerce.Carts;
 using OFOQ.Market.Domain.Common;
 using OFOQ.Market.Domain.Identity;
 using OFOQ.Market.Domain.Tenancy;
+using OFOQ.Market.Domain.Commerce.Orders;
 
 namespace OFOQ.Market.Infrastructure.Persistence;
 
@@ -95,6 +96,11 @@ public sealed class MarketDbContext :
     public DbSet<CartItem> CartItems =>
         Set<CartItem>();
 
+    public DbSet<Order> Orders =>
+    Set<Order>();
+
+    public DbSet<OrderItem> OrderItems =>   
+    Set<OrderItem>();
     // -------------------------------------------------
     // Save changes
     // -------------------------------------------------

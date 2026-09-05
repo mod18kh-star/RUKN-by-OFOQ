@@ -37,6 +37,10 @@ public static class DependencyInjection
             .SetApplicationName(
                 "OFOQ.Market");
 
+        // -------------------------------------------------
+        // Tenancy
+        // -------------------------------------------------
+
         services.AddScoped<
             ITenantRepository,
             TenantRepository>();
@@ -48,6 +52,10 @@ public static class DependencyInjection
         services.AddScoped<
             ITenantMembershipRepository,
             TenantMembershipRepository>();
+
+        // -------------------------------------------------
+        // Catalog
+        // -------------------------------------------------
 
         services.AddScoped<
             ICategoryRepository,
@@ -61,9 +69,9 @@ public static class DependencyInjection
             IProductVariantRepository,
             ProductVariantRepository>();
 
-            services.AddScoped<
-             IProductOptionRepository,
-             ProductOptionRepository>();
+        services.AddScoped<
+            IProductOptionRepository,
+            ProductOptionRepository>();
 
         services.AddScoped<
             IProductOptionValueRepository,
@@ -73,9 +81,17 @@ public static class DependencyInjection
             IProductVariantOptionValueRepository,
             ProductVariantOptionValueRepository>();
 
+        // -------------------------------------------------
+        // Commerce
+        // -------------------------------------------------
+
         services.AddScoped<
-            IProductVariantOptionValueRepository,
-            ProductVariantOptionValueRepository>();
+            ICartRepository,
+            CartRepository>();
+
+        // -------------------------------------------------
+        // Identity
+        // -------------------------------------------------
 
         services.AddScoped<
             IUserRepository,
@@ -93,6 +109,10 @@ public static class DependencyInjection
             IMfaLoginChallengeRepository,
             MfaLoginChallengeRepository>();
 
+        // -------------------------------------------------
+        // Security
+        // -------------------------------------------------
+
         services.AddSingleton<
             IPasswordHasher,
             AspNetPasswordHasher>();
@@ -108,6 +128,10 @@ public static class DependencyInjection
         services.AddSingleton<
             IMfaLoginChallengeTokenService,
             MfaLoginChallengeTokenService>();
+
+        // -------------------------------------------------
+        // Persistence abstractions
+        // -------------------------------------------------
 
         services.AddScoped<
             ITransactionExecutor,
