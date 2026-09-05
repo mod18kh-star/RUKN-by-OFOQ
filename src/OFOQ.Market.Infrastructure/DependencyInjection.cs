@@ -84,11 +84,17 @@ public static class DependencyInjection
         // -------------------------------------------------
         // Commerce
         // -------------------------------------------------
+        services.AddScoped<
+        ICartRepository,
+        CartRepository>();
 
         services.AddScoped<
-            ICartRepository,
-            CartRepository>();
+        IOrderRepository,
+        OrderRepository>();
 
+        services.AddScoped<
+        ICheckoutLockRepository,
+        CheckoutLockRepository>();
         // -------------------------------------------------
         // Identity
         // -------------------------------------------------

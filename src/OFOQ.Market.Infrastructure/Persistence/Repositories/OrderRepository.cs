@@ -1,0 +1,65 @@
+using Microsoft.EntityFrameworkCore;
+using OFOQ.Market.Application.Common.Persistence;
+using OFOQ.Market.Domain.Commerce.Carts;
+using OFOQ.Market.Domain.Commerce.Orders;
+
+namespace OFOQ.Market.Infrastructure.Persistence.Repositories;
+
+internal sealed class OrderRepository :
+    IOrderRepository
+{
+    private readonly MarketDbContext
+        _dbContext;
+
+    public OrderRepository(
+        MarketDbContext dbContext)
+    {
+        _dbContext =
+            dbContext;
+    }
+
+    public Task<Order?> GetByIdAsync(
+        OrderId orderId,
+        CancellationToken cancellationToken = default)
+    {
+        return _dbContext
+            .Orders
+            .Include("_items")
+            .SingleOrDefaultAsync(
+                order =>
+                    order.Id ==
+                    orderId,
+                cancellationToken);
+    }
+
+    public Task<Order?> GetBySourceCartIdAsync(
+        CartId sourceCartId,
+        CancellationToken cancellationToken = default)
+    {
+        return _dbContext
+            .Orders
+            .Include("_items")
+            .SingleOrDefaultAsync(
+                order =>
+                    EF.Property<CartId>(
+                        order,
+                        "_sourceCartId") ==
+                    sourceCartId,
+                cancellationToken);
+    }
+
+    public Task AddAsync(
+        Order order,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(
+            order);
+
+        return _dbContext
+            .Orders
+            .AddAsync(
+                order,
+                cancellationToken)
+            .AsTask();
+    }
+}
