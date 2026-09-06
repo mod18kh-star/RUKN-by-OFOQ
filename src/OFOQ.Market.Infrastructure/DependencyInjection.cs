@@ -95,6 +95,22 @@ public static class DependencyInjection
         services.AddScoped<
         ICheckoutLockRepository,
         CheckoutLockRepository>();
+
+        services.AddScoped<
+            IPaymentRepository,
+            PaymentRepository>();
+
+        services.AddScoped<
+            IPaymentIntentRepository,
+            PaymentIntentRepository>();
+
+        services.AddScoped<
+            ITenantPaymentMethodRepository,
+            TenantPaymentMethodRepository>();
+
+        services.AddScoped<
+            ITenantPaymentCapabilityRepository,
+            TenantPaymentCapabilityRepository>();
         // -------------------------------------------------
         // Identity
         // -------------------------------------------------

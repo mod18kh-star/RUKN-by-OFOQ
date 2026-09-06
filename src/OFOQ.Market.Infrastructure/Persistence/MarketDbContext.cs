@@ -8,6 +8,7 @@ using OFOQ.Market.Domain.Common;
 using OFOQ.Market.Domain.Identity;
 using OFOQ.Market.Domain.Tenancy;
 using OFOQ.Market.Domain.Commerce.Orders;
+using OFOQ.Market.Domain.Commerce.Payments;
 
 namespace OFOQ.Market.Infrastructure.Persistence;
 
@@ -99,8 +100,23 @@ public sealed class MarketDbContext :
     public DbSet<Order> Orders =>
     Set<Order>();
 
-    public DbSet<OrderItem> OrderItems =>   
-    Set<OrderItem>();
+    public DbSet<OrderItem> OrderItems =>
+        Set<OrderItem>();
+
+    public DbSet<Payment> Payments =>
+        Set<Payment>();
+
+    public DbSet<PaymentIntent> PaymentIntents =>
+        Set<PaymentIntent>();
+
+    public DbSet<PaymentTransaction> PaymentTransactions =>
+        Set<PaymentTransaction>();
+
+    public DbSet<TenantPaymentMethod> TenantPaymentMethods =>
+        Set<TenantPaymentMethod>();
+
+    public DbSet<TenantPaymentCapability> TenantPaymentCapabilities =>
+        Set<TenantPaymentCapability>();
     // -------------------------------------------------
     // Save changes
     // -------------------------------------------------
