@@ -91,8 +91,22 @@ internal sealed class MarketApiFactory :
 
                 services.RemoveAll<
                     ICheckoutLockRepository>();
+                services.RemoveAll<
+                    IPaymentRepository>();
 
-                // Identity
+                services.RemoveAll<
+                    IPaymentIntentRepository>();
+
+                services.RemoveAll<
+                    ITenantPaymentMethodRepository>();
+
+                services.RemoveAll<
+                    ITenantPaymentCapabilityRepository>();
+
+                services.RemoveAll<
+                    IPaymentCreationLockRepository>();
+
+                                // Identity
                 services.RemoveAll<
                     IUserRepository>();
 
@@ -223,6 +237,37 @@ internal sealed class MarketApiFactory :
                     ICheckoutLockRepository,
                     InMemoryCheckoutLockRepository>();
 
+                services.AddSingleton<
+                    InMemoryPaymentStore>();
+
+                services.AddScoped<
+                    IPaymentRepository,
+                    InMemoryPaymentRepository>();
+
+                services.AddSingleton<
+                    InMemoryPaymentIntentStore>();
+
+                services.AddScoped<
+                    IPaymentIntentRepository,
+                    InMemoryPaymentIntentRepository>();
+
+                services.AddSingleton<
+                    InMemoryTenantPaymentMethodStore>();
+
+                services.AddScoped<
+                    ITenantPaymentMethodRepository,
+                    InMemoryTenantPaymentMethodRepository>();
+
+                services.AddSingleton<
+                    InMemoryTenantPaymentCapabilityStore>();
+
+                services.AddScoped<
+                    ITenantPaymentCapabilityRepository,
+                    InMemoryTenantPaymentCapabilityRepository>();
+
+                services.AddScoped<
+                    IPaymentCreationLockRepository,
+                    InMemoryPaymentCreationLockRepository>();
                 // -------------------------------------------------
                 // User / identity fakes
                 // -------------------------------------------------

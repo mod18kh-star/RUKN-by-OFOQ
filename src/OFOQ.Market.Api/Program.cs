@@ -303,6 +303,8 @@ app.MapCartEndpoints();
 
 app.MapCheckoutEndpoints();
 
+app.MapPaymentEndpoints();
+
 app.Run();
 
 public partial class Program;

@@ -1,24 +1,36 @@
 using Microsoft.Extensions.DependencyInjection;
+
 using OFOQ.Market.Application.Catalog.Categories.CreateCategory;
 using OFOQ.Market.Application.Catalog.Categories.GetCategories;
 using OFOQ.Market.Application.Catalog.Categories.GetCategoryById;
+
 using OFOQ.Market.Application.Catalog.Products.ChangeState;
 using OFOQ.Market.Application.Catalog.Products.CreateProduct;
 using OFOQ.Market.Application.Catalog.Products.GetProductById;
 using OFOQ.Market.Application.Catalog.Products.GetProducts;
 using OFOQ.Market.Application.Catalog.Products.Inventory;
+using OFOQ.Market.Application.Catalog.Products.UpdateProduct;
+
 using OFOQ.Market.Application.Catalog.Products.Options.CreateOption;
 using OFOQ.Market.Application.Catalog.Products.Options.CreateValue;
 using OFOQ.Market.Application.Catalog.Products.Options.GetOptions;
-using OFOQ.Market.Application.Catalog.Products.UpdateProduct;
+
 using OFOQ.Market.Application.Catalog.Products.Variants.CreateVariant;
 using OFOQ.Market.Application.Catalog.Products.Variants.GetVariants;
+
 using OFOQ.Market.Application.Commerce.Carts.AddItem;
 using OFOQ.Market.Application.Commerce.Carts.ClearCart;
 using OFOQ.Market.Application.Commerce.Carts.GetCart;
 using OFOQ.Market.Application.Commerce.Carts.RemoveItem;
 using OFOQ.Market.Application.Commerce.Carts.UpdateItemQuantity;
+
 using OFOQ.Market.Application.Commerce.Checkout;
+
+using OFOQ.Market.Application.Commerce.Payments.CreateIntent;
+using OFOQ.Market.Application.Commerce.Payments.GetAvailableMethods;
+using OFOQ.Market.Application.Commerce.Payments.GetIntent;
+using OFOQ.Market.Application.Commerce.Payments.RetryIntent;
+
 using OFOQ.Market.Application.Identity.LoginUser;
 using OFOQ.Market.Application.Identity.Mfa.ConfirmEnrollment;
 using OFOQ.Market.Application.Identity.Mfa.Login.VerifyRecovery;
@@ -28,6 +40,7 @@ using OFOQ.Market.Application.Identity.Mfa.RecoveryCodes.Generate;
 using OFOQ.Market.Application.Identity.Mfa.RecoveryCodes.Regenerate;
 using OFOQ.Market.Application.Identity.Mfa.StartEnrollment;
 using OFOQ.Market.Application.Identity.RegisterUser;
+
 using OFOQ.Market.Application.Tenancy.CreateTenant;
 using OFOQ.Market.Application.Tenancy.GetTenantById;
 
@@ -128,8 +141,28 @@ public static class DependencyInjection
         services.AddScoped<
             ClearCartHandler>();
 
+        // -------------------------------------------------
+        // Commerce / Checkout
+        // -------------------------------------------------
+
         services.AddScoped<
             CheckoutHandler>();
+
+        // -------------------------------------------------
+        // Commerce / Payments
+        // -------------------------------------------------
+
+        services.AddScoped<
+            GetAvailablePaymentMethodsHandler>();
+
+        services.AddScoped<
+            CreatePaymentIntentHandler>();
+
+        services.AddScoped<
+            GetPaymentIntentHandler>();
+
+        services.AddScoped<
+            RetryPaymentIntentHandler>();
 
         // -------------------------------------------------
         // Identity
