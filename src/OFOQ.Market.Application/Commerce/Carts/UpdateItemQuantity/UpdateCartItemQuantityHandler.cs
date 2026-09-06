@@ -7,8 +7,11 @@ namespace OFOQ.Market.Application.Commerce.Carts.UpdateItemQuantity;
 
 public sealed class UpdateCartItemQuantityHandler
 {
-    private readonly ICartRepository
-        _cartRepository;
+    private readonly ICheckoutLockRepository
+        _checkoutLockRepository;
+
+    private readonly ITransactionExecutor
+        _transactionExecutor;
 
     private readonly IProductRepository
         _productRepository;
@@ -32,7 +35,8 @@ public sealed class UpdateCartItemQuantityHandler
         _timeProvider;
 
     public UpdateCartItemQuantityHandler(
-        ICartRepository cartRepository,
+        ICheckoutLockRepository checkoutLockRepository,
+        ITransactionExecutor transactionExecutor,
         IProductRepository productRepository,
         IProductVariantRepository productVariantRepository,
         IProductOptionRepository productOptionRepository,
@@ -41,8 +45,11 @@ public sealed class UpdateCartItemQuantityHandler
         IUnitOfWork unitOfWork,
         TimeProvider timeProvider)
     {
-        _cartRepository =
-            cartRepository;
+        _checkoutLockRepository =
+            checkoutLockRepository;
+
+        _transactionExecutor =
+            transactionExecutor;
 
         _productRepository =
             productRepository;
@@ -99,91 +106,97 @@ public sealed class UpdateCartItemQuantityHandler
                 $"Quantity must be between 1 and {CartItem.MaximumQuantity}.");
         }
 
-        var cart =
-            await _cartRepository
-                .GetActiveByCustomerUserIdAsync(
-                    command.CustomerUserId,
-                    cancellationToken)
-            ?? throw new CartNotFoundException();
+        return await _transactionExecutor
+            .ExecuteAsync(
+                async transactionCancellationToken =>
+                {
+                    var cart =
+                        await _checkoutLockRepository
+                            .GetActiveCartForUpdateAsync(
+                                command.CustomerUserId,
+                                transactionCancellationToken)
+                        ?? throw new CartNotFoundException();
 
-        var item =
-            cart.Items.FirstOrDefault(
-                candidate =>
-                    candidate.Id ==
-                    command.CartItemId)
-            ?? throw new CartItemNotFoundException();
+                    var item =
+                        cart.Items.FirstOrDefault(
+                            candidate =>
+                                candidate.Id ==
+                                command.CartItemId)
+                        ?? throw new CartItemNotFoundException();
 
-        /*
-         * Reducing quantity does not require a stock check.
-         *
-         * Increasing quantity does, and we also refresh
-         * the authoritative server-side price at that point.
-         */
-        if (command.Quantity >
-            item.Quantity)
-        {
-            var product =
-                await _productRepository
-                    .GetByIdAsync(
-                        item.ProductId,
-                        cancellationToken);
+                    /*
+                     * Reducing quantity does not require a stock check.
+                     *
+                     * Increasing quantity does, and we also refresh
+                     * the authoritative server-side price at that point.
+                     */
+                    if (command.Quantity >
+                        item.Quantity)
+                    {
+                        var product =
+                            await _productRepository
+                                .GetByIdAsync(
+                                    item.ProductId,
+                                    transactionCancellationToken);
 
-            if (product is null ||
-                product.Status !=
-                ProductStatus.Published ||
-                !product.IsVisible)
-            {
-                throw new CartProductNotAvailableException();
-            }
+                        if (product is null ||
+                            product.Status !=
+                            ProductStatus.Published ||
+                            !product.IsVisible)
+                        {
+                            throw new CartProductNotAvailableException();
+                        }
 
-            var variant =
-                await _productVariantRepository
-                    .GetByIdAsync(
-                        item.ProductVariantId,
-                        cancellationToken);
+                        var variant =
+                            await _productVariantRepository
+                                .GetByIdAsync(
+                                    item.ProductVariantId,
+                                    transactionCancellationToken);
 
-            if (variant is null ||
-                variant.ProductId !=
-                product.Id ||
-                !variant.IsEnabled)
-            {
-                throw new CartVariantNotAvailableException();
-            }
+                        if (variant is null ||
+                            variant.ProductId !=
+                            product.Id ||
+                            !variant.IsEnabled)
+                        {
+                            throw new CartVariantNotAvailableException();
+                        }
 
-            await EnsureStructuredVariantIsValidAsync(
-                product.Id,
-                variant.Id,
+                        await EnsureStructuredVariantIsValidAsync(
+                            product.Id,
+                            variant.Id,
+                            transactionCancellationToken);
+
+                        EnsureStockAvailable(
+                            variant,
+                            command.Quantity);
+
+                        var unitPrice =
+                            variant.PriceOverride
+                            ?? product.Price;
+
+                        cart.RefreshItemPrice(
+                            item.Id,
+                            unitPrice,
+                            _timeProvider.GetUtcNow(),
+                            command.CustomerUserId.Value);
+                    }
+
+                    var now =
+                        _timeProvider.GetUtcNow();
+
+                    cart.ChangeItemQuantity(
+                        command.CartItemId,
+                        command.Quantity,
+                        now,
+                        command.CustomerUserId.Value);
+
+                    await _unitOfWork.SaveChangesAsync(
+                        transactionCancellationToken);
+
+                    return MapCart(
+                        cart);
+                },
                 cancellationToken);
-
-            EnsureStockAvailable(
-                variant,
-                command.Quantity);
-
-            var unitPrice =
-                variant.PriceOverride
-                ?? product.Price;
-
-            cart.RefreshItemPrice(
-                item.Id,
-                unitPrice,
-                _timeProvider.GetUtcNow(),
-                command.CustomerUserId.Value);
-        }
-
-        var now =
-            _timeProvider.GetUtcNow();
-
-        cart.ChangeItemQuantity(
-            command.CartItemId,
-            command.Quantity,
-            now,
-            command.CustomerUserId.Value);
-
-        await _unitOfWork.SaveChangesAsync(
-            cancellationToken);
-
-        return MapCart(
-            cart);
     }
 
     private async Task EnsureStructuredVariantIsValidAsync(

@@ -301,6 +301,8 @@ app.MapProductVariantEndpoints();
 
 app.MapCartEndpoints();
 
+app.MapCheckoutEndpoints();
+
 app.Run();
 
 public partial class Program;

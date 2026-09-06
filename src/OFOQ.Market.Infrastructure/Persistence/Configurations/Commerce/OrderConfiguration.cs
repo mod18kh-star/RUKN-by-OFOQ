@@ -97,6 +97,19 @@ public sealed class OrderConfiguration :
                 3)
             .IsRequired();
 
+        /*
+         * HTTP idempotency is persistence metadata, not
+         * Order domain behavior. Existing orders remain
+         * valid with a null value; every checkout-created
+         * order writes a key through OrderRepository.
+         */
+        builder.Property<string?>(
+                "CheckoutIdempotencyKey")
+            .HasColumnName(
+                "checkout_idempotency_key")
+            .HasMaxLength(
+                128);
+
         builder.Property(
                 order =>
                     order.Status)
@@ -149,6 +162,17 @@ public sealed class OrderConfiguration :
                     Order.CreatedAtUtc))
             .HasDatabaseName(
                 "ix_commerce_orders_tenant_customer_created");
+
+        builder.HasIndex(
+                nameof(
+                    Order.TenantId),
+                "_customerUserId",
+                "CheckoutIdempotencyKey")
+            .IsUnique()
+            .HasFilter(
+                "checkout_idempotency_key IS NOT NULL")
+            .HasDatabaseName(
+                "ux_commerce_orders_checkout_idempotency");
 
         builder.HasIndex(
                 order =>

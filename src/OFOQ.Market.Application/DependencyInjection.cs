@@ -18,6 +18,7 @@ using OFOQ.Market.Application.Commerce.Carts.ClearCart;
 using OFOQ.Market.Application.Commerce.Carts.GetCart;
 using OFOQ.Market.Application.Commerce.Carts.RemoveItem;
 using OFOQ.Market.Application.Commerce.Carts.UpdateItemQuantity;
+using OFOQ.Market.Application.Commerce.Checkout;
 using OFOQ.Market.Application.Identity.LoginUser;
 using OFOQ.Market.Application.Identity.Mfa.ConfirmEnrollment;
 using OFOQ.Market.Application.Identity.Mfa.Login.VerifyRecovery;
@@ -126,6 +127,9 @@ public static class DependencyInjection
 
         services.AddScoped<
             ClearCartHandler>();
+
+        services.AddScoped<
+            CheckoutHandler>();
 
         // -------------------------------------------------
         // Identity

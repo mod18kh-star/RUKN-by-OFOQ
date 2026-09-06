@@ -86,6 +86,12 @@ internal sealed class MarketApiFactory :
                 services.RemoveAll<
                     ICartRepository>();
 
+                services.RemoveAll<
+                    IOrderRepository>();
+
+                services.RemoveAll<
+                    ICheckoutLockRepository>();
+
                 // Identity
                 services.RemoveAll<
                     IUserRepository>();
@@ -205,6 +211,17 @@ internal sealed class MarketApiFactory :
                 services.AddScoped<
                     ICartRepository,
                     InMemoryCartRepository>();
+
+                services.AddSingleton<
+                    InMemoryOrderStore>();
+
+                services.AddScoped<
+                    IOrderRepository,
+                    InMemoryOrderRepository>();
+
+                services.AddScoped<
+                    ICheckoutLockRepository,
+                    InMemoryCheckoutLockRepository>();
 
                 // -------------------------------------------------
                 // User / identity fakes

@@ -10,6 +10,12 @@ public sealed class AddToCartHandler
     private readonly ICartRepository
         _cartRepository;
 
+    private readonly ICheckoutLockRepository
+        _checkoutLockRepository;
+
+    private readonly ITransactionExecutor
+        _transactionExecutor;
+
     private readonly IProductRepository
         _productRepository;
 
@@ -33,6 +39,8 @@ public sealed class AddToCartHandler
 
     public AddToCartHandler(
         ICartRepository cartRepository,
+        ICheckoutLockRepository checkoutLockRepository,
+        ITransactionExecutor transactionExecutor,
         IProductRepository productRepository,
         IProductVariantRepository productVariantRepository,
         IProductOptionRepository productOptionRepository,
@@ -43,6 +51,12 @@ public sealed class AddToCartHandler
     {
         _cartRepository =
             cartRepository;
+
+        _checkoutLockRepository =
+            checkoutLockRepository;
+
+        _transactionExecutor =
+            transactionExecutor;
 
         _productRepository =
             productRepository;
@@ -104,112 +118,118 @@ public sealed class AddToCartHandler
                 $"Quantity cannot exceed {CartItem.MaximumQuantity}.");
         }
 
-        var product =
-            await _productRepository.GetByIdAsync(
-                command.ProductId,
+        return await _transactionExecutor
+            .ExecuteAsync(
+                async transactionCancellationToken =>
+                {
+                    var product =
+                        await _productRepository.GetByIdAsync(
+                            command.ProductId,
+                            transactionCancellationToken);
+
+                    if (product is null ||
+                        product.Status != ProductStatus.Published ||
+                        !product.IsVisible)
+                    {
+                        throw new CartProductNotAvailableException();
+                    }
+
+                    var variant =
+                        await _productVariantRepository.GetByIdAsync(
+                            command.ProductVariantId,
+                            transactionCancellationToken);
+
+                    if (variant is null ||
+                        variant.ProductId != product.Id ||
+                        !variant.IsEnabled)
+                    {
+                        throw new CartVariantNotAvailableException();
+                    }
+
+                    await EnsureStructuredVariantIsValidAsync(
+                        product.Id,
+                        variant.Id,
+                        transactionCancellationToken);
+
+                    var cart =
+                        await _checkoutLockRepository
+                            .GetActiveCartForUpdateAsync(
+                                command.CustomerUserId,
+                                transactionCancellationToken);
+
+                    var existingQuantity =
+                        cart?.Items
+                            .FirstOrDefault(
+                                item =>
+                                    item.ProductVariantId ==
+                                    variant.Id)
+                            ?.Quantity
+                        ?? 0;
+
+                    int requestedTotalQuantity;
+
+                    try
+                    {
+                        requestedTotalQuantity =
+                            checked(
+                                existingQuantity +
+                                command.Quantity);
+                    }
+                    catch (OverflowException)
+                    {
+                        throw new ArgumentOutOfRangeException(
+                            nameof(command),
+                            $"Cart item quantity cannot exceed {CartItem.MaximumQuantity}.");
+                    }
+
+                    if (requestedTotalQuantity >
+                        CartItem.MaximumQuantity)
+                    {
+                        throw new ArgumentOutOfRangeException(
+                            nameof(command),
+                            $"Cart item quantity cannot exceed {CartItem.MaximumQuantity}.");
+                    }
+
+                    EnsureStockAvailable(
+                        variant,
+                        requestedTotalQuantity);
+
+                    var now =
+                        _timeProvider.GetUtcNow();
+
+                    if (cart is null)
+                    {
+                        cart =
+                            Cart.Create(
+                                _currentTenant.TenantId.Value,
+                                command.CustomerUserId,
+                                now,
+                                command.CustomerUserId.Value);
+
+                        await _cartRepository.AddAsync(
+                            cart,
+                            transactionCancellationToken);
+                    }
+
+                    var unitPrice =
+                        variant.PriceOverride
+                        ?? product.Price;
+
+                    cart.AddItem(
+                        product.Id,
+                        variant.Id,
+                        unitPrice,
+                        command.Quantity,
+                        now,
+                        command.CustomerUserId.Value);
+
+                    await _unitOfWork.SaveChangesAsync(
+                        transactionCancellationToken);
+
+                    return MapCart(
+                        cart);
+                },
                 cancellationToken);
-
-        if (product is null ||
-            product.Status != ProductStatus.Published ||
-            !product.IsVisible)
-        {
-            throw new CartProductNotAvailableException();
-        }
-
-        var variant =
-            await _productVariantRepository.GetByIdAsync(
-                command.ProductVariantId,
-                cancellationToken);
-
-        if (variant is null ||
-            variant.ProductId != product.Id ||
-            !variant.IsEnabled)
-        {
-            throw new CartVariantNotAvailableException();
-        }
-
-        await EnsureStructuredVariantIsValidAsync(
-            product.Id,
-            variant.Id,
-            cancellationToken);
-
-        var cart =
-            await _cartRepository
-                .GetActiveByCustomerUserIdAsync(
-                    command.CustomerUserId,
-                    cancellationToken);
-
-        var existingQuantity =
-            cart?.Items
-                .FirstOrDefault(
-                    item =>
-                        item.ProductVariantId ==
-                        variant.Id)
-                ?.Quantity
-            ?? 0;
-
-        int requestedTotalQuantity;
-
-        try
-        {
-            requestedTotalQuantity =
-                checked(
-                    existingQuantity +
-                    command.Quantity);
-        }
-        catch (OverflowException)
-        {
-            throw new ArgumentOutOfRangeException(
-                nameof(command),
-                $"Cart item quantity cannot exceed {CartItem.MaximumQuantity}.");
-        }
-
-        if (requestedTotalQuantity >
-            CartItem.MaximumQuantity)
-        {
-            throw new ArgumentOutOfRangeException(
-                nameof(command),
-                $"Cart item quantity cannot exceed {CartItem.MaximumQuantity}.");
-        }
-
-        EnsureStockAvailable(
-            variant,
-            requestedTotalQuantity);
-
-        var now =
-            _timeProvider.GetUtcNow();
-
-        if (cart is null)
-        {
-            cart =
-                Cart.Create(
-                    _currentTenant.TenantId.Value,
-                    command.CustomerUserId,
-                    now,
-                    command.CustomerUserId.Value);
-
-            await _cartRepository.AddAsync(
-                cart,
-                cancellationToken);
-        }
-
-        var unitPrice =
-            variant.PriceOverride
-            ?? product.Price;
-
-        cart.AddItem(
-            product.Id,
-            variant.Id,
-            unitPrice,
-            command.Quantity,
-            now,
-            command.CustomerUserId.Value);
-
-        await _unitOfWork.SaveChangesAsync(
-            cancellationToken);
-
-        return MapCart(
-            cart);
     }
 
     private async Task EnsureStructuredVariantIsValidAsync(

@@ -6,8 +6,11 @@ namespace OFOQ.Market.Application.Commerce.Carts.RemoveItem;
 
 public sealed class RemoveCartItemHandler
 {
-    private readonly ICartRepository
-        _cartRepository;
+    private readonly ICheckoutLockRepository
+        _checkoutLockRepository;
+
+    private readonly ITransactionExecutor
+        _transactionExecutor;
 
     private readonly ICurrentTenant
         _currentTenant;
@@ -19,13 +22,17 @@ public sealed class RemoveCartItemHandler
         _timeProvider;
 
     public RemoveCartItemHandler(
-        ICartRepository cartRepository,
+        ICheckoutLockRepository checkoutLockRepository,
+        ITransactionExecutor transactionExecutor,
         ICurrentTenant currentTenant,
         IUnitOfWork unitOfWork,
         TimeProvider timeProvider)
     {
-        _cartRepository =
-            cartRepository;
+        _checkoutLockRepository =
+            checkoutLockRepository;
+
+        _transactionExecutor =
+            transactionExecutor;
 
         _currentTenant =
             currentTenant;
@@ -61,34 +68,40 @@ public sealed class RemoveCartItemHandler
                 nameof(command));
         }
 
-        var cart =
-            await _cartRepository
-                .GetActiveByCustomerUserIdAsync(
-                    command.CustomerUserId,
-                    cancellationToken)
-            ?? throw new CartNotFoundException();
+        return await _transactionExecutor
+            .ExecuteAsync(
+                async transactionCancellationToken =>
+                {
+                    var cart =
+                        await _checkoutLockRepository
+                            .GetActiveCartForUpdateAsync(
+                                command.CustomerUserId,
+                                transactionCancellationToken)
+                        ?? throw new CartNotFoundException();
 
-        if (!cart.Items.Any(
-                item =>
-                    item.Id ==
-                    command.CartItemId))
-        {
-            throw new CartItemNotFoundException();
-        }
+                    if (!cart.Items.Any(
+                            item =>
+                                item.Id ==
+                                command.CartItemId))
+                    {
+                        throw new CartItemNotFoundException();
+                    }
 
-        var now =
-            _timeProvider.GetUtcNow();
+                    var now =
+                        _timeProvider.GetUtcNow();
 
-        cart.RemoveItem(
-            command.CartItemId,
-            now,
-            command.CustomerUserId.Value);
+                    cart.RemoveItem(
+                        command.CartItemId,
+                        now,
+                        command.CustomerUserId.Value);
 
-        await _unitOfWork.SaveChangesAsync(
-            cancellationToken);
+                    await _unitOfWork.SaveChangesAsync(
+                        transactionCancellationToken);
 
-        return MapCart(
-            cart);
+                    return MapCart(
+                        cart);
+                },
+                cancellationToken);
     }
 
     private void EnsureTenantContext()

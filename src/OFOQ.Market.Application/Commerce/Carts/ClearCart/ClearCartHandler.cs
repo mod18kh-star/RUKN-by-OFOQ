@@ -6,8 +6,11 @@ namespace OFOQ.Market.Application.Commerce.Carts.ClearCart;
 
 public sealed class ClearCartHandler
 {
-    private readonly ICartRepository
-        _cartRepository;
+    private readonly ICheckoutLockRepository
+        _checkoutLockRepository;
+
+    private readonly ITransactionExecutor
+        _transactionExecutor;
 
     private readonly ICurrentTenant
         _currentTenant;
@@ -19,13 +22,17 @@ public sealed class ClearCartHandler
         _timeProvider;
 
     public ClearCartHandler(
-        ICartRepository cartRepository,
+        ICheckoutLockRepository checkoutLockRepository,
+        ITransactionExecutor transactionExecutor,
         ICurrentTenant currentTenant,
         IUnitOfWork unitOfWork,
         TimeProvider timeProvider)
     {
-        _cartRepository =
-            cartRepository;
+        _checkoutLockRepository =
+            checkoutLockRepository;
+
+        _transactionExecutor =
+            transactionExecutor;
 
         _currentTenant =
             currentTenant;
@@ -54,31 +61,37 @@ public sealed class ClearCartHandler
                 nameof(command));
         }
 
-        var cart =
-            await _cartRepository
-                .GetActiveByCustomerUserIdAsync(
-                    command.CustomerUserId,
-                    cancellationToken);
+        return await _transactionExecutor
+            .ExecuteAsync(
+                async transactionCancellationToken =>
+                {
+                    var cart =
+                        await _checkoutLockRepository
+                            .GetActiveCartForUpdateAsync(
+                                command.CustomerUserId,
+                                transactionCancellationToken);
 
-        /*
-         * DELETE /cart is intentionally idempotent.
-         * No active cart means there is already
-         * nothing to clear.
-         */
-        if (cart is null)
-        {
-            return null;
-        }
+                    /*
+                     * DELETE /cart is intentionally idempotent.
+                     * No active cart means there is already
+                     * nothing to clear.
+                     */
+                    if (cart is null)
+                    {
+                        return null;
+                    }
 
-        cart.Clear(
-            _timeProvider.GetUtcNow(),
-            command.CustomerUserId.Value);
+                    cart.Clear(
+                        _timeProvider.GetUtcNow(),
+                        command.CustomerUserId.Value);
 
-        await _unitOfWork.SaveChangesAsync(
-            cancellationToken);
+                    await _unitOfWork.SaveChangesAsync(
+                        transactionCancellationToken);
 
-        return MapCart(
-            cart);
+                    return MapCart(
+                        cart);
+                },
+                cancellationToken);
     }
 
     private void EnsureTenantContext()
