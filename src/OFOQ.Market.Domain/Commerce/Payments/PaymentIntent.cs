@@ -11,13 +11,18 @@ public sealed class PaymentIntent :
     IAuditable
 {
     private readonly List<PaymentTransaction> _transactions = [];
+
     private Guid _customerUserId;
+
     private string _currencyCode = string.Empty;
+
     private string _providerCode = string.Empty;
+
 
     private PaymentIntent()
     {
     }
+
 
     private PaymentIntent(
         PaymentIntentId id,
@@ -75,17 +80,28 @@ public sealed class PaymentIntent :
         }
 
         TenantId = tenantId;
+
         PaymentId = paymentId;
+
         TenantPaymentMethodId = tenantPaymentMethodId;
+
         _customerUserId = customerUserId.Value;
+
         Amount = amount.Amount;
+
         _currencyCode = amount.Currency.Value;
+
         MethodType = methodType;
+
         _providerCode = providerCode.Value;
+
         Status = PaymentIntentStatus.Pending;
+
         CreatedAtUtc = createdAtUtc;
+
         CreatedByUserId = createdByUserId;
     }
+
 
     public TenantId TenantId { get; private set; }
 
@@ -93,32 +109,60 @@ public sealed class PaymentIntent :
 
     public TenantPaymentMethodId TenantPaymentMethodId { get; private set; }
 
-    public UserId CustomerUserId => UserId.From(_customerUserId);
+    public UserId CustomerUserId =>
+        UserId.From(
+            _customerUserId);
+
 
     public decimal Amount { get; private set; }
 
-    public CurrencyCode Currency => CurrencyCode.Create(_currencyCode);
 
-    public Money Total => Money.Create(Amount, Currency);
+    public CurrencyCode Currency =>
+        CurrencyCode.Create(
+            _currencyCode);
+
+
+    public Money Total =>
+        Money.Create(
+            Amount,
+            Currency);
+
 
     public PaymentMethodType MethodType { get; private set; }
 
-    public PaymentProviderCode ProviderCode => PaymentProviderCode.Create(_providerCode);
+
+    public PaymentProviderCode ProviderCode =>
+        PaymentProviderCode.Create(
+            _providerCode);
+
 
     public PaymentIntentStatus Status { get; private set; }
 
+
+    public PaymentIntentActionType? ActionType { get; private set; }
+
+
+    public string? ActionValue { get; private set; }
+
+
     public string? ProviderReference { get; private set; }
+
 
     public IReadOnlyCollection<PaymentTransaction> Transactions =>
         _transactions.AsReadOnly();
 
+
     public DateTimeOffset CreatedAtUtc { get; private set; }
+
 
     public Guid? CreatedByUserId { get; private set; }
 
+
     public DateTimeOffset? UpdatedAtUtc { get; private set; }
 
+
     public Guid? UpdatedByUserId { get; private set; }
+
 
     public static PaymentIntent Create(
         TenantId tenantId,
@@ -144,26 +188,52 @@ public sealed class PaymentIntent :
             createdByUserId);
     }
 
+
+    public void SetProviderAction(
+        PaymentIntentActionType actionType,
+        string actionValue,
+        DateTimeOffset updatedAtUtc,
+        Guid? updatedByUserId = null)
+    {
+        if (string.IsNullOrWhiteSpace(actionValue))
+        {
+            throw new ArgumentException(
+                "Action value is required.",
+                nameof(actionValue));
+        }
+
+        ActionType = actionType;
+
+        ActionValue = actionValue.Trim();
+
+        UpdatedAtUtc = updatedAtUtc;
+
+        UpdatedByUserId = updatedByUserId;
+    }
+
+
     public PaymentTransaction RecordTransaction(
         PaymentTransactionType type,
         string? providerReference,
         string? externalEventId,
         DateTimeOffset createdAtUtc)
     {
-        var transaction = PaymentTransaction.Create(
-            TenantId,
-            Id,
-            type,
-            Status,
-            Total,
-            providerReference,
-            externalEventId,
-            createdAtUtc);
+        var transaction =
+            PaymentTransaction.Create(
+                TenantId,
+                Id,
+                type,
+                Status,
+                Total,
+                providerReference,
+                externalEventId,
+                createdAtUtc);
 
         _transactions.Add(transaction);
 
         return transaction;
     }
+
 
     public void MarkRequiresAction(
         string? providerReference,
@@ -177,6 +247,7 @@ public sealed class PaymentIntent :
             updatedByUserId);
     }
 
+
     public void MarkProcessing(
         string? providerReference,
         DateTimeOffset updatedAtUtc,
@@ -189,24 +260,19 @@ public sealed class PaymentIntent :
             updatedByUserId);
     }
 
+
     public void MarkSucceeded(
         string providerReference,
         DateTimeOffset updatedAtUtc,
         Guid? updatedByUserId = null)
     {
-        if (string.IsNullOrWhiteSpace(providerReference))
-        {
-            throw new ArgumentException(
-                "Provider reference is required for a succeeded payment intent.",
-                nameof(providerReference));
-        }
-
         TransitionTo(
             PaymentIntentStatus.Succeeded,
             providerReference,
             updatedAtUtc,
             updatedByUserId);
     }
+
 
     public void MarkFailed(
         string? providerReference,
@@ -220,6 +286,7 @@ public sealed class PaymentIntent :
             updatedByUserId);
     }
 
+
     public void Cancel(
         DateTimeOffset updatedAtUtc,
         Guid? updatedByUserId = null)
@@ -230,6 +297,7 @@ public sealed class PaymentIntent :
             updatedAtUtc,
             updatedByUserId);
     }
+
 
     public void Expire(
         DateTimeOffset updatedAtUtc,
@@ -242,23 +310,16 @@ public sealed class PaymentIntent :
             updatedByUserId);
     }
 
+
     private void TransitionTo(
         PaymentIntentStatus next,
         string? providerReference,
         DateTimeOffset updatedAtUtc,
         Guid? updatedByUserId)
     {
-        if (Status == next)
-        {
-            if (!string.IsNullOrWhiteSpace(providerReference))
-            {
-                ProviderReference = NormalizeProviderReference(providerReference);
-            }
-
-            return;
-        }
-
-        if (!IsTransitionAllowed(Status, next))
+        if (!CanTransition(
+                Status,
+                next))
         {
             throw new InvalidOperationException(
                 $"Payment intent cannot transition from {Status} to {next}.");
@@ -268,21 +329,32 @@ public sealed class PaymentIntent :
 
         if (!string.IsNullOrWhiteSpace(providerReference))
         {
-            ProviderReference = NormalizeProviderReference(providerReference);
+            ProviderReference =
+                providerReference.Trim();
+        }
+
+        if (next != PaymentIntentStatus.RequiresAction)
+        {
+            ActionType = null;
+
+            ActionValue = null;
         }
 
         UpdatedAtUtc = updatedAtUtc;
+
         UpdatedByUserId = updatedByUserId;
     }
 
-    private static bool IsTransitionAllowed(
+
+    private static bool CanTransition(
         PaymentIntentStatus current,
         PaymentIntentStatus next)
     {
         return current switch
         {
             PaymentIntentStatus.Pending =>
-                next is PaymentIntentStatus.RequiresAction or
+                next is
+                    PaymentIntentStatus.RequiresAction or
                     PaymentIntentStatus.Processing or
                     PaymentIntentStatus.Succeeded or
                     PaymentIntentStatus.Failed or
@@ -290,33 +362,32 @@ public sealed class PaymentIntent :
                     PaymentIntentStatus.Expired,
 
             PaymentIntentStatus.RequiresAction =>
-                next is PaymentIntentStatus.Processing or
+                next is
+                    PaymentIntentStatus.RequiresAction or
+                    PaymentIntentStatus.Processing or
                     PaymentIntentStatus.Succeeded or
                     PaymentIntentStatus.Failed or
                     PaymentIntentStatus.Cancelled or
                     PaymentIntentStatus.Expired,
 
             PaymentIntentStatus.Processing =>
-                next is PaymentIntentStatus.Succeeded or
+                next is
+                    PaymentIntentStatus.Processing or
+                    PaymentIntentStatus.RequiresAction or
+                    PaymentIntentStatus.Succeeded or
                     PaymentIntentStatus.Failed or
                     PaymentIntentStatus.Cancelled or
                     PaymentIntentStatus.Expired,
 
+            PaymentIntentStatus.Succeeded => false,
+
+            PaymentIntentStatus.Failed => false,
+
+            PaymentIntentStatus.Cancelled => false,
+
+            PaymentIntentStatus.Expired => false,
+
             _ => false
         };
-    }
-
-    private static string NormalizeProviderReference(string value)
-    {
-        var normalized = value.Trim();
-
-        if (normalized.Length > 200)
-        {
-            throw new ArgumentException(
-                "Provider reference cannot exceed 200 characters.",
-                nameof(value));
-        }
-
-        return normalized;
     }
 }

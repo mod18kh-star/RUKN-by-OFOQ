@@ -9,6 +9,7 @@ namespace OFOQ.Market.Api.Tests.Support;
 internal sealed class InMemoryPaymentIntentStore
 {
     public object SyncRoot { get; } = new();
+
     public List<InMemoryPaymentIntentEntry> Items { get; } = [];
 }
 
@@ -85,6 +86,34 @@ internal sealed class InMemoryPaymentIntentRepository :
                         item.TenantId == tenantId &&
                         item.TenantPaymentMethodId == tenantPaymentMethodId &&
                         item.ProviderReference == providerReference));
+        }
+    }
+
+    public Task<IReadOnlyList<PaymentIntent>> GetByPaymentIdAsync(
+        PaymentId paymentId,
+        CancellationToken cancellationToken = default)
+    {
+        if (paymentId.IsEmpty)
+        {
+            throw new ArgumentException(
+                "Payment ID cannot be empty.",
+                nameof(paymentId));
+        }
+
+        var tenantId = GetRequiredTenantId();
+
+        lock (_store.SyncRoot)
+        {
+            IReadOnlyList<PaymentIntent> intents =
+                _store.Items
+                    .Select(item => item.Intent)
+                    .Where(item =>
+                        item.TenantId == tenantId &&
+                        item.PaymentId == paymentId)
+                    .OrderBy(item => item.CreatedAtUtc)
+                    .ToArray();
+
+            return Task.FromResult(intents);
         }
     }
 

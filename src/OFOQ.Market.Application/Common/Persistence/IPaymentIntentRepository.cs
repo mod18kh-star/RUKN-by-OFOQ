@@ -19,6 +19,10 @@ public interface IPaymentIntentRepository
         string providerReference,
         CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<PaymentIntent>> GetByPaymentIdAsync(
+        PaymentId paymentId,
+        CancellationToken cancellationToken = default);
+
     Task AddAsync(
         PaymentIntent paymentIntent,
         string createIdempotencyKey,

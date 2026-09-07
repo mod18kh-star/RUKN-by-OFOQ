@@ -84,17 +84,18 @@ public static class DependencyInjection
         // -------------------------------------------------
         // Commerce
         // -------------------------------------------------
-        services.AddScoped<
-        ICartRepository,
-        CartRepository>();
 
         services.AddScoped<
-        IOrderRepository,
-        OrderRepository>();
+            ICartRepository,
+            CartRepository>();
 
         services.AddScoped<
-        ICheckoutLockRepository,
-        CheckoutLockRepository>();
+            IOrderRepository,
+            OrderRepository>();
+
+        services.AddScoped<
+            ICheckoutLockRepository,
+            CheckoutLockRepository>();
 
         services.AddScoped<
             IPaymentRepository,
@@ -111,6 +112,19 @@ public static class DependencyInjection
         services.AddScoped<
             ITenantPaymentCapabilityRepository,
             TenantPaymentCapabilityRepository>();
+
+        services.AddScoped<
+            IPaymentCreationLockRepository,
+            PaymentCreationLockRepository>();
+
+        services.AddScoped<
+            IPaymentStateLockRepository,
+            PaymentStateLockRepository>();
+
+        services.AddScoped<
+            IPaymentWebhookLockRepository,
+            PaymentWebhookLockRepository>();
+
         // -------------------------------------------------
         // Identity
         // -------------------------------------------------

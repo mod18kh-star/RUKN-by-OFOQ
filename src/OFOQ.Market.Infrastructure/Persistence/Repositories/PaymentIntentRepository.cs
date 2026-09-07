@@ -10,7 +10,8 @@ internal sealed class PaymentIntentRepository :
 {
     private readonly MarketDbContext _dbContext;
 
-    public PaymentIntentRepository(MarketDbContext dbContext)
+    public PaymentIntentRepository(
+        MarketDbContext dbContext)
     {
         _dbContext = dbContext;
     }
@@ -22,9 +23,37 @@ internal sealed class PaymentIntentRepository :
         return _dbContext.PaymentIntents
             .Include("_transactions")
             .SingleOrDefaultAsync(
-                intent => intent.Id == paymentIntentId,
+                intent =>
+                    intent.Id == paymentIntentId,
                 cancellationToken);
     }
+
+
+    public async Task<IReadOnlyList<PaymentIntent>> GetByPaymentIdAsync(
+        PaymentId paymentId,
+        CancellationToken cancellationToken = default)
+    {
+        if (paymentId.IsEmpty)
+        {
+            throw new ArgumentException(
+                "Payment ID cannot be empty.",
+                nameof(paymentId));
+        }
+
+        var intents = await _dbContext.PaymentIntents
+            .Include("_transactions")
+            .Where(
+                intent =>
+                    intent.PaymentId == paymentId)
+            .OrderBy(
+                intent =>
+                    intent.CreatedAtUtc)
+            .ToListAsync(
+                cancellationToken);
+
+        return intents;
+    }
+
 
     public Task<PaymentIntent?> GetByCreateIdempotencyKeyAsync(
         UserId customerUserId,
@@ -38,16 +67,23 @@ internal sealed class PaymentIntentRepository :
                 nameof(customerUserId));
         }
 
-        ArgumentException.ThrowIfNullOrWhiteSpace(idempotencyKey);
+        ArgumentException.ThrowIfNullOrWhiteSpace(
+            idempotencyKey);
 
         return _dbContext.PaymentIntents
             .Include("_transactions")
             .SingleOrDefaultAsync(
                 intent =>
-                    EF.Property<Guid>(intent, "_customerUserId") == customerUserId.Value &&
-                    EF.Property<string?>(intent, "CreateIdempotencyKey") == idempotencyKey,
+                    EF.Property<Guid>(
+                        intent,
+                        "_customerUserId") == customerUserId.Value
+                    &&
+                    EF.Property<string?>(
+                        intent,
+                        "CreateIdempotencyKey") == idempotencyKey,
                 cancellationToken);
     }
+
 
     public Task<PaymentIntent?> GetByProviderReferenceAsync(
         TenantPaymentMethodId tenantPaymentMethodId,
@@ -61,26 +97,33 @@ internal sealed class PaymentIntentRepository :
                 nameof(tenantPaymentMethodId));
         }
 
-        ArgumentException.ThrowIfNullOrWhiteSpace(providerReference);
+        ArgumentException.ThrowIfNullOrWhiteSpace(
+            providerReference);
 
         return _dbContext.PaymentIntents
             .Include("_transactions")
             .SingleOrDefaultAsync(
                 intent =>
-                    intent.TenantPaymentMethodId == tenantPaymentMethodId &&
+                    intent.TenantPaymentMethodId == tenantPaymentMethodId
+                    &&
                     intent.ProviderReference == providerReference,
                 cancellationToken);
     }
+
 
     public Task AddAsync(
         PaymentIntent paymentIntent,
         string createIdempotencyKey,
         CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(paymentIntent);
-        ArgumentException.ThrowIfNullOrWhiteSpace(createIdempotencyKey);
+        ArgumentNullException.ThrowIfNull(
+            paymentIntent);
 
-        var normalizedKey = createIdempotencyKey.Trim();
+        ArgumentException.ThrowIfNullOrWhiteSpace(
+            createIdempotencyKey);
+
+        var normalizedKey =
+            createIdempotencyKey.Trim();
 
         if (normalizedKey.Length > 128)
         {
@@ -89,10 +132,14 @@ internal sealed class PaymentIntentRepository :
                 nameof(createIdempotencyKey));
         }
 
-        var entry = _dbContext.PaymentIntents.Add(paymentIntent);
+        var entry =
+            _dbContext.PaymentIntents.Add(
+                paymentIntent);
 
-        entry.Property<string?>("CreateIdempotencyKey")
-            .CurrentValue = normalizedKey;
+        entry.Property<string?>(
+                "CreateIdempotencyKey")
+            .CurrentValue =
+                normalizedKey;
 
         return Task.CompletedTask;
     }

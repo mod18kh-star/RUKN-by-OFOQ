@@ -25,6 +25,7 @@ public sealed class Order :
     {
     }
 
+
     private Order(
         OrderId id,
         TenantId tenantId,
@@ -42,8 +43,7 @@ public sealed class Order :
                 nameof(tenantId));
         }
 
-        if (customerUserId.Value ==
-            Guid.Empty)
+        if (customerUserId.Value == Guid.Empty)
         {
             throw new ArgumentException(
                 "Customer user ID cannot be empty.",
@@ -64,8 +64,8 @@ public sealed class Order :
                 nameof(currency));
         }
 
-        TenantId =
-            tenantId;
+
+        TenantId = tenantId;
 
         _customerUserId =
             customerUserId.Value;
@@ -86,41 +86,55 @@ public sealed class Order :
             createdByUserId;
     }
 
+
     public TenantId TenantId { get; private set; }
+
 
     public UserId CustomerUserId =>
         UserId.From(
             _customerUserId);
 
+
     public CartId SourceCartId =>
         _sourceCartId;
+
 
     public CurrencyCode Currency =>
         CurrencyCode.Create(
             _currencyCode);
 
+
     public OrderStatus Status { get; private set; }
+
 
     public IReadOnlyCollection<OrderItem> Items =>
         _items.AsReadOnly();
+
 
     public int TotalQuantity =>
         _items.Sum(
             item =>
                 item.Quantity);
 
+
     public decimal TotalAmount =>
         _items.Sum(
             item =>
                 item.LineTotal);
 
+
     public DateTimeOffset CreatedAtUtc { get; private set; }
+
 
     public Guid? CreatedByUserId { get; private set; }
 
+
     public DateTimeOffset? UpdatedAtUtc { get; private set; }
 
+
     public Guid? UpdatedByUserId { get; private set; }
+
+
 
     public static Order Create(
         TenantId tenantId,
@@ -134,12 +148,14 @@ public sealed class Order :
         ArgumentNullException.ThrowIfNull(
             items);
 
+
         if (items.Count == 0)
         {
             throw new ArgumentException(
                 "An order must contain at least one item.",
                 nameof(items));
         }
+
 
         var order =
             new Order(
@@ -151,21 +167,25 @@ public sealed class Order :
                 createdAtUtc,
                 createdByUserId);
 
+
+
         var seenVariantIds =
             new HashSet<ProductVariantId>();
+
 
         foreach (var snapshot in items)
         {
             ArgumentNullException.ThrowIfNull(
                 snapshot);
 
-            if (snapshot.UnitPrice.Currency !=
-                currency)
+
+            if (snapshot.UnitPrice.Currency != currency)
             {
                 throw new ArgumentException(
                     "Every order item must use the order currency.",
                     nameof(items));
             }
+
 
             if (!seenVariantIds.Add(
                     snapshot.ProductVariantId))
@@ -175,6 +195,7 @@ public sealed class Order :
                     nameof(items));
             }
 
+
             order._items.Add(
                 OrderItem.Create(
                     tenantId,
@@ -182,6 +203,25 @@ public sealed class Order :
                     snapshot));
         }
 
+
         return order;
+    }
+
+
+
+    public void MarkPaid(
+        DateTimeOffset updatedAtUtc,
+        Guid? updatedByUserId = null)
+    {
+        Status =
+            OrderStatus.Paid;
+
+
+        UpdatedAtUtc =
+            updatedAtUtc;
+
+
+        UpdatedByUserId =
+            updatedByUserId;
     }
 }

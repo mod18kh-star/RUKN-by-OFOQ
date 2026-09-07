@@ -12,4 +12,9 @@ public sealed record PaymentIntentResponse(
     string Currency,
     string? ProviderReference,
     DateTimeOffset CreatedAtUtc,
-    bool IdempotentReplay);
+    bool IdempotentReplay)
+{
+    public string? ActionType { get; init; }
+
+    public string? ActionValue { get; init; }
+}

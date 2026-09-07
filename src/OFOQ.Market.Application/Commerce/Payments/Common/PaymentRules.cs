@@ -8,7 +8,8 @@ internal static class PaymentRules
 {
     public const int MaximumIdempotencyKeyLength = 128;
 
-    public static string NormalizeIdempotencyKey(string idempotencyKey)
+    public static string NormalizeIdempotencyKey(
+        string idempotencyKey)
     {
         if (string.IsNullOrWhiteSpace(idempotencyKey))
         {
@@ -17,7 +18,8 @@ internal static class PaymentRules
                 nameof(idempotencyKey));
         }
 
-        var normalized = idempotencyKey.Trim();
+        var normalized =
+            idempotencyKey.Trim();
 
         if (normalized.Length > MaximumIdempotencyKeyLength)
         {
@@ -41,7 +43,8 @@ internal static class PaymentRules
         }
     }
 
-    public static void EnsurePaymentCanAcceptAttempt(Payment? payment)
+    public static void EnsurePaymentCanAcceptAttempt(
+        Payment? payment)
     {
         if (payment?.Status == PaymentStatus.Succeeded)
         {
@@ -52,6 +55,14 @@ internal static class PaymentRules
         {
             throw new PaymentOrderNotAvailableException();
         }
+    }
+
+    public static bool IsProviderAttemptActive(
+        PaymentIntentStatus status)
+    {
+        return status is
+            PaymentIntentStatus.RequiresAction or
+            PaymentIntentStatus.Processing;
     }
 
     public static void EnsureMethodAvailable(
@@ -84,7 +95,8 @@ internal static class PaymentRules
         }
     }
 
-    public static bool IsRetryable(PaymentIntentStatus status)
+    public static bool IsRetryable(
+        PaymentIntentStatus status)
     {
         return status is
             PaymentIntentStatus.Failed or
@@ -109,6 +121,10 @@ internal static class PaymentRules
             intent.Currency.Value,
             intent.ProviderReference,
             intent.CreatedAtUtc,
-            isIdempotentReplay);
+            isIdempotentReplay)
+        {
+            ActionType = intent.ActionType,
+            ActionValue = intent.ActionValue
+        };
     }
 }

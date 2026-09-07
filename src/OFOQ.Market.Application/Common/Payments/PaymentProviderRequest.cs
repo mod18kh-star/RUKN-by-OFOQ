@@ -7,10 +7,19 @@ using OFOQ.Market.Domain.Tenancy;
 namespace OFOQ.Market.Application.Common.Payments;
 
 public sealed record PaymentProviderRequest(
+
     TenantId TenantId,
+
     PaymentId PaymentId,
+
     PaymentIntentId PaymentIntentId,
+
     OrderId OrderId,
+
     UserId CustomerUserId,
+
     TenantPaymentMethodId TenantPaymentMethodId,
-    Money Amount);
+
+    Money Amount,
+
+    string CurrencyCode);

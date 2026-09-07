@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using OFOQ.Market.Application.Common.Payments;
 using OFOQ.Market.Application.Common.Persistence;
 using OFOQ.Market.Application.Common.Security;
 
@@ -91,6 +92,7 @@ internal sealed class MarketApiFactory :
 
                 services.RemoveAll<
                     ICheckoutLockRepository>();
+
                 services.RemoveAll<
                     IPaymentRepository>();
 
@@ -106,7 +108,20 @@ internal sealed class MarketApiFactory :
                 services.RemoveAll<
                     IPaymentCreationLockRepository>();
 
-                                // Identity
+                services.RemoveAll<
+                    IPaymentStateLockRepository>();
+
+                services.RemoveAll<
+                    IPaymentWebhookLockRepository>();
+
+                // Payment providers
+                services.RemoveAll<
+                    IPaymentProvider>();
+
+                services.RemoveAll<
+                    IPaymentWebhookProvider>();
+
+                // Identity
                 services.RemoveAll<
                     IUserRepository>();
 
@@ -216,7 +231,7 @@ internal sealed class MarketApiFactory :
                     InMemoryProductVariantOptionValueRepository>();
 
                 // -------------------------------------------------
-                // Cart fakes
+                // Cart / order fakes
                 // -------------------------------------------------
 
                 services.AddSingleton<
@@ -236,6 +251,10 @@ internal sealed class MarketApiFactory :
                 services.AddScoped<
                     ICheckoutLockRepository,
                     InMemoryCheckoutLockRepository>();
+
+                // -------------------------------------------------
+                // Payment fakes
+                // -------------------------------------------------
 
                 services.AddSingleton<
                     InMemoryPaymentStore>();
@@ -268,6 +287,34 @@ internal sealed class MarketApiFactory :
                 services.AddScoped<
                     IPaymentCreationLockRepository,
                     InMemoryPaymentCreationLockRepository>();
+
+                services.AddScoped<
+                    IPaymentStateLockRepository,
+                    InMemoryPaymentStateLockRepository>();
+
+                services.AddScoped<
+                    IPaymentWebhookLockRepository,
+                    InMemoryPaymentWebhookLockRepository>();
+
+                // -------------------------------------------------
+                // Payment provider fake
+                // -------------------------------------------------
+
+                services.AddSingleton<
+                    FakePaymentProvider>();
+
+                services.AddSingleton<
+                    IPaymentProvider>(
+                        provider =>
+                            provider.GetRequiredService<
+                                FakePaymentProvider>());
+
+                services.AddSingleton<
+                    IPaymentWebhookProvider>(
+                        provider =>
+                            provider.GetRequiredService<
+                                FakePaymentProvider>());
+
                 // -------------------------------------------------
                 // User / identity fakes
                 // -------------------------------------------------

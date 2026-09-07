@@ -28,10 +28,12 @@ public sealed class PaymentHandlersTests
             setup.TenantId,
             setup.Now,
             setup.CustomerUserId.Value);
+
         capability.SuspendElectronicPayments(
             "test",
             setup.Now,
             setup.CustomerUserId.Value);
+
         setup.Capabilities.Item = capability;
 
         var handler = new GetAvailablePaymentMethodsHandler(
@@ -47,6 +49,7 @@ public sealed class PaymentHandlersTests
                 setup.CustomerUserId));
 
         var method = Assert.Single(result);
+
         Assert.Equal("manual", method.ProviderCode);
     }
 
@@ -54,10 +57,16 @@ public sealed class PaymentHandlersTests
     public async Task CreateIntent_SameIdempotencyKey_ReplaysSameIntent()
     {
         var setup = CreateSetup();
-        var method = CreateMethod(setup, PaymentMethodType.Electronic, "provider-a");
+
+        var method = CreateMethod(
+            setup,
+            PaymentMethodType.Electronic,
+            "provider-a");
+
         setup.Methods.Items.Add(method);
 
         var handler = CreateHandler(setup);
+
         var command = new CreatePaymentIntentCommand(
             setup.Order.Id,
             setup.CustomerUserId,
@@ -78,80 +87,132 @@ public sealed class PaymentHandlersTests
     public async Task CreateIntent_SameKeyForDifferentMethod_ThrowsConflict()
     {
         var setup = CreateSetup();
-        var firstMethod = CreateMethod(setup, PaymentMethodType.Electronic, "first");
-        var secondMethod = CreateMethod(setup, PaymentMethodType.Electronic, "second");
-        setup.Methods.Items.AddRange(new[] { firstMethod, secondMethod });
+
+        var firstMethod = CreateMethod(
+            setup,
+            PaymentMethodType.Electronic,
+            "first");
+
+        var secondMethod = CreateMethod(
+            setup,
+            PaymentMethodType.Electronic,
+            "second");
+
+        setup.Methods.Items.AddRange(
+            new[]
+            {
+                firstMethod,
+                secondMethod
+            });
 
         var handler = CreateHandler(setup);
 
-        await handler.HandleAsync(new CreatePaymentIntentCommand(
-            setup.Order.Id,
-            setup.CustomerUserId,
-            firstMethod.Id,
-            "reused-key"));
-
-        await Assert.ThrowsAsync<PaymentIdempotencyConflictException>(
-            () => handler.HandleAsync(new CreatePaymentIntentCommand(
+        await handler.HandleAsync(
+            new CreatePaymentIntentCommand(
                 setup.Order.Id,
                 setup.CustomerUserId,
-                secondMethod.Id,
-                "reused-key")));
+                firstMethod.Id,
+                "reused-key"));
+
+        await Assert.ThrowsAsync<PaymentIdempotencyConflictException>(
+            () => handler.HandleAsync(
+                new CreatePaymentIntentCommand(
+                    setup.Order.Id,
+                    setup.CustomerUserId,
+                    secondMethod.Id,
+                    "reused-key")));
     }
 
     [Fact]
     public async Task Retry_PendingIntent_IsRejected()
     {
         var setup = CreateSetup();
-        var method = CreateMethod(setup, PaymentMethodType.Electronic, "provider-a");
+
+        var method = CreateMethod(
+            setup,
+            PaymentMethodType.Electronic,
+            "provider-a");
+
         setup.Methods.Items.Add(method);
 
         var create = CreateHandler(setup);
-        var created = await create.HandleAsync(new CreatePaymentIntentCommand(
-            setup.Order.Id,
-            setup.CustomerUserId,
-            method.Id,
-            "create-key"));
+
+        var created = await create.HandleAsync(
+            new CreatePaymentIntentCommand(
+                setup.Order.Id,
+                setup.CustomerUserId,
+                method.Id,
+                "create-key"));
 
         var retry = CreateRetryHandler(setup);
 
         await Assert.ThrowsAsync<PaymentIntentNotRetryableException>(
-            () => retry.HandleAsync(new RetryPaymentIntentCommand(
-                created.PaymentIntentId,
-                setup.CustomerUserId,
-                "retry-key")));
+            () => retry.HandleAsync(
+                new RetryPaymentIntentCommand(
+                    created.PaymentIntentId,
+                    setup.CustomerUserId,
+                    "retry-key")));
     }
 
     [Fact]
     public async Task Retry_FailedIntent_CreatesNewIntentOnSamePayment()
     {
         var setup = CreateSetup();
-        var method = CreateMethod(setup, PaymentMethodType.Electronic, "provider-a");
+
+        var method = CreateMethod(
+            setup,
+            PaymentMethodType.Electronic,
+            "provider-a");
+
         setup.Methods.Items.Add(method);
 
         var create = CreateHandler(setup);
-        var created = await create.HandleAsync(new CreatePaymentIntentCommand(
-            setup.Order.Id,
-            setup.CustomerUserId,
-            method.Id,
-            "create-key"));
+
+        var created = await create.HandleAsync(
+            new CreatePaymentIntentCommand(
+                setup.Order.Id,
+                setup.CustomerUserId,
+                method.Id,
+                "create-key"));
 
         var source = Assert.Single(setup.Intents.Items).Intent;
-        source.MarkFailed(null, setup.Now.AddSeconds(1), setup.CustomerUserId.Value);
+
+        source.MarkFailed(
+            null,
+            setup.Now.AddSeconds(1),
+            setup.CustomerUserId.Value);
 
         var retry = CreateRetryHandler(setup);
-        var result = await retry.HandleAsync(new RetryPaymentIntentCommand(
-            created.PaymentIntentId,
-            setup.CustomerUserId,
-            "retry-key"));
 
-        Assert.NotEqual(created.PaymentIntentId, result.PaymentIntentId);
-        Assert.Equal(created.PaymentId, result.PaymentId);
-        Assert.Equal("Pending", result.Status);
-        Assert.Equal(PaymentIntentStatus.Failed, source.Status);
-        Assert.Equal(2, setup.Intents.Items.Count);
+        var result = await retry.HandleAsync(
+            new RetryPaymentIntentCommand(
+                created.PaymentIntentId,
+                setup.CustomerUserId,
+                "retry-key"));
+
+        Assert.NotEqual(
+            created.PaymentIntentId,
+            result.PaymentIntentId);
+
+        Assert.Equal(
+            created.PaymentId,
+            result.PaymentId);
+
+        Assert.Equal(
+            "Pending",
+            result.Status);
+
+        Assert.Equal(
+            PaymentIntentStatus.Failed,
+            source.Status);
+
+        Assert.Equal(
+            2,
+            setup.Intents.Items.Count);
     }
 
-    private static CreatePaymentIntentHandler CreateHandler(TestSetup setup)
+    private static CreatePaymentIntentHandler CreateHandler(
+        TestSetup setup)
     {
         return new CreatePaymentIntentHandler(
             setup.Payments,
@@ -165,7 +226,8 @@ public sealed class PaymentHandlersTests
             new FixedTimeProvider(setup.Now));
     }
 
-    private static RetryPaymentIntentHandler CreateRetryHandler(TestSetup setup)
+    private static RetryPaymentIntentHandler CreateRetryHandler(
+        TestSetup setup)
     {
         return new RetryPaymentIntentHandler(
             setup.Intents,
@@ -181,7 +243,15 @@ public sealed class PaymentHandlersTests
 
     private static TestSetup CreateSetup()
     {
-        var now = new DateTimeOffset(2026, 9, 6, 12, 0, 0, TimeSpan.Zero);
+        var now = new DateTimeOffset(
+            2026,
+            9,
+            6,
+            12,
+            0,
+            0,
+            TimeSpan.Zero);
+
         var tenantId = TenantId.New();
         var customerUserId = UserId.New();
 
@@ -205,6 +275,7 @@ public sealed class PaymentHandlersTests
             customerUserId.Value);
 
         var orders = new FakeOrderRepository();
+
         orders.Items.Add(order);
 
         return new TestSetup(
@@ -252,7 +323,12 @@ public sealed class PaymentHandlersTests
 
     private sealed class FakeCurrentTenant : ICurrentTenant
     {
-        public FakeCurrentTenant(TenantId tenantId) => TenantId = tenantId;
+        public FakeCurrentTenant(
+            TenantId tenantId)
+        {
+            TenantId = tenantId;
+        }
+
         public TenantId? TenantId { get; }
     }
 
@@ -260,135 +336,279 @@ public sealed class PaymentHandlersTests
     {
         public List<Order> Items { get; } = [];
 
-        public Task<Order?> GetByIdAsync(OrderId orderId, CancellationToken cancellationToken = default) =>
-            Task.FromResult(Items.SingleOrDefault(item => item.Id == orderId));
+        public Task<Order?> GetByIdAsync(
+            OrderId orderId,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(
+                Items.SingleOrDefault(
+                    item => item.Id == orderId));
+        }
 
-        public Task<Order?> GetBySourceCartIdAsync(CartId sourceCartId, CancellationToken cancellationToken = default) =>
-            Task.FromResult(Items.SingleOrDefault(item => item.SourceCartId == sourceCartId));
+        public Task<Order?> GetBySourceCartIdAsync(
+            CartId sourceCartId,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(
+                Items.SingleOrDefault(
+                    item => item.SourceCartId == sourceCartId));
+        }
 
-        public Task<Order?> GetByCheckoutIdempotencyKeyAsync(UserId customerUserId, string idempotencyKey, CancellationToken cancellationToken = default) =>
-            Task.FromResult<Order?>(null);
+        public Task<Order?> GetByCheckoutIdempotencyKeyAsync(
+            UserId customerUserId,
+            string idempotencyKey,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<Order?>(null);
+        }
 
-        public Task AddAsync(Order order, CancellationToken cancellationToken = default)
+        public Task AddAsync(
+            Order order,
+            CancellationToken cancellationToken = default)
         {
             Items.Add(order);
+
             return Task.CompletedTask;
         }
 
-        public Task AddAsync(Order order, string checkoutIdempotencyKey, CancellationToken cancellationToken = default) =>
-            AddAsync(order, cancellationToken);
+        public Task AddAsync(
+            Order order,
+            string checkoutIdempotencyKey,
+            CancellationToken cancellationToken = default)
+        {
+            return AddAsync(
+                order,
+                cancellationToken);
+        }
     }
 
     private sealed class FakePaymentRepository : IPaymentRepository
     {
         public List<Payment> Items { get; } = [];
 
-        public Task<Payment?> GetByIdAsync(PaymentId paymentId, CancellationToken cancellationToken = default) =>
-            Task.FromResult(Items.SingleOrDefault(item => item.Id == paymentId));
+        public Task<Payment?> GetByIdAsync(
+            PaymentId paymentId,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(
+                Items.SingleOrDefault(
+                    item => item.Id == paymentId));
+        }
 
-        public Task<Payment?> GetByOrderIdAsync(OrderId orderId, CancellationToken cancellationToken = default) =>
-            Task.FromResult(Items.SingleOrDefault(item => item.OrderId == orderId));
+        public Task<Payment?> GetByOrderIdAsync(
+            OrderId orderId,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(
+                Items.SingleOrDefault(
+                    item => item.OrderId == orderId));
+        }
 
-        public Task AddAsync(Payment payment, CancellationToken cancellationToken = default)
+        public Task AddAsync(
+            Payment payment,
+            CancellationToken cancellationToken = default)
         {
             Items.Add(payment);
+
             return Task.CompletedTask;
         }
     }
 
-    private sealed record IntentEntry(PaymentIntent Intent, string Key);
+    private sealed record IntentEntry(
+        PaymentIntent Intent,
+        string Key);
 
-    private sealed class FakePaymentIntentRepository : IPaymentIntentRepository
+    private sealed class FakePaymentIntentRepository
+        : IPaymentIntentRepository
     {
         public List<IntentEntry> Items { get; } = [];
 
-        public Task<PaymentIntent?> GetByIdAsync(PaymentIntentId paymentIntentId, CancellationToken cancellationToken = default) =>
-            Task.FromResult(Items.Select(item => item.Intent).SingleOrDefault(item => item.Id == paymentIntentId));
-
-        public Task<PaymentIntent?> GetByCreateIdempotencyKeyAsync(UserId customerUserId, string idempotencyKey, CancellationToken cancellationToken = default) =>
-            Task.FromResult(Items.SingleOrDefault(item =>
-                item.Intent.CustomerUserId == customerUserId &&
-                item.Key == idempotencyKey)?.Intent);
-
-        public Task<PaymentIntent?> GetByProviderReferenceAsync(TenantPaymentMethodId tenantPaymentMethodId, string providerReference, CancellationToken cancellationToken = default) =>
-            Task.FromResult(Items.Select(item => item.Intent).SingleOrDefault(item =>
-                item.TenantPaymentMethodId == tenantPaymentMethodId &&
-                item.ProviderReference == providerReference));
-
-        public Task AddAsync(PaymentIntent paymentIntent, string createIdempotencyKey, CancellationToken cancellationToken = default)
+        public Task<PaymentIntent?> GetByIdAsync(
+            PaymentIntentId paymentIntentId,
+            CancellationToken cancellationToken = default)
         {
-            Items.Add(new IntentEntry(paymentIntent, createIdempotencyKey));
+            return Task.FromResult(
+                Items
+                    .Select(item => item.Intent)
+                    .SingleOrDefault(
+                        item => item.Id == paymentIntentId));
+        }
+
+        public Task<PaymentIntent?> GetByCreateIdempotencyKeyAsync(
+            UserId customerUserId,
+            string idempotencyKey,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(
+                Items
+                    .SingleOrDefault(
+                        item =>
+                            item.Intent.CustomerUserId == customerUserId &&
+                            item.Key == idempotencyKey)
+                    ?.Intent);
+        }
+
+        public Task<PaymentIntent?> GetByProviderReferenceAsync(
+            TenantPaymentMethodId tenantPaymentMethodId,
+            string providerReference,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(
+                Items
+                    .Select(item => item.Intent)
+                    .SingleOrDefault(
+                        item =>
+                            item.TenantPaymentMethodId == tenantPaymentMethodId &&
+                            item.ProviderReference == providerReference));
+        }
+
+        public Task<IReadOnlyList<PaymentIntent>> GetByPaymentIdAsync(
+            PaymentId paymentId,
+            CancellationToken cancellationToken = default)
+        {
+            IReadOnlyList<PaymentIntent> intents =
+                Items
+                    .Select(item => item.Intent)
+                    .Where(
+                        item => item.PaymentId == paymentId)
+                    .OrderBy(
+                        item => item.CreatedAtUtc)
+                    .ToArray();
+
+            return Task.FromResult(intents);
+        }
+
+        public Task AddAsync(
+            PaymentIntent paymentIntent,
+            string createIdempotencyKey,
+            CancellationToken cancellationToken = default)
+        {
+            Items.Add(
+                new IntentEntry(
+                    paymentIntent,
+                    createIdempotencyKey));
+
             return Task.CompletedTask;
         }
     }
 
-    private sealed class FakePaymentMethodRepository : ITenantPaymentMethodRepository
+    private sealed class FakePaymentMethodRepository
+        : ITenantPaymentMethodRepository
     {
         public List<TenantPaymentMethod> Items { get; } = [];
 
-        public Task<TenantPaymentMethod?> GetByIdAsync(TenantPaymentMethodId paymentMethodId, CancellationToken cancellationToken = default) =>
-            Task.FromResult(Items.SingleOrDefault(item => item.Id == paymentMethodId));
+        public Task<TenantPaymentMethod?> GetByIdAsync(
+            TenantPaymentMethodId paymentMethodId,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(
+                Items.SingleOrDefault(
+                    item => item.Id == paymentMethodId));
+        }
 
-        public Task<IReadOnlyList<TenantPaymentMethod>> GetEnabledAsync(CurrencyCode currency, CancellationToken cancellationToken = default)
+        public Task<IReadOnlyList<TenantPaymentMethod>> GetEnabledAsync(
+            CurrencyCode currency,
+            CancellationToken cancellationToken = default)
         {
             IReadOnlyList<TenantPaymentMethod> result = Items
-                .Where(item => item.IsEnabled && item.Currency == currency)
+                .Where(
+                    item =>
+                        item.IsEnabled &&
+                        item.Currency == currency)
                 .ToArray();
+
             return Task.FromResult(result);
         }
 
-        public Task AddAsync(TenantPaymentMethod paymentMethod, CancellationToken cancellationToken = default)
+        public Task AddAsync(
+            TenantPaymentMethod paymentMethod,
+            CancellationToken cancellationToken = default)
         {
             Items.Add(paymentMethod);
+
             return Task.CompletedTask;
         }
     }
 
-    private sealed class FakeCapabilityRepository : ITenantPaymentCapabilityRepository
+    private sealed class FakeCapabilityRepository
+        : ITenantPaymentCapabilityRepository
     {
         public TenantPaymentCapability? Item { get; set; }
 
-        public Task<TenantPaymentCapability?> GetAsync(CancellationToken cancellationToken = default) =>
-            Task.FromResult(Item);
+        public Task<TenantPaymentCapability?> GetAsync(
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(Item);
+        }
 
-        public Task AddAsync(TenantPaymentCapability capability, CancellationToken cancellationToken = default)
+        public Task AddAsync(
+            TenantPaymentCapability capability,
+            CancellationToken cancellationToken = default)
         {
             Item = capability;
+
             return Task.CompletedTask;
         }
     }
 
-    private sealed class FakePaymentCreationLockRepository : IPaymentCreationLockRepository
+    private sealed class FakePaymentCreationLockRepository
+        : IPaymentCreationLockRepository
     {
         private readonly FakeOrderRepository _orders;
-        public FakePaymentCreationLockRepository(FakeOrderRepository orders) => _orders = orders;
+
+        public FakePaymentCreationLockRepository(
+            FakeOrderRepository orders)
+        {
+            _orders = orders;
+        }
 
         public Task<Order?> GetOrderForUpdateAsync(
             OrderId orderId,
             UserId customerUserId,
             string idempotencyKey,
-            CancellationToken cancellationToken = default) =>
-            _orders.GetByIdAsync(orderId, cancellationToken);
+            CancellationToken cancellationToken = default)
+        {
+            return _orders.GetByIdAsync(
+                orderId,
+                cancellationToken);
+        }
     }
 
-    private sealed class FakeTransactionExecutor : ITransactionExecutor
+    private sealed class FakeTransactionExecutor
+        : ITransactionExecutor
     {
         public Task<T> ExecuteAsync<T>(
             Func<CancellationToken, Task<T>> operation,
-            CancellationToken cancellationToken = default) =>
-            operation(cancellationToken);
+            CancellationToken cancellationToken = default)
+        {
+            return operation(cancellationToken);
+        }
     }
 
-    private sealed class FakeUnitOfWork : IUnitOfWork
+    private sealed class FakeUnitOfWork
+        : IUnitOfWork
     {
-        public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default) =>
-            Task.FromResult(1);
+        public Task<int> SaveChangesAsync(
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(1);
+        }
     }
 
-    private sealed class FixedTimeProvider : TimeProvider
+    private sealed class FixedTimeProvider
+        : TimeProvider
     {
         private readonly DateTimeOffset _now;
-        public FixedTimeProvider(DateTimeOffset now) => _now = now;
-        public override DateTimeOffset GetUtcNow() => _now;
+
+        public FixedTimeProvider(
+            DateTimeOffset now)
+        {
+            _now = now;
+        }
+
+        public override DateTimeOffset GetUtcNow()
+        {
+            return _now;
+        }
     }
 }

@@ -27,8 +27,10 @@ using OFOQ.Market.Application.Commerce.Carts.UpdateItemQuantity;
 using OFOQ.Market.Application.Commerce.Checkout;
 
 using OFOQ.Market.Application.Commerce.Payments.CreateIntent;
+using OFOQ.Market.Application.Commerce.Payments.ExecuteIntent;
 using OFOQ.Market.Application.Commerce.Payments.GetAvailableMethods;
 using OFOQ.Market.Application.Commerce.Payments.GetIntent;
+using OFOQ.Market.Application.Commerce.Payments.ProcessWebhook;
 using OFOQ.Market.Application.Commerce.Payments.RetryIntent;
 
 using OFOQ.Market.Application.Identity.LoginUser;
@@ -163,6 +165,12 @@ public static class DependencyInjection
 
         services.AddScoped<
             RetryPaymentIntentHandler>();
+
+        services.AddScoped<
+            ExecutePaymentIntentHandler>();
+
+        services.AddScoped<
+            ProcessPaymentWebhookHandler>();
 
         // -------------------------------------------------
         // Identity
