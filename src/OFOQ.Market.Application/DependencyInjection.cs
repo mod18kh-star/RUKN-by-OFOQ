@@ -31,6 +31,11 @@ using OFOQ.Market.Application.Commerce.Payments.ExecuteIntent;
 using OFOQ.Market.Application.Commerce.Payments.GetAvailableMethods;
 using OFOQ.Market.Application.Commerce.Payments.GetIntent;
 using OFOQ.Market.Application.Commerce.Payments.ProcessWebhook;
+using OFOQ.Market.Application.Commerce.Payments.ProviderAccounts.Create;
+using OFOQ.Market.Application.Commerce.Payments.ProviderAccounts.Credentials;
+using OFOQ.Market.Application.Commerce.Payments.ProviderAccounts.Get;
+using OFOQ.Market.Application.Commerce.Payments.ProviderAccounts.State;
+using OFOQ.Market.Application.Commerce.Payments.ProviderAccounts.Wallets;
 using OFOQ.Market.Application.Commerce.Payments.RetryIntent;
 
 using OFOQ.Market.Application.Identity.LoginUser;
@@ -171,6 +176,25 @@ public static class DependencyInjection
 
         services.AddScoped<
             ProcessPaymentWebhookHandler>();
+
+        // -------------------------------------------------
+        // Commerce / Payment Provider Accounts
+        // -------------------------------------------------
+
+        services.AddScoped<
+            CreatePaymentProviderAccountHandler>();
+
+        services.AddScoped<
+            GetPaymentProviderAccountsHandler>();
+
+        services.AddScoped<
+            UpdatePaymentProviderCredentialsHandler>();
+
+        services.AddScoped<
+            SetPaymentProviderAccountStateHandler>();
+
+        services.AddScoped<
+            SetPaymentWalletCapabilityHandler>();
 
         // -------------------------------------------------
         // Identity

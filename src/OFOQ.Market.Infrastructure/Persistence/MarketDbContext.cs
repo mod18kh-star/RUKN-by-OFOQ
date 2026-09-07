@@ -4,11 +4,11 @@ using OFOQ.Market.Application.Common.Persistence;
 using OFOQ.Market.Application.Common.Tenancy;
 using OFOQ.Market.Domain.Catalog;
 using OFOQ.Market.Domain.Commerce.Carts;
+using OFOQ.Market.Domain.Commerce.Orders;
+using OFOQ.Market.Domain.Commerce.Payments;
 using OFOQ.Market.Domain.Common;
 using OFOQ.Market.Domain.Identity;
 using OFOQ.Market.Domain.Tenancy;
-using OFOQ.Market.Domain.Commerce.Orders;
-using OFOQ.Market.Domain.Commerce.Payments;
 
 namespace OFOQ.Market.Infrastructure.Persistence;
 
@@ -98,10 +98,14 @@ public sealed class MarketDbContext :
         Set<CartItem>();
 
     public DbSet<Order> Orders =>
-    Set<Order>();
+        Set<Order>();
 
     public DbSet<OrderItem> OrderItems =>
         Set<OrderItem>();
+
+    // -------------------------------------------------
+    // Commerce / Payments
+    // -------------------------------------------------
 
     public DbSet<Payment> Payments =>
         Set<Payment>();
@@ -117,6 +121,17 @@ public sealed class MarketDbContext :
 
     public DbSet<TenantPaymentCapability> TenantPaymentCapabilities =>
         Set<TenantPaymentCapability>();
+
+    // -------------------------------------------------
+    // Commerce / Payment Provider Accounts
+    // -------------------------------------------------
+
+    public DbSet<TenantPaymentProviderAccount> TenantPaymentProviderAccounts =>
+        Set<TenantPaymentProviderAccount>();
+
+    public DbSet<TenantPaymentWalletCapability> TenantPaymentWalletCapabilities =>
+        Set<TenantPaymentWalletCapability>();
+
     // -------------------------------------------------
     // Save changes
     // -------------------------------------------------

@@ -1,10 +1,17 @@
 using System.IdentityModel.Tokens.Jwt;
+using OFOQ.Market.Api.Security.Authorization;
 using OFOQ.Market.Application.Commerce.Payments.Common;
 using OFOQ.Market.Application.Commerce.Payments.CreateIntent;
 using OFOQ.Market.Application.Commerce.Payments.ExecuteIntent;
 using OFOQ.Market.Application.Commerce.Payments.GetAvailableMethods;
 using OFOQ.Market.Application.Commerce.Payments.GetIntent;
 using OFOQ.Market.Application.Commerce.Payments.ProcessWebhook;
+using OFOQ.Market.Application.Commerce.Payments.ProviderAccounts.Common;
+using OFOQ.Market.Application.Commerce.Payments.ProviderAccounts.Create;
+using OFOQ.Market.Application.Commerce.Payments.ProviderAccounts.Credentials;
+using OFOQ.Market.Application.Commerce.Payments.ProviderAccounts.Get;
+using OFOQ.Market.Application.Commerce.Payments.ProviderAccounts.State;
+using OFOQ.Market.Application.Commerce.Payments.ProviderAccounts.Wallets;
 using OFOQ.Market.Application.Commerce.Payments.RetryIntent;
 using OFOQ.Market.Application.Common.Tenancy;
 using OFOQ.Market.Contracts.Commerce.Payments;
@@ -16,15 +23,23 @@ namespace OFOQ.Market.Api.Endpoints.Commerce;
 
 public static class PaymentEndpoints
 {
-    private const string IdempotencyHeaderName = "Idempotency-Key";
+    private const string IdempotencyHeaderName =
+        "Idempotency-Key";
 
     public static IEndpointRouteBuilder MapPaymentEndpoints(
         this IEndpointRouteBuilder endpoints)
     {
-        var group = endpoints
-            .MapGroup("/api/tenants/{tenantId:guid}")
-            .WithTags("Payments")
-            .RequireAuthorization();
+        var group =
+            endpoints
+                .MapGroup(
+                    "/api/tenants/{tenantId:guid}")
+                .WithTags(
+                    "Payments")
+                .RequireAuthorization();
+
+        // -------------------------------------------------
+        // Customer payment flow
+        // -------------------------------------------------
 
         group.MapGet(
             "/orders/{orderId:guid}/payments/methods",
@@ -46,6 +61,44 @@ public static class PaymentEndpoints
             "/payments/intents/{paymentIntentId:guid}/execute",
             ExecuteIntentAsync);
 
+        // -------------------------------------------------
+        // Provider accounts / privileged tenant configuration
+        // -------------------------------------------------
+
+        var providerAccounts =
+            group
+                .MapGroup(
+                    "/payments/provider-accounts")
+                .WithTags(
+                    "Payment Provider Accounts")
+                .RequireAuthorization(
+                    AuthorizationPolicies
+                        .TenantPaymentAdministration);
+
+        providerAccounts.MapGet(
+            "/",
+            GetProviderAccountsAsync);
+
+        providerAccounts.MapPost(
+            "/",
+            CreateProviderAccountAsync);
+
+        providerAccounts.MapPut(
+            "/{accountId:guid}/credentials",
+            UpdateProviderCredentialsAsync);
+
+        providerAccounts.MapPut(
+            "/{accountId:guid}/state",
+            SetProviderAccountStateAsync);
+
+        providerAccounts.MapPut(
+            "/{accountId:guid}/wallets",
+            SetWalletCapabilityAsync);
+
+        // -------------------------------------------------
+        // Provider webhooks
+        // -------------------------------------------------
+
         group.MapPost(
                 "/payments/webhooks/{tenantPaymentMethodId:guid}",
                 ProcessWebhookAsync)
@@ -54,13 +107,19 @@ public static class PaymentEndpoints
         return endpoints;
     }
 
+    // =================================================
+    // Customer payment methods
+    // =================================================
+
     private static async Task<IResult> GetAvailableMethodsAsync(
         Guid orderId,
         GetAvailablePaymentMethodsHandler handler,
         HttpContext httpContext,
         CancellationToken cancellationToken)
     {
-        var customerUserId = GetUserId(httpContext);
+        var customerUserId =
+            GetUserId(
+                httpContext);
 
         if (!customerUserId.HasValue)
         {
@@ -69,14 +128,19 @@ public static class PaymentEndpoints
 
         try
         {
-            var result = await handler.HandleAsync(
-                new GetAvailablePaymentMethodsQuery(
-                    OrderId.From(orderId),
-                    customerUserId.Value),
-                cancellationToken);
+            var result =
+                await handler.HandleAsync(
+                    new GetAvailablePaymentMethodsQuery(
+                        OrderId.From(
+                            orderId),
+                        customerUserId.Value),
+                    cancellationToken);
 
             return Results.Ok(
-                result.Select(MapMethod).ToArray());
+                result
+                    .Select(
+                        MapMethod)
+                    .ToArray());
         }
         catch (PaymentOrderNotAvailableException exception)
         {
@@ -96,9 +160,14 @@ public static class PaymentEndpoints
         }
         catch (ArgumentException exception)
         {
-            return BadRequest(exception.Message);
+            return BadRequest(
+                exception.Message);
         }
     }
+
+    // =================================================
+    // Create payment intent
+    // =================================================
 
     private static async Task<IResult> CreateIntentAsync(
         Guid orderId,
@@ -107,14 +176,18 @@ public static class PaymentEndpoints
         HttpContext httpContext,
         CancellationToken cancellationToken)
     {
-        var customerUserId = GetUserId(httpContext);
+        var customerUserId =
+            GetUserId(
+                httpContext);
 
         if (!customerUserId.HasValue)
         {
             return Results.Unauthorized();
         }
 
-        var idempotencyKey = GetIdempotencyKey(httpContext);
+        var idempotencyKey =
+            GetIdempotencyKey(
+                httpContext);
 
         if (idempotencyKey is null)
         {
@@ -123,21 +196,24 @@ public static class PaymentEndpoints
 
         try
         {
-            var result = await handler.HandleAsync(
-                new CreatePaymentIntentCommand(
-                    OrderId.From(orderId),
-                    customerUserId.Value,
-                    TenantPaymentMethodId.From(
-                        request.TenantPaymentMethodId),
-                    idempotencyKey),
-                cancellationToken);
+            var result =
+                await handler.HandleAsync(
+                    new CreatePaymentIntentCommand(
+                        OrderId.From(
+                            orderId),
+                        customerUserId.Value,
+                        TenantPaymentMethodId.From(
+                            request.TenantPaymentMethodId),
+                        idempotencyKey),
+                    cancellationToken);
 
             AddReplayHeader(
                 httpContext,
                 result);
 
             return Results.Ok(
-                MapIntent(result));
+                MapIntent(
+                    result));
         }
         catch (PaymentOrderNotAvailableException exception)
         {
@@ -175,9 +251,14 @@ public static class PaymentEndpoints
         }
         catch (ArgumentException exception)
         {
-            return BadRequest(exception.Message);
+            return BadRequest(
+                exception.Message);
         }
     }
+
+    // =================================================
+    // Get intent
+    // =================================================
 
     private static async Task<IResult> GetIntentAsync(
         Guid paymentIntentId,
@@ -185,7 +266,9 @@ public static class PaymentEndpoints
         HttpContext httpContext,
         CancellationToken cancellationToken)
     {
-        var customerUserId = GetUserId(httpContext);
+        var customerUserId =
+            GetUserId(
+                httpContext);
 
         if (!customerUserId.HasValue)
         {
@@ -194,14 +277,17 @@ public static class PaymentEndpoints
 
         try
         {
-            var result = await handler.HandleAsync(
-                new GetPaymentIntentQuery(
-                    PaymentIntentId.From(paymentIntentId),
-                    customerUserId.Value),
-                cancellationToken);
+            var result =
+                await handler.HandleAsync(
+                    new GetPaymentIntentQuery(
+                        PaymentIntentId.From(
+                            paymentIntentId),
+                        customerUserId.Value),
+                    cancellationToken);
 
             return Results.Ok(
-                MapIntent(result));
+                MapIntent(
+                    result));
         }
         catch (PaymentIntentNotFoundException exception)
         {
@@ -215,9 +301,14 @@ public static class PaymentEndpoints
         }
         catch (ArgumentException exception)
         {
-            return BadRequest(exception.Message);
+            return BadRequest(
+                exception.Message);
         }
     }
+
+    // =================================================
+    // Retry intent
+    // =================================================
 
     private static async Task<IResult> RetryIntentAsync(
         Guid paymentIntentId,
@@ -225,14 +316,18 @@ public static class PaymentEndpoints
         HttpContext httpContext,
         CancellationToken cancellationToken)
     {
-        var customerUserId = GetUserId(httpContext);
+        var customerUserId =
+            GetUserId(
+                httpContext);
 
         if (!customerUserId.HasValue)
         {
             return Results.Unauthorized();
         }
 
-        var idempotencyKey = GetIdempotencyKey(httpContext);
+        var idempotencyKey =
+            GetIdempotencyKey(
+                httpContext);
 
         if (idempotencyKey is null)
         {
@@ -241,19 +336,22 @@ public static class PaymentEndpoints
 
         try
         {
-            var result = await handler.HandleAsync(
-                new RetryPaymentIntentCommand(
-                    PaymentIntentId.From(paymentIntentId),
-                    customerUserId.Value,
-                    idempotencyKey),
-                cancellationToken);
+            var result =
+                await handler.HandleAsync(
+                    new RetryPaymentIntentCommand(
+                        PaymentIntentId.From(
+                            paymentIntentId),
+                        customerUserId.Value,
+                        idempotencyKey),
+                    cancellationToken);
 
             AddReplayHeader(
                 httpContext,
                 result);
 
             return Results.Ok(
-                MapIntent(result));
+                MapIntent(
+                    result));
         }
         catch (PaymentIntentNotFoundException exception)
         {
@@ -303,9 +401,14 @@ public static class PaymentEndpoints
         }
         catch (ArgumentException exception)
         {
-            return BadRequest(exception.Message);
+            return BadRequest(
+                exception.Message);
         }
     }
+
+    // =================================================
+    // Execute intent
+    // =================================================
 
     private static async Task<IResult> ExecuteIntentAsync(
         Guid paymentIntentId,
@@ -313,7 +416,9 @@ public static class PaymentEndpoints
         HttpContext httpContext,
         CancellationToken cancellationToken)
     {
-        var customerUserId = GetUserId(httpContext);
+        var customerUserId =
+            GetUserId(
+                httpContext);
 
         if (!customerUserId.HasValue)
         {
@@ -322,14 +427,17 @@ public static class PaymentEndpoints
 
         try
         {
-            var result = await handler.HandleAsync(
-                new ExecutePaymentIntentCommand(
-                    PaymentIntentId.From(paymentIntentId),
-                    customerUserId.Value),
-                cancellationToken);
+            var result =
+                await handler.HandleAsync(
+                    new ExecutePaymentIntentCommand(
+                        PaymentIntentId.From(
+                            paymentIntentId),
+                        customerUserId.Value),
+                    cancellationToken);
 
             return Results.Ok(
-                MapIntent(result));
+                MapIntent(
+                    result));
         }
         catch (PaymentIntentNotFoundException exception)
         {
@@ -397,9 +505,283 @@ public static class PaymentEndpoints
         }
         catch (ArgumentException exception)
         {
-            return BadRequest(exception.Message);
+            return BadRequest(
+                exception.Message);
         }
     }
+
+    // =================================================
+    // Provider accounts
+    // =================================================
+
+    private static async Task<IResult> GetProviderAccountsAsync(
+        GetPaymentProviderAccountsHandler handler,
+        HttpContext httpContext,
+        CancellationToken cancellationToken)
+    {
+        var actorUserId =
+            GetUserId(
+                httpContext);
+
+        if (!actorUserId.HasValue)
+        {
+            return Results.Unauthorized();
+        }
+
+        try
+        {
+            var result =
+                await handler.HandleAsync(
+                    new GetPaymentProviderAccountsQuery(),
+                    cancellationToken);
+
+            return Results.Ok(
+                result
+                    .Select(
+                        MapProviderAccount)
+                    .ToArray());
+        }
+        catch (TenantScopeViolationException)
+        {
+            return Results.Forbid();
+        }
+        catch (ArgumentException exception)
+        {
+            return BadRequest(
+                exception.Message);
+        }
+    }
+
+    private static async Task<IResult> CreateProviderAccountAsync(
+        CreatePaymentProviderAccountRequest request,
+        CreatePaymentProviderAccountHandler handler,
+        HttpContext httpContext,
+        CancellationToken cancellationToken)
+    {
+        var actorUserId =
+            GetUserId(
+                httpContext);
+
+        if (!actorUserId.HasValue)
+        {
+            return Results.Unauthorized();
+        }
+
+        if (!TryParseProviderEnvironment(
+                request.Environment,
+                out var environment))
+        {
+            return BadRequest(
+                "payment_provider_environment_invalid",
+                "Payment provider environment must be Sandbox or Production.");
+        }
+
+        try
+        {
+            var result =
+                await handler.HandleAsync(
+                    new CreatePaymentProviderAccountCommand(
+                        request.ProviderCode,
+                        request.DisplayName,
+                        environment,
+                        actorUserId.Value.Value),
+                    cancellationToken);
+
+            var tenantId =
+                httpContext.Request.RouteValues[
+                    "tenantId"];
+
+            return Results.Created(
+                $"/api/tenants/{tenantId}/payments/provider-accounts/{result.AccountId}",
+                MapProviderAccount(
+                    result));
+        }
+        catch (PaymentProviderAccountAlreadyExistsException exception)
+        {
+            return Conflict(
+                "payment_provider_account_already_exists",
+                exception.Message);
+        }
+        catch (TenantScopeViolationException)
+        {
+            return Results.Forbid();
+        }
+        catch (ArgumentException exception)
+        {
+            return BadRequest(
+                exception.Message);
+        }
+    }
+
+    private static async Task<IResult> UpdateProviderCredentialsAsync(
+        Guid accountId,
+        UpdatePaymentProviderCredentialsRequest request,
+        UpdatePaymentProviderCredentialsHandler handler,
+        HttpContext httpContext,
+        CancellationToken cancellationToken)
+    {
+        var actorUserId =
+            GetUserId(
+                httpContext);
+
+        if (!actorUserId.HasValue)
+        {
+            return Results.Unauthorized();
+        }
+
+        try
+        {
+            var result =
+                await handler.HandleAsync(
+                    new UpdatePaymentProviderCredentialsCommand(
+                        TenantPaymentProviderAccountId.From(
+                            accountId),
+                        request.Credentials,
+                        actorUserId.Value.Value),
+                    cancellationToken);
+
+            return Results.Ok(
+                MapProviderAccount(
+                    result));
+        }
+        catch (PaymentProviderAccountNotFoundException exception)
+        {
+            return NotFound(
+                "payment_provider_account_not_found",
+                exception.Message);
+        }
+        catch (TenantScopeViolationException)
+        {
+            return Results.Forbid();
+        }
+        catch (ArgumentException exception)
+        {
+            return BadRequest(
+                exception.Message);
+        }
+    }
+
+    private static async Task<IResult> SetProviderAccountStateAsync(
+        Guid accountId,
+        SetPaymentProviderAccountStateRequest request,
+        SetPaymentProviderAccountStateHandler handler,
+        HttpContext httpContext,
+        CancellationToken cancellationToken)
+    {
+        var actorUserId =
+            GetUserId(
+                httpContext);
+
+        if (!actorUserId.HasValue)
+        {
+            return Results.Unauthorized();
+        }
+
+        try
+        {
+            var result =
+                await handler.HandleAsync(
+                    new SetPaymentProviderAccountStateCommand(
+                        TenantPaymentProviderAccountId.From(
+                            accountId),
+                        request.Enabled,
+                        actorUserId.Value.Value),
+                    cancellationToken);
+
+            return Results.Ok(
+                MapProviderAccount(
+                    result));
+        }
+        catch (PaymentProviderAccountNotFoundException exception)
+        {
+            return NotFound(
+                "payment_provider_account_not_found",
+                exception.Message);
+        }
+        catch (PaymentProviderAccountAlreadyExistsException exception)
+        {
+            return Conflict(
+                "payment_provider_account_already_enabled",
+                exception.Message);
+        }
+        catch (TenantScopeViolationException)
+        {
+            return Results.Forbid();
+        }
+        catch (InvalidOperationException exception)
+        {
+            return Conflict(
+                "payment_provider_account_cannot_be_enabled",
+                exception.Message);
+        }
+        catch (ArgumentException exception)
+        {
+            return BadRequest(
+                exception.Message);
+        }
+    }
+
+    private static async Task<IResult> SetWalletCapabilityAsync(
+        Guid accountId,
+        SetPaymentWalletCapabilityRequest request,
+        SetPaymentWalletCapabilityHandler handler,
+        HttpContext httpContext,
+        CancellationToken cancellationToken)
+    {
+        var actorUserId =
+            GetUserId(
+                httpContext);
+
+        if (!actorUserId.HasValue)
+        {
+            return Results.Unauthorized();
+        }
+
+        if (!TryParseWalletType(
+                request.WalletType,
+                out var walletType))
+        {
+            return BadRequest(
+                "payment_wallet_type_invalid",
+                "Supported wallet types are ApplePay and SamsungPay.");
+        }
+
+        try
+        {
+            var result =
+                await handler.HandleAsync(
+                    new SetPaymentWalletCapabilityCommand(
+                        TenantPaymentProviderAccountId.From(
+                            accountId),
+                        walletType,
+                        request.Enabled,
+                        actorUserId.Value.Value),
+                    cancellationToken);
+
+            return Results.Ok(
+                MapWalletCapability(
+                    result));
+        }
+        catch (PaymentProviderAccountNotFoundException exception)
+        {
+            return NotFound(
+                "payment_provider_account_not_found",
+                exception.Message);
+        }
+        catch (TenantScopeViolationException)
+        {
+            return Results.Forbid();
+        }
+        catch (ArgumentException exception)
+        {
+            return BadRequest(
+                exception.Message);
+        }
+    }
+
+    // =================================================
+    // Webhook
+    // =================================================
 
     private static async Task<IResult> ProcessWebhookAsync(
         Guid tenantPaymentMethodId,
@@ -411,28 +793,34 @@ public static class PaymentEndpoints
         {
             byte[] rawBody;
 
-            using (var stream = new MemoryStream())
+            using (var stream =
+                   new MemoryStream())
             {
                 await httpContext.Request.Body.CopyToAsync(
                     stream,
                     cancellationToken);
 
-                rawBody = stream.ToArray();
+                rawBody =
+                    stream.ToArray();
             }
 
-            var headers = httpContext.Request.Headers
-                .ToDictionary(
-                    header => header.Key,
-                    header => header.Value.ToString(),
-                    StringComparer.OrdinalIgnoreCase);
+            var headers =
+                httpContext.Request.Headers
+                    .ToDictionary(
+                        header =>
+                            header.Key,
+                        header =>
+                            header.Value.ToString(),
+                        StringComparer.OrdinalIgnoreCase);
 
-            var result = await handler.HandleAsync(
-                new ProcessPaymentWebhookCommand(
-                    TenantPaymentMethodId.From(
-                        tenantPaymentMethodId),
-                    rawBody,
-                    headers),
-                cancellationToken);
+            var result =
+                await handler.HandleAsync(
+                    new ProcessPaymentWebhookCommand(
+                        TenantPaymentMethodId.From(
+                            tenantPaymentMethodId),
+                        rawBody,
+                        headers),
+                    cancellationToken);
 
             return Results.Ok(
                 new PaymentWebhookResponse(
@@ -483,16 +871,23 @@ public static class PaymentEndpoints
         }
         catch (ArgumentException exception)
         {
-            return BadRequest(exception.Message);
+            return BadRequest(
+                exception.Message);
         }
     }
+
+    // =================================================
+    // Authentication helpers
+    // =================================================
 
     private static UserId? GetUserId(
         HttpContext httpContext)
     {
-        var subject = httpContext.User
-            .FindFirst(JwtRegisteredClaimNames.Sub)?
-            .Value;
+        var subject =
+            httpContext.User
+                .FindFirst(
+                    JwtRegisteredClaimNames.Sub)?
+                .Value;
 
         if (!Guid.TryParse(
                 subject,
@@ -502,16 +897,80 @@ public static class PaymentEndpoints
             return null;
         }
 
-        return UserId.From(userId);
+        return UserId.From(
+            userId);
     }
+
+    // =================================================
+    // Parsing helpers
+    // =================================================
+
+    private static bool TryParseProviderEnvironment(
+        string? value,
+        out PaymentProviderEnvironment environment)
+    {
+        environment =
+            default;
+
+        if (string.IsNullOrWhiteSpace(
+                value))
+        {
+            return false;
+        }
+
+        if (!Enum.TryParse(
+                value.Trim(),
+                ignoreCase: true,
+                out environment))
+        {
+            return false;
+        }
+
+        return environment is
+            PaymentProviderEnvironment.Sandbox or
+            PaymentProviderEnvironment.Production;
+    }
+
+    private static bool TryParseWalletType(
+        string? value,
+        out PaymentWalletType walletType)
+    {
+        walletType =
+            PaymentWalletType.Unknown;
+
+        if (string.IsNullOrWhiteSpace(
+                value))
+        {
+            return false;
+        }
+
+        if (!Enum.TryParse(
+                value.Trim(),
+                ignoreCase: true,
+                out walletType))
+        {
+            return false;
+        }
+
+        return walletType is
+            PaymentWalletType.ApplePay or
+            PaymentWalletType.SamsungPay;
+    }
+
+    // =================================================
+    // Idempotency
+    // =================================================
 
     private static string? GetIdempotencyKey(
         HttpContext httpContext)
     {
-        var value = httpContext.Request.Headers[
-            IdempotencyHeaderName].ToString();
+        var value =
+            httpContext.Request.Headers[
+                    IdempotencyHeaderName]
+                .ToString();
 
-        return string.IsNullOrWhiteSpace(value)
+        return string.IsNullOrWhiteSpace(
+            value)
             ? null
             : value;
     }
@@ -523,9 +982,14 @@ public static class PaymentEndpoints
         if (result.IsIdempotentReplay)
         {
             httpContext.Response.Headers[
-                "Idempotency-Replayed"] = "true";
+                    "Idempotency-Replayed"] =
+                "true";
         }
     }
+
+    // =================================================
+    // Response mapping
+    // =================================================
 
     private static PaymentMethodResponse MapMethod(
         PaymentMethodResult result)
@@ -558,62 +1022,105 @@ public static class PaymentEndpoints
             result.CreatedAtUtc,
             result.IsIdempotentReplay)
         {
-            ActionType = result.ActionType?.ToString(),
-            ActionValue = result.ActionValue
+            ActionType =
+                result.ActionType?.ToString(),
+
+            ActionValue =
+                result.ActionValue
         };
     }
 
+    private static PaymentProviderAccountResponse MapProviderAccount(
+        PaymentProviderAccountResult result)
+    {
+        return new PaymentProviderAccountResponse(
+            result.AccountId,
+            result.ProviderCode,
+            result.DisplayName,
+            result.Environment,
+            result.IsEnabled,
+            result.HasCredentials,
+            result.CredentialsVersion,
+            result.CreatedAtUtc,
+            result.Wallets
+                .Select(
+                    MapWalletCapability)
+                .ToArray());
+    }
+
+    private static PaymentWalletCapabilityResponse MapWalletCapability(
+        PaymentWalletCapabilityResult result)
+    {
+        return new PaymentWalletCapabilityResponse(
+            result.CapabilityId,
+            result.WalletType,
+            result.IsEnabled);
+    }
+
+    // =================================================
+    // HTTP errors
+    // =================================================
+
     private static IResult IdempotencyRequired()
     {
-        return Results.BadRequest(new
-        {
-            code = "payment_idempotency_key_required",
-            message =
-                $"{IdempotencyHeaderName} header is required."
-        });
+        return Results.BadRequest(
+            new
+            {
+                code =
+                    "payment_idempotency_key_required",
+
+                message =
+                    $"{IdempotencyHeaderName} header is required."
+            });
     }
 
     private static IResult BadRequest(
         string message)
     {
-        return Results.BadRequest(new
-        {
-            code = "payment_validation_error",
-            message
-        });
+        return Results.BadRequest(
+            new
+            {
+                code =
+                    "payment_validation_error",
+
+                message
+            });
     }
 
     private static IResult BadRequest(
         string code,
         string message)
     {
-        return Results.BadRequest(new
-        {
-            code,
-            message
-        });
+        return Results.BadRequest(
+            new
+            {
+                code,
+                message
+            });
     }
 
     private static IResult NotFound(
         string code,
         string message)
     {
-        return Results.NotFound(new
-        {
-            code,
-            message
-        });
+        return Results.NotFound(
+            new
+            {
+                code,
+                message
+            });
     }
 
     private static IResult Conflict(
         string code,
         string message)
     {
-        return Results.Conflict(new
-        {
-            code,
-            message
-        });
+        return Results.Conflict(
+            new
+            {
+                code,
+                message
+            });
     }
 
     private static IResult BadGateway(

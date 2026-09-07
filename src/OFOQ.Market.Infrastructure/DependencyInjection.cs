@@ -1,11 +1,13 @@
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using OFOQ.Market.Application.Common.Payments;
 using OFOQ.Market.Application.Common.Persistence;
 using OFOQ.Market.Application.Common.Security;
 using OFOQ.Market.Infrastructure.Persistence;
 using OFOQ.Market.Infrastructure.Persistence.Repositories;
 using OFOQ.Market.Infrastructure.Security;
+using OFOQ.Market.Infrastructure.Security.Payments;
 
 namespace OFOQ.Market.Infrastructure;
 
@@ -126,6 +128,18 @@ public static class DependencyInjection
             PaymentWebhookLockRepository>();
 
         // -------------------------------------------------
+        // Payment Provider Accounts
+        // -------------------------------------------------
+
+        services.AddScoped<
+            ITenantPaymentProviderAccountRepository,
+            TenantPaymentProviderAccountRepository>();
+
+        services.AddScoped<
+            ITenantPaymentWalletCapabilityRepository,
+            TenantPaymentWalletCapabilityRepository>();
+
+        // -------------------------------------------------
         // Identity
         // -------------------------------------------------
 
@@ -164,6 +178,10 @@ public static class DependencyInjection
         services.AddSingleton<
             IMfaLoginChallengeTokenService,
             MfaLoginChallengeTokenService>();
+
+        services.AddSingleton<
+            IPaymentProviderCredentialProtector,
+            AesGcmPaymentProviderCredentialProtector>();
 
         // -------------------------------------------------
         // Persistence abstractions

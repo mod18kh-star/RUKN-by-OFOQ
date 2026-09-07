@@ -4,4 +4,7 @@ public static class AuthorizationPolicies
 {
     public const string TenantBackOffice =
         "tenant-backoffice";
+
+    public const string TenantPaymentAdministration =
+        "tenant-payment-administration";
 }

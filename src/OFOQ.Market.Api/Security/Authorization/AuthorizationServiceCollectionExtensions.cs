@@ -9,9 +9,6 @@ public static class AuthorizationServiceCollectionExtensions
     public static IServiceCollection AddOfoqAuthorization(
         this IServiceCollection services)
     {
-        /*
-         * One tenant context per HTTP request.
-         */
         services.AddScoped<
             CurrentTenantContext>();
 
@@ -33,11 +30,25 @@ public static class AuthorizationServiceCollectionExtensions
                         policy.AddRequirements(
                             TenantBackOfficeRequirement.Instance);
                     });
+
+                options.AddPolicy(
+                    AuthorizationPolicies.TenantPaymentAdministration,
+                    policy =>
+                    {
+                        policy.RequireAuthenticatedUser();
+
+                        policy.AddRequirements(
+                            TenantPaymentAdministrationRequirement.Instance);
+                    });
             });
 
         services.AddScoped<
             IAuthorizationHandler,
             TenantBackOfficeAuthorizationHandler>();
+
+        services.AddScoped<
+            IAuthorizationHandler,
+            TenantPaymentAdministrationAuthorizationHandler>();
 
         return services;
     }

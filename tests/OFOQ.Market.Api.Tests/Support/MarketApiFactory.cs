@@ -114,12 +114,22 @@ internal sealed class MarketApiFactory :
                 services.RemoveAll<
                     IPaymentWebhookLockRepository>();
 
+                // Payment provider account persistence
+                services.RemoveAll<
+                    ITenantPaymentProviderAccountRepository>();
+
+                services.RemoveAll<
+                    ITenantPaymentWalletCapabilityRepository>();
+
                 // Payment providers
                 services.RemoveAll<
                     IPaymentProvider>();
 
                 services.RemoveAll<
                     IPaymentWebhookProvider>();
+
+                services.RemoveAll<
+                    IPaymentProviderCredentialProtector>();
 
                 // Identity
                 services.RemoveAll<
@@ -295,6 +305,33 @@ internal sealed class MarketApiFactory :
                 services.AddScoped<
                     IPaymentWebhookLockRepository,
                     InMemoryPaymentWebhookLockRepository>();
+
+                // -------------------------------------------------
+                // Payment provider account fakes
+                // -------------------------------------------------
+
+                services.AddSingleton<
+                    InMemoryTenantPaymentProviderAccountStore>();
+
+                services.AddScoped<
+                    ITenantPaymentProviderAccountRepository,
+                    InMemoryTenantPaymentProviderAccountRepository>();
+
+                services.AddSingleton<
+                    InMemoryTenantPaymentWalletCapabilityStore>();
+
+                services.AddScoped<
+                    ITenantPaymentWalletCapabilityRepository,
+                    InMemoryTenantPaymentWalletCapabilityRepository>();
+
+                services.AddSingleton<
+                    FakePaymentProviderCredentialProtector>();
+
+                services.AddSingleton<
+                    IPaymentProviderCredentialProtector>(
+                        provider =>
+                            provider.GetRequiredService<
+                                FakePaymentProviderCredentialProtector>());
 
                 // -------------------------------------------------
                 // Payment provider fake
