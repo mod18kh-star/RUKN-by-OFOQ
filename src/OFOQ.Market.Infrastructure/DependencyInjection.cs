@@ -84,6 +84,18 @@ public static class DependencyInjection
             ProductVariantOptionValueRepository>();
 
         // -------------------------------------------------
+        // Commerce / Configuration
+        // -------------------------------------------------
+
+        services.AddScoped<
+            ITenantCommerceVerticalRepository,
+            TenantCommerceVerticalRepository>();
+
+        services.AddScoped<
+            ITenantCommerceCapabilityOverrideRepository,
+            TenantCommerceCapabilityOverrideRepository>();
+
+        // -------------------------------------------------
         // Commerce
         // -------------------------------------------------
 

@@ -40,6 +40,16 @@ public static class AuthorizationServiceCollectionExtensions
                         policy.AddRequirements(
                             TenantPaymentAdministrationRequirement.Instance);
                     });
+
+                options.AddPolicy(
+                    AuthorizationPolicies.TenantCommerceAdministration,
+                    policy =>
+                    {
+                        policy.RequireAuthenticatedUser();
+
+                        policy.AddRequirements(
+                            TenantCommerceAdministrationRequirement.Instance);
+                    });
             });
 
         services.AddScoped<
@@ -49,6 +59,10 @@ public static class AuthorizationServiceCollectionExtensions
         services.AddScoped<
             IAuthorizationHandler,
             TenantPaymentAdministrationAuthorizationHandler>();
+
+        services.AddScoped<
+            IAuthorizationHandler,
+            TenantCommerceAdministrationAuthorizationHandler>();
 
         return services;
     }

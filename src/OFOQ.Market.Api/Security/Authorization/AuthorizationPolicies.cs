@@ -7,4 +7,7 @@ public static class AuthorizationPolicies
 
     public const string TenantPaymentAdministration =
         "tenant-payment-administration";
+
+    public const string TenantCommerceAdministration =
+        "tenant-commerce-administration";
 }

@@ -83,6 +83,13 @@ internal sealed class MarketApiFactory :
                 services.RemoveAll<
                     IProductVariantOptionValueRepository>();
 
+                // Commerce configuration
+                services.RemoveAll<
+                    ITenantCommerceVerticalRepository>();
+
+                services.RemoveAll<
+                    ITenantCommerceCapabilityOverrideRepository>();
+
                 // Commerce
                 services.RemoveAll<
                     ICartRepository>();
@@ -239,6 +246,24 @@ internal sealed class MarketApiFactory :
                 services.AddScoped<
                     IProductVariantOptionValueRepository,
                     InMemoryProductVariantOptionValueRepository>();
+
+                // -------------------------------------------------
+                // Commerce configuration fakes
+                // -------------------------------------------------
+
+                services.AddSingleton<
+                    InMemoryTenantCommerceVerticalStore>();
+
+                services.AddScoped<
+                    ITenantCommerceVerticalRepository,
+                    InMemoryTenantCommerceVerticalRepository>();
+
+                services.AddSingleton<
+                    InMemoryTenantCommerceCapabilityOverrideStore>();
+
+                services.AddScoped<
+                    ITenantCommerceCapabilityOverrideRepository,
+                    InMemoryTenantCommerceCapabilityOverrideRepository>();
 
                 // -------------------------------------------------
                 // Cart / order fakes

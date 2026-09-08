@@ -26,6 +26,10 @@ using OFOQ.Market.Application.Commerce.Carts.UpdateItemQuantity;
 
 using OFOQ.Market.Application.Commerce.Checkout;
 
+using OFOQ.Market.Application.Commerce.Configuration.CapabilityOverrides;
+using OFOQ.Market.Application.Commerce.Configuration.ConfigureVertical;
+using OFOQ.Market.Application.Commerce.Configuration.GetProfile;
+
 using OFOQ.Market.Application.Commerce.Payments.CreateIntent;
 using OFOQ.Market.Application.Commerce.Payments.ExecuteIntent;
 using OFOQ.Market.Application.Commerce.Payments.GetAvailableMethods;
@@ -128,6 +132,19 @@ public static class DependencyInjection
 
         services.AddScoped<
             GetProductVariantsHandler>();
+
+        // -------------------------------------------------
+        // Commerce / Configuration
+        // -------------------------------------------------
+
+        services.AddScoped<
+            GetCommerceProfileHandler>();
+
+        services.AddScoped<
+            ConfigureCommerceVerticalHandler>();
+
+        services.AddScoped<
+            SetCommerceCapabilityOverrideHandler>();
 
         // -------------------------------------------------
         // Commerce / Cart

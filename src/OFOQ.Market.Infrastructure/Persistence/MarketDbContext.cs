@@ -4,6 +4,7 @@ using OFOQ.Market.Application.Common.Persistence;
 using OFOQ.Market.Application.Common.Tenancy;
 using OFOQ.Market.Domain.Catalog;
 using OFOQ.Market.Domain.Commerce.Carts;
+using OFOQ.Market.Domain.Commerce.Configuration;
 using OFOQ.Market.Domain.Commerce.Orders;
 using OFOQ.Market.Domain.Commerce.Payments;
 using OFOQ.Market.Domain.Common;
@@ -86,6 +87,17 @@ public sealed class MarketDbContext :
 
     public DbSet<ProductVariantOptionValue> ProductVariantOptionValues =>
         Set<ProductVariantOptionValue>();
+
+    // -------------------------------------------------
+    // Commerce / Configuration
+    // -------------------------------------------------
+
+    public DbSet<TenantCommerceVertical> TenantCommerceVerticals =>
+        Set<TenantCommerceVertical>();
+
+    public DbSet<TenantCommerceCapabilityOverride>
+        TenantCommerceCapabilityOverrides =>
+            Set<TenantCommerceCapabilityOverride>();
 
     // -------------------------------------------------
     // Commerce

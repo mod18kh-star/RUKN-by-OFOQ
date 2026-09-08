@@ -70,9 +70,9 @@ internal sealed class IntegrationTestDatabase
 
         await dbContext.Database.ExecuteSqlRawAsync(
             """
-                    TRUNCATE TABLE
-                commerce_cart_items,
-                commerce_carts,
+            TRUNCATE TABLE
+                commerce_tenant_capability_overrides,
+                commerce_tenant_verticals,
                 commerce_cart_items,
                 commerce_carts,
                 catalog_product_variant_option_values,
