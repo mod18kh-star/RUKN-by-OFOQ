@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Npgsql;
 using OFOQ.Market.Infrastructure.Persistence;
@@ -71,6 +71,9 @@ internal sealed class IntegrationTestDatabase
         await dbContext.Database.ExecuteSqlRawAsync(
             """
             TRUNCATE TABLE
+                commerce_merchant_verification_document_files,
+                commerce_merchant_verification_documents,
+                commerce_merchant_verification_profiles,
                 commerce_tenant_capability_overrides,
                 commerce_tenant_verticals,
                 commerce_cart_items,

@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.DataProtection;
+﻿using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using OFOQ.Market.Application.Common.Payments;
@@ -8,6 +8,7 @@ using OFOQ.Market.Infrastructure.Persistence;
 using OFOQ.Market.Infrastructure.Persistence.Repositories;
 using OFOQ.Market.Infrastructure.Security;
 using OFOQ.Market.Infrastructure.Security.Payments;
+using OFOQ.Market.Infrastructure.Security.Verification;
 
 namespace OFOQ.Market.Infrastructure;
 
@@ -94,6 +95,22 @@ public static class DependencyInjection
         services.AddScoped<
             ITenantCommerceCapabilityOverrideRepository,
             TenantCommerceCapabilityOverrideRepository>();
+
+        // -------------------------------------------------
+        // Commerce / Merchant Verification
+        // -------------------------------------------------
+
+        services.AddScoped<
+            IMerchantVerificationProfileRepository,
+            MerchantVerificationProfileRepository>();
+
+        services.AddScoped<
+            IMerchantVerificationDocumentRepository,
+            MerchantVerificationDocumentRepository>();
+
+        services.AddScoped<
+            IMerchantVerificationDocumentFileRepository,
+            MerchantVerificationDocumentFileRepository>();
 
         // -------------------------------------------------
         // Commerce
@@ -194,6 +211,10 @@ public static class DependencyInjection
         services.AddSingleton<
             IPaymentProviderCredentialProtector,
             AesGcmPaymentProviderCredentialProtector>();
+
+        services.AddSingleton<
+            IMerchantVerificationDocumentProtector,
+            AesGcmMerchantVerificationDocumentProtector>();
 
         // -------------------------------------------------
         // Persistence abstractions

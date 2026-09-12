@@ -1,4 +1,4 @@
-using System.Linq.Expressions;
+﻿using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
 using OFOQ.Market.Application.Common.Persistence;
 using OFOQ.Market.Application.Common.Tenancy;
@@ -7,6 +7,7 @@ using OFOQ.Market.Domain.Commerce.Carts;
 using OFOQ.Market.Domain.Commerce.Configuration;
 using OFOQ.Market.Domain.Commerce.Orders;
 using OFOQ.Market.Domain.Commerce.Payments;
+using OFOQ.Market.Domain.Commerce.Verification;
 using OFOQ.Market.Domain.Common;
 using OFOQ.Market.Domain.Identity;
 using OFOQ.Market.Domain.Tenancy;
@@ -98,6 +99,22 @@ public sealed class MarketDbContext :
     public DbSet<TenantCommerceCapabilityOverride>
         TenantCommerceCapabilityOverrides =>
             Set<TenantCommerceCapabilityOverride>();
+
+    // -------------------------------------------------
+    // Commerce / Merchant Verification
+    // -------------------------------------------------
+
+    public DbSet<MerchantVerificationProfile>
+        MerchantVerificationProfiles =>
+            Set<MerchantVerificationProfile>();
+
+    public DbSet<MerchantVerificationDocument>
+        MerchantVerificationDocuments =>
+            Set<MerchantVerificationDocument>();
+
+    public DbSet<MerchantVerificationDocumentFile>
+        MerchantVerificationDocumentFiles =>
+            Set<MerchantVerificationDocumentFile>();
 
     // -------------------------------------------------
     // Commerce
