@@ -69,6 +69,9 @@ public static class DependencyInjection
         services.AddScoped<
             IProductRepository,
             ProductRepository>();
+        services.AddScoped<
+            IProductAttributeValueRepository,
+            ProductAttributeValueRepository>();
 
         services.AddScoped<
             IProductVariantRepository,

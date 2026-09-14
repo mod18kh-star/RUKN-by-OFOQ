@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using OFOQ.Market.Application.Common.Persistence;
 using OFOQ.Market.Application.Common.Tenancy;
 using OFOQ.Market.Domain.Catalog;
+using OFOQ.Market.Domain.Catalog.Attributes;
 using OFOQ.Market.Domain.Commerce.Carts;
 using OFOQ.Market.Domain.Commerce.Configuration;
 using OFOQ.Market.Domain.Commerce.Orders;
@@ -92,6 +93,8 @@ public sealed class MarketDbContext :
 
     public DbSet<ProductVariantOptionValue> ProductVariantOptionValues =>
         Set<ProductVariantOptionValue>();
+    public DbSet<ProductAttributeValue> ProductAttributeValues =>
+        Set<ProductAttributeValue>();
 
     // -------------------------------------------------
     // Commerce / Configuration

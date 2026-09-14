@@ -294,6 +294,8 @@ app.MapCategoryEndpoints();
 
 app.MapProductEndpoints();
 
+app.MapProductAttributeEndpoints();
+
 app.MapProductOptionEndpoints();
 
 app.MapProductVariantEndpoints();
