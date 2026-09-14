@@ -236,6 +236,10 @@ public sealed class MerchantVerificationProfile :
         EnsureReviewable(
             reviewedByUserId);
 
+        var normalizedReviewNote =
+            NormalizeReviewNote(
+                reviewNote);
+
         Status =
             MerchantVerificationStatus.RequiresMoreInformation;
 
@@ -246,8 +250,7 @@ public sealed class MerchantVerificationProfile :
             reviewedByUserId;
 
         ReviewNote =
-            NormalizeReviewNote(
-                reviewNote);
+            normalizedReviewNote;
 
         Touch(
             reviewedAtUtc,
@@ -262,6 +265,10 @@ public sealed class MerchantVerificationProfile :
         EnsureReviewable(
             reviewedByUserId);
 
+        var normalizedReviewNote =
+            NormalizeReviewNote(
+                reviewNote);
+
         Status =
             MerchantVerificationStatus.Rejected;
 
@@ -275,8 +282,7 @@ public sealed class MerchantVerificationProfile :
             null;
 
         ReviewNote =
-            NormalizeReviewNote(
-                reviewNote);
+            normalizedReviewNote;
 
         Touch(
             reviewedAtUtc,
@@ -302,6 +308,13 @@ public sealed class MerchantVerificationProfile :
                 "Only a merchant verification profile under review can be verified.");
         }
 
+        var normalizedReviewNote =
+            string.IsNullOrWhiteSpace(
+                reviewNote)
+                ? null
+                : NormalizeReviewNote(
+                    reviewNote);
+
         Status =
             MerchantVerificationStatus.Verified;
 
@@ -318,11 +331,7 @@ public sealed class MerchantVerificationProfile :
             null;
 
         ReviewNote =
-            string.IsNullOrWhiteSpace(
-                reviewNote)
-                ? null
-                : NormalizeReviewNote(
-                    reviewNote);
+            normalizedReviewNote;
 
         Touch(
             verifiedAtUtc,

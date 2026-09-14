@@ -180,6 +180,19 @@ internal sealed class MerchantVerificationProfileConfiguration :
             .HasColumnName(
                 "updated_by_user_id");
 
+        /*
+         * PostgreSQL xmin is maintained automatically whenever
+         * the row is updated. Npgsql maps a uint row-version
+         * property to xmin and EF Core uses it for optimistic
+         * concurrency checks.
+         *
+         * A shadow property keeps this persistence concern out
+         * of the domain aggregate.
+         */
+        builder.Property<uint>(
+                "Version")
+            .IsRowVersion();
+
         // One verification profile represents the legal
         // identity/business identity of one tenant.
         builder.HasIndex(

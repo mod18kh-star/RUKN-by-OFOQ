@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using OFOQ.Market.Application.Common.Files;
 using OFOQ.Market.Application.Common.Payments;
 using OFOQ.Market.Application.Common.Persistence;
 using OFOQ.Market.Application.Common.Security;
@@ -141,6 +142,15 @@ internal sealed class MarketApiFactory :
                 // Identity
                 services.RemoveAll<
                     IUserRepository>();
+
+                services.RemoveAll<
+                    IPlatformUserRoleAssignmentRepository>();
+
+                services.RemoveAll<
+                    IMerchantVerificationReviewRepository>();
+
+                services.RemoveAll<
+                    IMerchantVerificationReviewQueryRepository>();
 
                 services.RemoveAll<
                     IUserMfaRepository>();
@@ -391,6 +401,37 @@ internal sealed class MarketApiFactory :
                                 InMemoryUserRepository>());
 
                 services.AddSingleton<
+                    InMemoryPlatformUserRoleAssignmentRepository>();
+
+                services.AddSingleton<
+                    IPlatformUserRoleAssignmentRepository>(
+                        provider =>
+                            provider.GetRequiredService<
+                                InMemoryPlatformUserRoleAssignmentRepository>());
+
+                // -------------------------------------------------
+                // Merchant verification review fakes
+                // -------------------------------------------------
+
+                services.AddSingleton<
+                    InMemoryMerchantVerificationReviewStore>();
+
+                services.AddScoped<
+                    InMemoryMerchantVerificationReviewRepository>();
+
+                services.AddScoped<
+                    IMerchantVerificationReviewRepository>(
+                        provider =>
+                            provider.GetRequiredService<
+                                InMemoryMerchantVerificationReviewRepository>());
+
+                services.AddScoped<
+                    IMerchantVerificationReviewQueryRepository>(
+                        provider =>
+                            provider.GetRequiredService<
+                                InMemoryMerchantVerificationReviewRepository>());
+
+                services.AddSingleton<
                     InMemoryUserMfaRepository>();
 
                 services.AddSingleton<
@@ -441,6 +482,89 @@ internal sealed class MarketApiFactory :
                 services.AddSingleton<
                     ITotpService,
                     FakeTotpService>();
+
+                services.AddSingleton<
+                    IUnitOfWork,
+                    FakeUnitOfWork>();
+
+                // -------------------------------------------------
+                // FINAL KYC TEST OVERRIDES
+                //
+                // Keep these registrations last. Merchant KYC API
+                // tests must never fall back to EF/PostgreSQL.
+                // -------------------------------------------------
+
+                services.RemoveAll<
+                    IMerchantVerificationProfileRepository>();
+
+                services.RemoveAll<
+                    IMerchantVerificationDocumentRepository>();
+
+                services.RemoveAll<
+                    IMerchantVerificationDocumentFileRepository>();
+
+                services.RemoveAll<
+                    IMerchantVerificationDocumentProtector>();
+
+                services.RemoveAll<
+                    IMerchantVerificationPrivateFileStore>();
+
+                services.RemoveAll<
+                    InMemoryMerchantVerificationSelfServiceStore>();
+
+                services.RemoveAll<
+                    InMemoryMerchantVerificationSelfServiceRepository>();
+
+                services.RemoveAll<
+                    FakeMerchantVerificationDocumentProtector>();
+
+                services.RemoveAll<
+                    InMemoryMerchantVerificationPrivateFileStore>();
+
+                services.RemoveAll<
+                    IUnitOfWork>();
+
+                services.AddSingleton<
+                    InMemoryMerchantVerificationSelfServiceStore>();
+
+                services.AddScoped<
+                    InMemoryMerchantVerificationSelfServiceRepository>();
+
+                services.AddScoped<
+                    IMerchantVerificationProfileRepository>(
+                        provider =>
+                            provider.GetRequiredService<
+                                InMemoryMerchantVerificationSelfServiceRepository>());
+
+                services.AddScoped<
+                    IMerchantVerificationDocumentRepository>(
+                        provider =>
+                            provider.GetRequiredService<
+                                InMemoryMerchantVerificationSelfServiceRepository>());
+
+                services.AddScoped<
+                    IMerchantVerificationDocumentFileRepository>(
+                        provider =>
+                            provider.GetRequiredService<
+                                InMemoryMerchantVerificationSelfServiceRepository>());
+
+                services.AddSingleton<
+                    FakeMerchantVerificationDocumentProtector>();
+
+                services.AddSingleton<
+                    IMerchantVerificationDocumentProtector>(
+                        provider =>
+                            provider.GetRequiredService<
+                                FakeMerchantVerificationDocumentProtector>());
+
+                services.AddSingleton<
+                    InMemoryMerchantVerificationPrivateFileStore>();
+
+                services.AddSingleton<
+                    IMerchantVerificationPrivateFileStore>(
+                        provider =>
+                            provider.GetRequiredService<
+                                InMemoryMerchantVerificationPrivateFileStore>());
 
                 services.AddSingleton<
                     IUnitOfWork,

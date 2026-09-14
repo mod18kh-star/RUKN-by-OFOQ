@@ -1,4 +1,6 @@
-﻿using Microsoft.AspNetCore.DataProtection;
+using OFOQ.Market.Infrastructure.Files.Verification;
+using OFOQ.Market.Application.Common.Files;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using OFOQ.Market.Application.Common.Payments;
@@ -112,6 +114,14 @@ public static class DependencyInjection
             IMerchantVerificationDocumentFileRepository,
             MerchantVerificationDocumentFileRepository>();
 
+        services.AddScoped<
+            IMerchantVerificationReviewRepository,
+            MerchantVerificationReviewRepository>();
+
+        services.AddScoped<
+            IMerchantVerificationReviewQueryRepository,
+            MerchantVerificationReviewQueryRepository>();
+
         // -------------------------------------------------
         // Commerce
         // -------------------------------------------------
@@ -188,6 +198,10 @@ public static class DependencyInjection
             IMfaLoginChallengeRepository,
             MfaLoginChallengeRepository>();
 
+        services.AddScoped<
+            IPlatformUserRoleAssignmentRepository,
+            PlatformUserRoleAssignmentRepository>();
+
         // -------------------------------------------------
         // Security
         // -------------------------------------------------
@@ -215,6 +229,10 @@ public static class DependencyInjection
         services.AddSingleton<
             IMerchantVerificationDocumentProtector,
             AesGcmMerchantVerificationDocumentProtector>();
+
+        services.AddSingleton<
+            IMerchantVerificationPrivateFileStore,
+            FileSystemMerchantVerificationPrivateFileStore>();
 
         // -------------------------------------------------
         // Persistence abstractions

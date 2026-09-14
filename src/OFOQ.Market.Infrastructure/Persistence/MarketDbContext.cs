@@ -67,6 +67,10 @@ public sealed class MarketDbContext :
     public DbSet<MfaLoginChallenge> MfaLoginChallenges =>
         Set<MfaLoginChallenge>();
 
+    public DbSet<PlatformUserRoleAssignment>
+        PlatformUserRoleAssignments =>
+            Set<PlatformUserRoleAssignment>();
+
     // -------------------------------------------------
     // Catalog
     // -------------------------------------------------

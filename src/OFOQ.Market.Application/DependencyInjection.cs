@@ -1,3 +1,5 @@
+using OFOQ.Market.Application.Commerce.Verification.Merchant;
+using OFOQ.Market.Application.Commerce.Verification.Review;
 using Microsoft.Extensions.DependencyInjection;
 
 using OFOQ.Market.Application.Catalog.Categories.CreateCategory;
@@ -213,6 +215,54 @@ public static class DependencyInjection
         services.AddScoped<
             SetPaymentWalletCapabilityHandler>();
 
+        // -------------------------------------------------
+        // Commerce / Merchant Verification Review
+        // -------------------------------------------------
+
+        services.AddScoped<
+            MerchantVerificationReviewConflictGuard>();
+
+        services.AddScoped<
+            GetMerchantVerificationReviewQueueHandler>();
+
+        services.AddScoped<
+            GetMerchantVerificationReviewDetailHandler>();
+
+        services.AddScoped<
+            StartMerchantVerificationReviewHandler>();
+
+        services.AddScoped<
+            RequestMoreInformationMerchantVerificationReviewHandler>();
+
+        services.AddScoped<
+            RejectMerchantVerificationReviewHandler>();
+
+        services.AddScoped<
+            VerifyMerchantVerificationReviewHandler>();
+        // -------------------------------------------------
+        // Commerce / Merchant Verification Self Service
+        // -------------------------------------------------
+
+        services.AddScoped<
+            GetMerchantVerificationSelfServiceHandler>();
+
+        services.AddScoped<
+            UpsertMerchantVerificationProfileHandler>();
+
+        services.AddScoped<
+            UpsertMerchantVerificationDocumentHandler>();
+
+        services.AddScoped<
+            UploadMerchantVerificationFileHandler>();
+
+        services.AddScoped<
+            SubmitMerchantVerificationHandler>();
+
+        services.AddScoped<
+            OpenMerchantVerificationOwnFileHandler>();
+
+        services.AddScoped<
+            OpenMerchantVerificationReviewFileHandler>();
         // -------------------------------------------------
         // Identity
         // -------------------------------------------------
