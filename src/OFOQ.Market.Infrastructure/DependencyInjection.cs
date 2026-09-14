@@ -112,6 +112,10 @@ public static class DependencyInjection
             IMerchantVerificationDocumentFileRepository,
             MerchantVerificationDocumentFileRepository>();
 
+        services.AddScoped<
+            IMerchantVerificationReviewRepository,
+            MerchantVerificationReviewRepository>();
+
         // -------------------------------------------------
         // Commerce
         // -------------------------------------------------
@@ -187,6 +191,10 @@ public static class DependencyInjection
         services.AddScoped<
             IMfaLoginChallengeRepository,
             MfaLoginChallengeRepository>();
+
+        services.AddScoped<
+            IPlatformUserRoleAssignmentRepository,
+            PlatformUserRoleAssignmentRepository>();
 
         // -------------------------------------------------
         // Security

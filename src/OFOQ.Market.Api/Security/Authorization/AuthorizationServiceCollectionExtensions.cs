@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using OFOQ.Market.Api.Security.Tenancy;
 using OFOQ.Market.Application.Common.Tenancy;
 
@@ -50,6 +50,16 @@ public static class AuthorizationServiceCollectionExtensions
                         policy.AddRequirements(
                             TenantCommerceAdministrationRequirement.Instance);
                     });
+
+                options.AddPolicy(
+                    AuthorizationPolicies.PlatformMerchantVerificationReview,
+                    policy =>
+                    {
+                        policy.RequireAuthenticatedUser();
+
+                        policy.AddRequirements(
+                            PlatformMerchantVerificationReviewRequirement.Instance);
+                    });
             });
 
         services.AddScoped<
@@ -63,6 +73,10 @@ public static class AuthorizationServiceCollectionExtensions
         services.AddScoped<
             IAuthorizationHandler,
             TenantCommerceAdministrationAuthorizationHandler>();
+
+        services.AddScoped<
+            IAuthorizationHandler,
+            PlatformMerchantVerificationReviewAuthorizationHandler>();
 
         return services;
     }
