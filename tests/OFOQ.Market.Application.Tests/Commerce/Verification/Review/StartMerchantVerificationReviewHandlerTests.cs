@@ -1,4 +1,4 @@
-﻿using OFOQ.Market.Application.Commerce.Verification.Review;
+using OFOQ.Market.Application.Commerce.Verification.Review;
 using OFOQ.Market.Application.Common.Persistence;
 using OFOQ.Market.Domain.Commerce.Verification;
 using OFOQ.Market.Domain.Identity;
@@ -231,6 +231,63 @@ public sealed class StartMerchantVerificationReviewHandlerTests
             repository.SaveChangesCallCount);
     }
 
+    [Fact]
+    public async Task HandleAsync_WhenConcurrentUpdateOccurs_PropagatesConcurrencyConflict()
+    {
+        var now =
+            new DateTimeOffset(
+                2026,
+                9,
+                14,
+                12,
+                45,
+                0,
+                TimeSpan.Zero);
+
+        var principalUserId =
+            UserId.New();
+
+        var reviewerUserId =
+            UserId.New();
+
+        var profile =
+            CreateSubmittedProfile(
+                principalUserId,
+                now.AddHours(-1));
+
+        var concurrencyException =
+            new MerchantVerificationReviewConcurrencyException();
+
+        var repository =
+            new FakeReviewRepository
+            {
+                Profile = profile,
+                SaveChangesException =
+                    concurrencyException
+            };
+
+        var handler =
+            CreateHandler(
+                repository,
+                now);
+
+        var thrownException =
+            await Assert.ThrowsAsync<
+                MerchantVerificationReviewConcurrencyException>(
+                () =>
+                    handler.HandleAsync(
+                        new StartMerchantVerificationReviewCommand(
+                            profile.Id,
+                            reviewerUserId)));
+
+        Assert.Same(
+            concurrencyException,
+            thrownException);
+
+        Assert.Equal(
+            1,
+            repository.SaveChangesCallCount);
+    }
     private static StartMerchantVerificationReviewHandler
         CreateHandler(
             FakeReviewRepository repository,
@@ -277,6 +334,9 @@ public sealed class StartMerchantVerificationReviewHandlerTests
 
         public bool HasActiveMembership { get; init; }
 
+        public Exception?
+            SaveChangesException { get; init; }
+
         public int SaveChangesCallCount { get; private set; }
 
         public Task<MerchantVerificationProfile?>
@@ -312,6 +372,11 @@ public sealed class StartMerchantVerificationReviewHandlerTests
                 CancellationToken cancellationToken = default)
         {
             SaveChangesCallCount++;
+
+            if (SaveChangesException is not null)
+            {
+                throw SaveChangesException;
+            }
 
             return Task.FromResult(
                 1);

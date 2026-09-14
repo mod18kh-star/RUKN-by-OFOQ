@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
+using OFOQ.Market.Application.Commerce.Verification.Review;
 using OFOQ.Market.Application.Common.Persistence;
 using OFOQ.Market.Application.Common.Tenancy;
 using OFOQ.Market.Domain.Commerce.Verification;
@@ -113,7 +114,7 @@ internal sealed class MerchantVerificationReviewRepository :
                 cancellationToken);
     }
 
-    public Task<int>
+    public async Task<int>
         SaveChangesAsync(
             CancellationToken cancellationToken = default)
     {
@@ -128,10 +129,23 @@ internal sealed class MerchantVerificationReviewRepository :
          *
          * MarketDbContext.EnforceTenantWriteScope therefore remains
          * the final protection against cross-tenant writes.
+         *
+         * The profile is protected by PostgreSQL xmin optimistic
+         * concurrency. If another reviewer updates the same row
+         * after it was loaded, EF Core raises a concurrency error
+         * instead of silently overwriting that change.
          */
-        return _reviewContext
-            .SaveChangesAsync(
-                cancellationToken);
+        try
+        {
+            return await _reviewContext
+                .SaveChangesAsync(
+                    cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException exception)
+        {
+            throw new MerchantVerificationReviewConcurrencyException(
+                exception);
+        }
     }
 
     public async ValueTask DisposeAsync()

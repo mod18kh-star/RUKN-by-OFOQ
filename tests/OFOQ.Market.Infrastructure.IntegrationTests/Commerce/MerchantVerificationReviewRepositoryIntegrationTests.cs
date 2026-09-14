@@ -1,5 +1,6 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using OFOQ.Market.Application.Commerce.Verification.Review;
 using OFOQ.Market.Application.Common.Persistence;
 using OFOQ.Market.Domain.Commerce.Verification;
 using OFOQ.Market.Domain.Identity;
@@ -261,6 +262,116 @@ public sealed class MerchantVerificationReviewRepositoryIntegrationTests
         }
     }
 
+    [Fact]
+    public async Task SaveChangesAsync_ConcurrentReviewers_SecondWriterIsRejected()
+    {
+        await _database.ResetAsync();
+
+        var seed =
+            await CreateSubmittedVerificationSeedAsync(
+                "Concurrent Review Store");
+
+        /*
+         * Both reviewers load the same Submitted version before
+         * either one saves. This reproduces the important race:
+         *
+         * Reviewer A: read Submitted
+         * Reviewer B: read Submitted
+         * Reviewer A: save UnderReview
+         * Reviewer B: tries to save its stale version
+         */
+        await using var firstReviewScope =
+            CreateReviewRepositoryScope();
+
+        await using var secondReviewScope =
+            CreateReviewRepositoryScope();
+
+        var firstProfile =
+            await firstReviewScope
+                .Repository
+                .GetProfileByIdAsync(
+                    seed.Profile.Id);
+
+        var secondProfile =
+            await secondReviewScope
+                .Repository
+                .GetProfileByIdAsync(
+                    seed.Profile.Id);
+
+        Assert.NotNull(
+            firstProfile);
+
+        Assert.NotNull(
+            secondProfile);
+
+        Assert.Equal(
+            MerchantVerificationStatus.Submitted,
+            firstProfile!.Status);
+
+        Assert.Equal(
+            MerchantVerificationStatus.Submitted,
+            secondProfile!.Status);
+
+        var firstReviewStartedAtUtc =
+            DateTimeOffset.UtcNow;
+
+        firstProfile.StartReview(
+            firstReviewStartedAtUtc,
+            seed.ReviewerUser.Id.Value);
+
+        secondProfile.StartReview(
+            firstReviewStartedAtUtc.AddMilliseconds(1),
+            seed.ReviewerUser.Id.Value);
+
+        var firstAffectedRows =
+            await firstReviewScope
+                .Repository
+                .SaveChangesAsync();
+
+        Assert.True(
+            firstAffectedRows > 0);
+
+        var concurrencyException =
+            await Assert.ThrowsAsync<
+                MerchantVerificationReviewConcurrencyException>(
+                () =>
+                    secondReviewScope
+                        .Repository
+                        .SaveChangesAsync());
+
+        Assert.Contains(
+            "changed by another operation",
+            concurrencyException.Message,
+            StringComparison.OrdinalIgnoreCase);
+
+        /*
+         * Verify the winning review remains intact and the stale
+         * second writer did not overwrite it.
+         */
+        await using var verificationContext =
+            _database.CreateContext(
+                new TestCurrentTenant(
+                    seed.Tenant.Id));
+
+        var storedProfile =
+            await verificationContext
+                .MerchantVerificationProfiles
+                .SingleAsync(
+                    profile =>
+                        profile.Id ==
+                        seed.Profile.Id);
+
+        Assert.Equal(
+            MerchantVerificationStatus.UnderReview,
+            storedProfile.Status);
+
+        Assert.Equal(
+            seed.ReviewerUser.Id.Value,
+            storedProfile.ReviewedByUserId);
+
+        Assert.NotNull(
+            storedProfile.ReviewStartedAtUtc);
+    }
     [Fact]
     public async Task SaveChangesAsync_WithoutLoadedTenantScopedProfile_IsRejected()
     {
