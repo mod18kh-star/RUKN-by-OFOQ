@@ -119,6 +119,125 @@ public sealed class OrderPersistenceTests
             60m,
             item.LineTotal);
     }
+    [Fact]
+    public async Task OrderLifecycle_RoundTrip_PreservesTrackingAndTimeline()
+    {
+        await _database.ResetAsync();
+
+        var seed =
+            await SeedCheckoutDataAsync(
+                "Lifecycle Store");
+
+        var order =
+            CreateOrder(
+                seed);
+
+        var now =
+            DateTimeOffset.UtcNow;
+
+        order.MarkPaid(
+            now.AddMinutes(1),
+            seed.CustomerUserId.Value);
+
+        order.Confirm(
+            now.AddMinutes(2),
+            seed.CustomerUserId.Value);
+
+        order.StartProcessing(
+            now.AddMinutes(3),
+            seed.CustomerUserId.Value);
+
+        order.MarkReadyToShip(
+            now.AddMinutes(4),
+            seed.CustomerUserId.Value);
+
+        order.MarkShipped(
+            "Aramex",
+            "TRACK-2026-001",
+            now.AddMinutes(5),
+            seed.CustomerUserId.Value);
+
+        await using (var tenantContext =
+                     _database.CreateContext(
+                         new TestCurrentTenant(
+                             seed.TenantId)))
+        {
+            tenantContext.Orders.Add(
+                order);
+
+            await tenantContext.SaveChangesAsync();
+        }
+
+        await using var verificationContext =
+            _database.CreateContext(
+                new TestCurrentTenant(
+                    seed.TenantId));
+
+        var saved =
+            await verificationContext
+                .Orders
+                .Include("_items")
+                .Include("_timeline")
+                .SingleAsync(
+                    item =>
+                        item.Id ==
+                        order.Id);
+
+        Assert.Equal(
+            OrderStatus.Processing,
+            saved.Status);
+
+        Assert.Equal(
+            OrderFulfillmentStatus.Shipped,
+            saved.FulfillmentStatus);
+
+        Assert.Equal(
+            "Aramex",
+            saved.ShippingCarrier);
+
+        Assert.Equal(
+            "TRACK-2026-001",
+            saved.TrackingNumber);
+
+        Assert.NotNull(
+            saved.ShippedAtUtc);
+
+        Assert.Equal(
+            6,
+            saved.Timeline.Count);
+
+        var timeline =
+            saved.Timeline
+                .OrderBy(
+                    entry =>
+                        entry.CreatedAtUtc)
+                .ToArray();
+
+        Assert.Equal(
+            OrderTimelineEntryType.Created,
+            timeline[0].Type);
+
+        Assert.Equal(
+            OrderTimelineEntryType.PaymentReceived,
+            timeline[1].Type);
+
+        Assert.Equal(
+            OrderTimelineEntryType.Confirmed,
+            timeline[2].Type);
+
+        Assert.Equal(
+            OrderTimelineEntryType.ProcessingStarted,
+            timeline[3].Type);
+
+        Assert.Equal(
+            OrderTimelineEntryType.ReadyToShip,
+            timeline[4].Type);
+
+        Assert.Equal(
+            OrderTimelineEntryType.Shipped,
+            timeline[5].Type);
+    }
+
 
     [Fact]
     public async Task OrderQuery_ReturnsOnlyCurrentTenantOrders()

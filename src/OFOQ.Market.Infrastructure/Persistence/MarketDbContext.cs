@@ -1,4 +1,4 @@
-﻿using System.Linq.Expressions;
+using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
 using OFOQ.Market.Application.Common.Persistence;
 using OFOQ.Market.Application.Common.Tenancy;
@@ -135,6 +135,12 @@ public sealed class MarketDbContext :
 
     public DbSet<OrderItem> OrderItems =>
         Set<OrderItem>();
+
+    public DbSet<OrderTimelineEntry> OrderTimelineEntries =>
+        Set<OrderTimelineEntry>();
+
+    public DbSet<InventoryMovement> InventoryMovements =>
+        Set<InventoryMovement>();
 
     // -------------------------------------------------
     // Commerce / Payments

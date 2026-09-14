@@ -3,7 +3,7 @@ using OFOQ.Market.Domain.Tenancy;
 
 namespace OFOQ.Market.Domain.Catalog;
 
-public sealed class ProductVariant :
+public sealed partial class ProductVariant :
     Entity<ProductVariantId>,
     ITenantDataScoped,
     IAuditable,

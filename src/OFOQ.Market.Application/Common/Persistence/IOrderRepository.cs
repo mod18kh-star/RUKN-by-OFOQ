@@ -18,10 +18,10 @@ public interface IOrderRepository
         UserId customerUserId,
         string idempotencyKey,
         CancellationToken cancellationToken = default);
-
     Task AddAsync(
         Order order,
         CancellationToken cancellationToken = default);
+
 
     Task AddAsync(
         Order order,

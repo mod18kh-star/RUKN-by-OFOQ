@@ -99,6 +99,12 @@ internal sealed class MarketApiFactory :
                     IOrderRepository>();
 
                 services.RemoveAll<
+                    IMerchantOrderQueryRepository>();
+
+                services.RemoveAll<
+                    IOrderStateLockRepository>();
+
+                services.RemoveAll<
                     ICheckoutLockRepository>();
 
                 services.RemoveAll<
@@ -292,6 +298,14 @@ internal sealed class MarketApiFactory :
                 services.AddScoped<
                     IOrderRepository,
                     InMemoryOrderRepository>();
+
+                services.AddScoped<
+                    IMerchantOrderQueryRepository,
+                    InMemoryMerchantOrderQueryRepository>();
+
+                services.AddScoped<
+                    IOrderStateLockRepository,
+                    InMemoryOrderStateLockRepository>();
 
                 services.AddScoped<
                     ICheckoutLockRepository,

@@ -27,6 +27,7 @@ using OFOQ.Market.Application.Commerce.Carts.RemoveItem;
 using OFOQ.Market.Application.Commerce.Carts.UpdateItemQuantity;
 
 using OFOQ.Market.Application.Commerce.Checkout;
+using OFOQ.Market.Application.Commerce.Orders.Cancel;
 
 using OFOQ.Market.Application.Commerce.Configuration.CapabilityOverrides;
 using OFOQ.Market.Application.Commerce.Configuration.ConfigureVertical;
@@ -173,6 +174,17 @@ public static class DependencyInjection
 
         services.AddScoped<
             CheckoutHandler>();
+
+        services.AddScoped<
+            CancelOrderHandler>();
+        services.AddScoped<
+            OFOQ.Market.Application.Commerce.Orders.Queries.GetMerchantOrdersHandler>();
+
+        services.AddScoped<
+            OFOQ.Market.Application.Commerce.Orders.Queries.GetMerchantOrderByIdHandler>();
+
+        services.AddScoped<
+            OFOQ.Market.Application.Commerce.Orders.State.ChangeOrderLifecycleHandler>();
 
         // -------------------------------------------------
         // Commerce / Payments

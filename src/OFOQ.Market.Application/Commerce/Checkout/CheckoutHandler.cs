@@ -322,19 +322,6 @@ public sealed class CheckoutHandler
                     var now =
                         _timeProvider.GetUtcNow();
 
-                    foreach (var item in
-                             cart.Items)
-                    {
-                        var variant =
-                            variantsById[
-                                item.ProductVariantId];
-
-                        variant.DecreaseStock(
-                            item.Quantity,
-                            now,
-                            command.CustomerUserId.Value);
-                    }
-
                     var order =
                         Order.Create(
                             _currentTenant.TenantId!.Value,
@@ -344,6 +331,33 @@ public sealed class CheckoutHandler
                             snapshots,
                             now,
                             command.CustomerUserId.Value);
+
+                    foreach (var item in
+                             cart.Items)
+                    {
+                        var variant =
+                            variantsById[
+                                item.ProductVariantId];
+
+                        var quantityBefore =
+                            variant.Inventory.Quantity;
+
+                        variant.DecreaseStock(
+                            item.Quantity,
+                            now,
+                            command.CustomerUserId.Value);
+
+                        var quantityAfter =
+                            variant.Inventory.Quantity;
+
+                        order.RecordCheckoutInventoryDeduction(
+                            item.ProductId,
+                            variant.Id,
+                            quantityBefore,
+                            quantityAfter,
+                            now,
+                            command.CustomerUserId.Value);
+                    }
 
                     await _orderRepository
                         .AddAsync(

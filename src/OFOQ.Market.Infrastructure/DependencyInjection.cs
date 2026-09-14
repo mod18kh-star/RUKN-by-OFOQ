@@ -135,8 +135,16 @@ public static class DependencyInjection
             OrderRepository>();
 
         services.AddScoped<
+            IMerchantOrderQueryRepository,
+            MerchantOrderQueryRepository>();
+
+        services.AddScoped<
             ICheckoutLockRepository,
             CheckoutLockRepository>();
+
+        services.AddScoped<
+            IOrderStateLockRepository,
+            OrderStateLockRepository>();
 
         services.AddScoped<
             IPaymentRepository,

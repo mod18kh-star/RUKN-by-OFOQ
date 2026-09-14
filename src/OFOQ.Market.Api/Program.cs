@@ -310,6 +310,8 @@ app.MapCartEndpoints();
 
 app.MapCheckoutEndpoints();
 
+app.MapOrderEndpoints();
+
 app.MapPaymentEndpoints();
 
 app.Run();

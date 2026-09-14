@@ -26,6 +26,8 @@ internal sealed class OrderRepository :
         return _dbContext
             .Orders
             .Include("_items")
+            .Include("_timeline")
+            .Include("_inventoryMovements")
             .SingleOrDefaultAsync(
                 order =>
                     order.Id ==
@@ -40,6 +42,8 @@ internal sealed class OrderRepository :
         return _dbContext
             .Orders
             .Include("_items")
+            .Include("_timeline")
+            .Include("_inventoryMovements")
             .SingleOrDefaultAsync(
                 order =>
                     EF.Property<CartId>(
@@ -69,6 +73,8 @@ internal sealed class OrderRepository :
         return _dbContext
             .Orders
             .Include("_items")
+            .Include("_timeline")
+            .Include("_inventoryMovements")
             .SingleOrDefaultAsync(
                 order =>
                     EF.Property<Guid>(
@@ -81,7 +87,6 @@ internal sealed class OrderRepository :
                     idempotencyKey,
                 cancellationToken);
     }
-
     public Task AddAsync(
         Order order,
         CancellationToken cancellationToken = default)
@@ -96,8 +101,6 @@ internal sealed class OrderRepository :
                 cancellationToken)
             .AsTask();
     }
-
-
     public Task AddAsync(
         Order order,
         string checkoutIdempotencyKey,

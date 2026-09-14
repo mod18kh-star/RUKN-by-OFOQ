@@ -54,6 +54,31 @@ public sealed class CheckoutHandlerTests
             5,
             setup.Variant.Inventory.Quantity);
 
+        var createdOrder =
+            Assert.Single(
+                setup.OrderRepository.Items)
+                .Order;
+
+        var movement =
+            Assert.Single(
+                createdOrder.InventoryMovements);
+
+        Assert.Equal(
+            InventoryMovementType.CheckoutDeduction,
+            movement.Type);
+
+        Assert.Equal(
+            8,
+            movement.QuantityBefore);
+
+        Assert.Equal(
+            5,
+            movement.QuantityAfter);
+
+        Assert.Equal(
+            -3,
+            movement.QuantityDelta);
+
         Assert.Single(
             setup.OrderRepository.Items);
 
@@ -202,6 +227,14 @@ public sealed class CheckoutHandlerTests
             0,
             setup.Variant.Inventory.Quantity);
 
+        var untrackedOrder =
+            Assert.Single(
+                setup.OrderRepository.Items)
+                .Order;
+
+        Assert.Empty(
+            untrackedOrder.InventoryMovements);
+
         Assert.Equal(
             CartStatus.Converted,
             setup.Cart.Status);
@@ -226,6 +259,31 @@ public sealed class CheckoutHandlerTests
         Assert.Equal(
             0,
             setup.Variant.Inventory.Quantity);
+
+        var oversellOrder =
+            Assert.Single(
+                setup.OrderRepository.Items)
+                .Order;
+
+        var oversellMovement =
+            Assert.Single(
+                oversellOrder.InventoryMovements);
+
+        Assert.Equal(
+            InventoryMovementType.CheckoutDeduction,
+            oversellMovement.Type);
+
+        Assert.Equal(
+            1,
+            oversellMovement.QuantityBefore);
+
+        Assert.Equal(
+            0,
+            oversellMovement.QuantityAfter);
+
+        Assert.Equal(
+            -1,
+            oversellMovement.QuantityDelta);
 
         Assert.Equal(
             CartStatus.Converted,

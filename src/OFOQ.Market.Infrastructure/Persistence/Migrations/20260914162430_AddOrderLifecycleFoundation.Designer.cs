@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using OFOQ.Market.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using OFOQ.Market.Infrastructure.Persistence;
 namespace OFOQ.Market.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(MarketDbContext))]
-    partial class MarketDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260914162430_AddOrderLifecycleFoundation")]
+    partial class AddOrderLifecycleFoundation
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -783,75 +786,6 @@ namespace OFOQ.Market.Infrastructure.Persistence.Migrations
                             t.HasCheckConstraint("ck_commerce_verticals_primary_enabled", "NOT is_primary OR is_enabled");
 
                             t.HasCheckConstraint("ck_commerce_verticals_vertical_type", "vertical_type > 0");
-                        });
-                });
-
-            modelBuilder.Entity("OFOQ.Market.Domain.Commerce.Orders.InventoryMovement", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<DateTimeOffset>("CreatedAtUtc")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at_utc");
-
-                    b.Property<Guid?>("CreatedByUserId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("created_by_user_id");
-
-                    b.Property<Guid>("OrderId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("order_id");
-
-                    b.Property<Guid>("ProductId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("product_id");
-
-                    b.Property<Guid>("ProductVariantId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("product_variant_id");
-
-                    b.Property<int>("QuantityAfter")
-                        .HasColumnType("integer")
-                        .HasColumnName("quantity_after");
-
-                    b.Property<int>("QuantityBefore")
-                        .HasColumnType("integer")
-                        .HasColumnName("quantity_before");
-
-                    b.Property<int>("QuantityDelta")
-                        .HasColumnType("integer")
-                        .HasColumnName("quantity_delta");
-
-                    b.Property<Guid>("TenantId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("tenant_id");
-
-                    b.Property<int>("Type")
-                        .HasColumnType("integer")
-                        .HasColumnName("type");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("TenantId", "OrderId", "CreatedAtUtc")
-                        .HasDatabaseName("ix_catalog_inventory_movements_order_created");
-
-                    b.HasIndex("TenantId", "ProductId", "ProductVariantId");
-
-                    b.HasIndex("TenantId", "OrderId", "ProductVariantId", "Type")
-                        .IsUnique()
-                        .HasDatabaseName("ux_catalog_inventory_movements_order_variant_type");
-
-                    b.ToTable("catalog_inventory_movements", null, t =>
-                        {
-                            t.HasCheckConstraint("ck_catalog_inventory_movements_after_nonnegative", "quantity_after >= 0");
-
-                            t.HasCheckConstraint("ck_catalog_inventory_movements_before_nonnegative", "quantity_before >= 0");
-
-                            t.HasCheckConstraint("ck_catalog_inventory_movements_delta_consistent", "quantity_after - quantity_before = quantity_delta");
-
-                            t.HasCheckConstraint("ck_catalog_inventory_movements_delta_nonzero", "quantity_delta <> 0");
                         });
                 });
 
@@ -2616,32 +2550,6 @@ namespace OFOQ.Market.Infrastructure.Persistence.Migrations
                         .HasConstraintName("fk_commerce_verticals_tenants");
                 });
 
-            modelBuilder.Entity("OFOQ.Market.Domain.Commerce.Orders.InventoryMovement", b =>
-                {
-                    b.HasOne("OFOQ.Market.Domain.Tenancy.Tenant", null)
-                        .WithMany()
-                        .HasForeignKey("TenantId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
-                        .HasConstraintName("fk_catalog_inventory_movements_tenants");
-
-                    b.HasOne("OFOQ.Market.Domain.Commerce.Orders.Order", null)
-                        .WithMany("_inventoryMovements")
-                        .HasForeignKey("TenantId", "OrderId")
-                        .HasPrincipalKey("TenantId", "Id")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_catalog_inventory_movements_orders");
-
-                    b.HasOne("OFOQ.Market.Domain.Catalog.ProductVariant", null)
-                        .WithMany()
-                        .HasForeignKey("TenantId", "ProductId", "ProductVariantId")
-                        .HasPrincipalKey("TenantId", "ProductId", "Id")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
-                        .HasConstraintName("fk_catalog_inventory_movements_variants");
-                });
-
             modelBuilder.Entity("OFOQ.Market.Domain.Commerce.Orders.Order", b =>
                 {
                     b.HasOne("OFOQ.Market.Domain.Tenancy.Tenant", null)
@@ -2935,8 +2843,6 @@ namespace OFOQ.Market.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("OFOQ.Market.Domain.Commerce.Orders.Order", b =>
                 {
-                    b.Navigation("_inventoryMovements");
-
                     b.Navigation("_items");
 
                     b.Navigation("_timeline");

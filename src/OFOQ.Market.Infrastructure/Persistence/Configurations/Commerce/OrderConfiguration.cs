@@ -71,6 +71,14 @@ public sealed class OrderConfiguration :
             order =>
                 order.Items);
 
+        builder.Ignore(
+            order =>
+                order.Timeline);
+
+        builder.Ignore(
+            order =>
+                order.InventoryMovements);
+
         builder.Property<Guid>(
                 "_customerUserId")
             .HasColumnName(
@@ -117,6 +125,58 @@ public sealed class OrderConfiguration :
                 "status")
             .HasConversion<int>()
             .IsRequired();
+
+        builder.Property(
+                order =>
+                    order.FulfillmentStatus)
+            .HasColumnName(
+                "fulfillment_status")
+            .HasConversion<int>()
+            .HasDefaultValue(
+                OrderFulfillmentStatus.Unfulfilled)
+            .IsRequired();
+
+        builder.Property(
+                order =>
+                    order.ShippingCarrier)
+            .HasColumnName(
+                "shipping_carrier")
+            .HasMaxLength(
+                120);
+
+        builder.Property(
+                order =>
+                    order.TrackingNumber)
+            .HasColumnName(
+                "tracking_number")
+            .HasMaxLength(
+                200);
+
+        builder.Property(
+                order =>
+                    order.CancellationReason)
+            .HasColumnName(
+                "cancellation_reason")
+            .HasMaxLength(
+                500);
+
+        builder.Property(
+                order =>
+                    order.ShippedAtUtc)
+            .HasColumnName(
+                "shipped_at_utc");
+
+        builder.Property(
+                order =>
+                    order.DeliveredAtUtc)
+            .HasColumnName(
+                "delivered_at_utc");
+
+        builder.Property(
+                order =>
+                    order.CancelledAtUtc)
+            .HasColumnName(
+                "cancelled_at_utc");
 
         builder.Property(
                 order =>
@@ -242,6 +302,59 @@ public sealed class OrderConfiguration :
 
         builder.Navigation(
                 "_items")
+            .UsePropertyAccessMode(
+                PropertyAccessMode.Field);
+
+        builder.HasMany<OrderTimelineEntry>(
+                "_timeline")
+            .WithOne()
+            .HasForeignKey(
+                entry =>
+                    new
+                    {
+                        entry.TenantId,
+                        entry.OrderId
+                    })
+            .HasPrincipalKey(
+                order =>
+                    new
+                    {
+                        order.TenantId,
+                        order.Id
+                    })
+            .OnDelete(
+                DeleteBehavior.Cascade)
+            .HasConstraintName(
+                "fk_commerce_order_timeline_orders");
+
+        builder.Navigation(
+                "_timeline")
+            .UsePropertyAccessMode(
+                PropertyAccessMode.Field);
+        builder.HasMany<InventoryMovement>(
+                "_inventoryMovements")
+            .WithOne()
+            .HasForeignKey(
+                movement =>
+                    new
+                    {
+                        movement.TenantId,
+                        movement.OrderId
+                    })
+            .HasPrincipalKey(
+                order =>
+                    new
+                    {
+                        order.TenantId,
+                        order.Id
+                    })
+            .OnDelete(
+                DeleteBehavior.Cascade)
+            .HasConstraintName(
+                "fk_catalog_inventory_movements_orders");
+
+        builder.Navigation(
+                "_inventoryMovements")
             .UsePropertyAccessMode(
                 PropertyAccessMode.Field);
     }
