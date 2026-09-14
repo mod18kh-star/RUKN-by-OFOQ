@@ -1,3 +1,4 @@
+using OFOQ.Market.Application.Commerce.Verification.Review;
 using Microsoft.Extensions.DependencyInjection;
 
 using OFOQ.Market.Application.Catalog.Categories.CreateCategory;
@@ -213,6 +214,30 @@ public static class DependencyInjection
         services.AddScoped<
             SetPaymentWalletCapabilityHandler>();
 
+        // -------------------------------------------------
+        // Commerce / Merchant Verification Review
+        // -------------------------------------------------
+
+        services.AddScoped<
+            MerchantVerificationReviewConflictGuard>();
+
+        services.AddScoped<
+            GetMerchantVerificationReviewQueueHandler>();
+
+        services.AddScoped<
+            GetMerchantVerificationReviewDetailHandler>();
+
+        services.AddScoped<
+            StartMerchantVerificationReviewHandler>();
+
+        services.AddScoped<
+            RequestMoreInformationMerchantVerificationReviewHandler>();
+
+        services.AddScoped<
+            RejectMerchantVerificationReviewHandler>();
+
+        services.AddScoped<
+            VerifyMerchantVerificationReviewHandler>();
         // -------------------------------------------------
         // Identity
         // -------------------------------------------------

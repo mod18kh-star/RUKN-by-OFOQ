@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using OFOQ.Market.Application.Common.Payments;
@@ -115,6 +115,10 @@ public static class DependencyInjection
         services.AddScoped<
             IMerchantVerificationReviewRepository,
             MerchantVerificationReviewRepository>();
+
+        services.AddScoped<
+            IMerchantVerificationReviewQueryRepository,
+            MerchantVerificationReviewQueryRepository>();
 
         // -------------------------------------------------
         // Commerce

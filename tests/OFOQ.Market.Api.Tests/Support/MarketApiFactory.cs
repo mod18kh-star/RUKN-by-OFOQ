@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -144,6 +144,12 @@ internal sealed class MarketApiFactory :
 
                 services.RemoveAll<
                     IPlatformUserRoleAssignmentRepository>();
+
+                services.RemoveAll<
+                    IMerchantVerificationReviewRepository>();
+
+                services.RemoveAll<
+                    IMerchantVerificationReviewQueryRepository>();
 
                 services.RemoveAll<
                     IUserMfaRepository>();
@@ -401,6 +407,28 @@ internal sealed class MarketApiFactory :
                         provider =>
                             provider.GetRequiredService<
                                 InMemoryPlatformUserRoleAssignmentRepository>());
+
+                // -------------------------------------------------
+                // Merchant verification review fakes
+                // -------------------------------------------------
+
+                services.AddSingleton<
+                    InMemoryMerchantVerificationReviewStore>();
+
+                services.AddScoped<
+                    InMemoryMerchantVerificationReviewRepository>();
+
+                services.AddScoped<
+                    IMerchantVerificationReviewRepository>(
+                        provider =>
+                            provider.GetRequiredService<
+                                InMemoryMerchantVerificationReviewRepository>());
+
+                services.AddScoped<
+                    IMerchantVerificationReviewQueryRepository>(
+                        provider =>
+                            provider.GetRequiredService<
+                                InMemoryMerchantVerificationReviewRepository>());
 
                 services.AddSingleton<
                     InMemoryUserMfaRepository>();

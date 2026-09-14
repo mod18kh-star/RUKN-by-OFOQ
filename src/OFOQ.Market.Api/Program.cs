@@ -300,6 +300,8 @@ app.MapProductVariantEndpoints();
 
 app.MapCommerceConfigurationEndpoints();
 
+app.MapPlatformMerchantVerificationReviewEndpoints();
+
 app.MapCartEndpoints();
 
 app.MapCheckoutEndpoints();
