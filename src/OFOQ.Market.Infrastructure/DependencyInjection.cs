@@ -1,3 +1,5 @@
+using OFOQ.Market.Infrastructure.Files.Verification;
+using OFOQ.Market.Application.Common.Files;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -227,6 +229,10 @@ public static class DependencyInjection
         services.AddSingleton<
             IMerchantVerificationDocumentProtector,
             AesGcmMerchantVerificationDocumentProtector>();
+
+        services.AddSingleton<
+            IMerchantVerificationPrivateFileStore,
+            FileSystemMerchantVerificationPrivateFileStore>();
 
         // -------------------------------------------------
         // Persistence abstractions

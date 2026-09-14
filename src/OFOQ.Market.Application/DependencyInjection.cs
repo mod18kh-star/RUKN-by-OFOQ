@@ -1,3 +1,4 @@
+using OFOQ.Market.Application.Commerce.Verification.Merchant;
 using OFOQ.Market.Application.Commerce.Verification.Review;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -238,6 +239,30 @@ public static class DependencyInjection
 
         services.AddScoped<
             VerifyMerchantVerificationReviewHandler>();
+        // -------------------------------------------------
+        // Commerce / Merchant Verification Self Service
+        // -------------------------------------------------
+
+        services.AddScoped<
+            GetMerchantVerificationSelfServiceHandler>();
+
+        services.AddScoped<
+            UpsertMerchantVerificationProfileHandler>();
+
+        services.AddScoped<
+            UpsertMerchantVerificationDocumentHandler>();
+
+        services.AddScoped<
+            UploadMerchantVerificationFileHandler>();
+
+        services.AddScoped<
+            SubmitMerchantVerificationHandler>();
+
+        services.AddScoped<
+            OpenMerchantVerificationOwnFileHandler>();
+
+        services.AddScoped<
+            OpenMerchantVerificationReviewFileHandler>();
         // -------------------------------------------------
         // Identity
         // -------------------------------------------------
