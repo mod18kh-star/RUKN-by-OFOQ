@@ -557,7 +557,8 @@ public sealed class StorefrontEndpointsTests
         string slug,
         CategoryId? categoryId,
         bool publish,
-        int createdAtOffsetMinutes = 0)
+        int createdAtOffsetMinutes = 0,
+        bool seedImages = true)
     {
         var now =
             DateTimeOffset.UtcNow
@@ -593,9 +594,60 @@ public sealed class StorefrontEndpointsTests
                 product);
         }
 
+        if (publish &&
+            seedImages)
+        {
+            SeedImages(
+                factory,
+                tenant,
+                product);
+        }
+
         return product;
     }
 
+    private static void SeedImages(
+        MarketApiFactory factory,
+        Tenant tenant,
+        Product product)
+    {
+        var store =
+            factory.Services
+                .GetRequiredService<
+                    InMemoryProductImageStore>();
+
+        var now =
+            DateTimeOffset.UtcNow;
+
+        var primary =
+            ProductImage.Create(
+                tenant.Id,
+                product.Id,
+                $"https://images.example.test/{product.Slug}-primary.jpg",
+                $"{product.Name} primary image",
+                0,
+                true,
+                now);
+
+        var secondary =
+            ProductImage.Create(
+                tenant.Id,
+                product.Id,
+                $"https://images.example.test/{product.Slug}-secondary.jpg",
+                $"{product.Name} secondary image",
+                1,
+                false,
+                now);
+
+        lock (store.SyncRoot)
+        {
+            store.Items.Add(
+                primary);
+
+            store.Items.Add(
+                secondary);
+        }
+    }
     private static ProductVariant SeedVariant(
         MarketApiFactory factory,
         Product product,

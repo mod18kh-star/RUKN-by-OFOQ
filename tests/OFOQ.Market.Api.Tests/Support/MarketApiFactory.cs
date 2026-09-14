@@ -75,6 +75,8 @@ internal sealed class MarketApiFactory :
                 services.RemoveAll<
                     IProductAttributeValueRepository>();
                 services.RemoveAll<
+                    IProductImageRepository>();
+                services.RemoveAll<
                     IStorefrontQueryRepository>();
 
                 services.RemoveAll<
@@ -241,6 +243,12 @@ internal sealed class MarketApiFactory :
                 services.AddScoped<
                     IProductAttributeValueRepository,
                     InMemoryProductAttributeValueRepository>();
+                services.AddSingleton<
+                    InMemoryProductImageStore>();
+
+                services.AddScoped<
+                    IProductImageRepository,
+                    InMemoryProductImageRepository>();
                 services.AddScoped<
                     IStorefrontQueryRepository,
                     InMemoryStorefrontQueryRepository>();

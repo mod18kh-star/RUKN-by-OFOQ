@@ -228,6 +228,25 @@ public sealed class StorefrontQueryRepositoryTests
         disabledVariant.Disable(
             now.AddMinutes(3));
 
+        var primaryImage =
+            ProductImage.Create(
+                tenantA.Id,
+                visible.Id,
+                "https://images.example.test/alpha-primary.jpg",
+                "Alpha Phone",
+                0,
+                true,
+                now);
+
+        var secondaryImage =
+            ProductImage.Create(
+                tenantA.Id,
+                visible.Id,
+                "https://images.example.test/alpha-secondary.jpg",
+                "Alpha Phone alternate",
+                1,
+                false,
+                now);
         var vertical =
             TenantCommerceVertical.Create(
                 tenantA.Id,
@@ -271,6 +290,9 @@ public sealed class StorefrontQueryRepositoryTests
                 primaryVariant,
                 outOfStock,
                 disabledVariant);
+            tenantAContext.ProductImages.AddRange(
+                primaryImage,
+                secondaryImage);
 
             tenantAContext.TenantCommerceVerticals.Add(
                 vertical);

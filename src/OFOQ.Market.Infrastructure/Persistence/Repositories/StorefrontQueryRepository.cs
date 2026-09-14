@@ -32,11 +32,9 @@ internal sealed class StorefrontQueryRepository :
                 .AsNoTracking()
                 .SingleOrDefaultAsync(
                     item =>
-                        item.Slug ==
-                            storeSlug &&
+                        item.Slug == storeSlug &&
                         !item.IsDeleted &&
-                        item.Status ==
-                            TenantStatus.Active,
+                        item.Status == TenantStatus.Active,
                     cancellationToken);
 
         if (tenant is null)
@@ -51,8 +49,7 @@ internal sealed class StorefrontQueryRepository :
                 .AsNoTracking()
                 .Where(
                     vertical =>
-                        vertical.TenantId ==
-                            tenant.Id &&
+                        vertical.TenantId == tenant.Id &&
                         vertical.IsEnabled &&
                         vertical.IsPrimary)
                 .Select(
@@ -101,8 +98,7 @@ internal sealed class StorefrontQueryRepository :
                 .AsNoTracking()
                 .Where(
                     category =>
-                        category.TenantId ==
-                            tenantId &&
+                        category.TenantId == tenantId &&
                         !category.IsDeleted &&
                         category.IsVisible)
                 .OrderBy(
@@ -142,12 +138,30 @@ internal sealed class StorefrontQueryRepository :
                 .AsNoTracking()
                 .Where(
                     product =>
-                        product.TenantId ==
-                            tenantId &&
+                        product.TenantId == tenantId &&
                         !product.IsDeleted &&
-                        product.Status ==
-                            ProductStatus.Published &&
-                        product.IsVisible);
+                        product.Status == ProductStatus.Published &&
+                        product.IsVisible)
+                .Where(
+                    product =>
+                        _dbContext
+                            .ProductImages
+                            .IgnoreQueryFilters()
+                            .Count(
+                                image =>
+                                    image.TenantId == tenantId &&
+                                    image.ProductId == product.Id) >=
+                            2)
+                .Where(
+                    product =>
+                        _dbContext
+                            .ProductImages
+                            .IgnoreQueryFilters()
+                            .Any(
+                                image =>
+                                    image.TenantId == tenantId &&
+                                    image.ProductId == product.Id &&
+                                    image.IsPrimary));
 
         if (!string.IsNullOrWhiteSpace(
                 categorySlug))
@@ -159,12 +173,10 @@ internal sealed class StorefrontQueryRepository :
                     .AsNoTracking()
                     .SingleOrDefaultAsync(
                         item =>
-                            item.TenantId ==
-                                tenantId &&
+                            item.TenantId == tenantId &&
                             !item.IsDeleted &&
                             item.IsVisible &&
-                            item.Slug ==
-                                categorySlug,
+                            item.Slug == categorySlug,
                         cancellationToken);
 
             if (category is null)
@@ -218,14 +230,23 @@ internal sealed class StorefrontQueryRepository :
                 .ToArrayAsync(
                     cancellationToken);
 
+        var productIds =
+            products
+                .Select(
+                    product =>
+                        product.Id)
+                .ToArray();
+
         var variantsByProduct =
             await LoadVariantsAsync(
                 tenantId,
-                products
-                    .Select(
-                        product =>
-                            product.Id)
-                    .ToArray(),
+                productIds,
+                cancellationToken);
+
+        var primaryImages =
+            await LoadPrimaryImagesAsync(
+                tenantId,
+                productIds,
                 cancellationToken);
 
         var items =
@@ -244,6 +265,10 @@ internal sealed class StorefrontQueryRepository :
                                         .IsAvailableForSale)
                             == true;
 
+                        var primaryImage =
+                            primaryImages[
+                                product.Id];
+
                         return new StorefrontProductSummaryResult(
                             product.Id.Value,
                             product.Name,
@@ -253,7 +278,9 @@ internal sealed class StorefrontQueryRepository :
                             product.Price.Amount,
                             product.Price.Currency.Value,
                             product.CompareAtPrice?.Amount,
-                            available);
+                            available,
+                            primaryImage.Url,
+                            primaryImage.AltText);
                     })
                 .ToArray();
 
@@ -285,20 +312,56 @@ internal sealed class StorefrontQueryRepository :
                 .AsNoTracking()
                 .SingleOrDefaultAsync(
                     item =>
-                        item.TenantId ==
-                            tenantId &&
+                        item.TenantId == tenantId &&
                         !item.IsDeleted &&
-                        item.Status ==
-                            ProductStatus.Published &&
+                        item.Status == ProductStatus.Published &&
                         item.IsVisible &&
-                        item.Slug ==
-                            productSlug,
+                        item.Slug == productSlug,
                     cancellationToken);
 
         if (product is null)
         {
             return null;
         }
+
+        var images =
+            await _dbContext
+                .ProductImages
+                .IgnoreQueryFilters()
+                .AsNoTracking()
+                .Where(
+                    image =>
+                        image.TenantId == tenantId &&
+                        image.ProductId == product.Id)
+                .OrderBy(
+                    image =>
+                        image.SortOrder)
+                .ThenBy(
+                    image =>
+                        image.Id)
+                .ToArrayAsync(
+                    cancellationToken);
+
+        if (images.Length < 2)
+        {
+            return null;
+        }
+
+        var primaryImages =
+            images
+                .Where(
+                    image =>
+                        image.IsPrimary)
+                .ToArray();
+
+        if (primaryImages.Length !=
+            1)
+        {
+            return null;
+        }
+
+        var primaryImage =
+            primaryImages[0];
 
         Category? category =
             null;
@@ -315,10 +378,8 @@ internal sealed class StorefrontQueryRepository :
                     .AsNoTracking()
                     .SingleOrDefaultAsync(
                         item =>
-                            item.TenantId ==
-                                tenantId &&
-                            item.Id ==
-                                categoryId &&
+                            item.TenantId == tenantId &&
+                            item.Id == categoryId &&
                             !item.IsDeleted &&
                             item.IsVisible,
                         cancellationToken);
@@ -331,10 +392,8 @@ internal sealed class StorefrontQueryRepository :
                 .AsNoTracking()
                 .Where(
                     variant =>
-                        variant.TenantId ==
-                            tenantId &&
-                        variant.ProductId ==
-                            product.Id &&
+                        variant.TenantId == tenantId &&
+                        variant.ProductId == product.Id &&
                         !variant.IsDeleted &&
                         variant.IsEnabled)
                 .OrderByDescending(
@@ -379,6 +438,18 @@ internal sealed class StorefrontQueryRepository :
                     })
                 .ToArray();
 
+        var imageResults =
+            images
+                .Select(
+                    image =>
+                        new StorefrontProductImageResult(
+                            image.Id.Value,
+                            image.Url,
+                            image.AltText,
+                            image.SortOrder,
+                            image.IsPrimary))
+                .ToArray();
+
         return new StorefrontProductDetailResult(
             product.Id.Value,
             product.Name,
@@ -393,6 +464,9 @@ internal sealed class StorefrontQueryRepository :
             variantResults.Any(
                 variant =>
                     variant.AvailableForSale),
+            primaryImage.Url,
+            primaryImage.AltText,
+            imageResults,
             variantResults,
             attributes);
     }
@@ -404,8 +478,7 @@ internal sealed class StorefrontQueryRepository :
             IReadOnlyCollection<ProductId> productIds,
             CancellationToken cancellationToken)
     {
-        if (productIds.Count ==
-            0)
+        if (productIds.Count == 0)
         {
             return new Dictionary<
                 ProductId,
@@ -419,8 +492,7 @@ internal sealed class StorefrontQueryRepository :
                 .AsNoTracking()
                 .Where(
                     variant =>
-                        variant.TenantId ==
-                            tenantId &&
+                        variant.TenantId == tenantId &&
                         productIds.Contains(
                             variant.ProductId) &&
                         !variant.IsDeleted &&
@@ -440,6 +512,36 @@ internal sealed class StorefrontQueryRepository :
     }
 
     private async Task<
+        IReadOnlyDictionary<ProductId, ProductImage>>
+        LoadPrimaryImagesAsync(
+            TenantId tenantId,
+            IReadOnlyCollection<ProductId> productIds,
+            CancellationToken cancellationToken)
+    {
+        if (productIds.Count == 0)
+        {
+            return new Dictionary<
+                ProductId,
+                ProductImage>();
+        }
+
+        return await _dbContext
+            .ProductImages
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(
+                image =>
+                    image.TenantId == tenantId &&
+                    productIds.Contains(
+                        image.ProductId) &&
+                    image.IsPrimary)
+            .ToDictionaryAsync(
+                image =>
+                    image.ProductId,
+                cancellationToken);
+    }
+
+    private async Task<
         IReadOnlyList<StorefrontProductAttributeResult>>
         LoadAttributesAsync(
             TenantId tenantId,
@@ -453,8 +555,7 @@ internal sealed class StorefrontQueryRepository :
                 .AsNoTracking()
                 .Where(
                     vertical =>
-                        vertical.TenantId ==
-                            tenantId &&
+                        vertical.TenantId == tenantId &&
                         vertical.IsEnabled &&
                         vertical.IsPrimary)
                 .Select(
@@ -481,10 +582,8 @@ internal sealed class StorefrontQueryRepository :
                 .AsNoTracking()
                 .Where(
                     value =>
-                        value.TenantId ==
-                            tenantId &&
-                        value.ProductId ==
-                            productId)
+                        value.TenantId == tenantId &&
+                        value.ProductId == productId)
                 .OrderBy(
                     value =>
                         value.Key)

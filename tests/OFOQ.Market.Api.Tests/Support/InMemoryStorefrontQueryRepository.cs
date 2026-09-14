@@ -28,13 +28,17 @@ internal sealed class InMemoryStorefrontQueryRepository :
     private readonly InMemoryProductAttributeValueStore
         _attributeStore;
 
+    private readonly InMemoryProductImageStore
+        _imageStore;
+
     public InMemoryStorefrontQueryRepository(
         ITenantRepository tenantRepository,
         InMemoryCategoryStore categoryStore,
         InMemoryProductStore productStore,
         InMemoryProductVariantStore variantStore,
         InMemoryTenantCommerceVerticalStore verticalStore,
-        InMemoryProductAttributeValueStore attributeStore)
+        InMemoryProductAttributeValueStore attributeStore,
+        InMemoryProductImageStore imageStore)
     {
         _tenantRepository =
             tenantRepository;
@@ -53,6 +57,9 @@ internal sealed class InMemoryStorefrontQueryRepository :
 
         _attributeStore =
             attributeStore;
+
+        _imageStore =
+            imageStore;
     }
 
     public async Task<StorefrontInfoResult?> GetStoreAsync(
@@ -66,8 +73,7 @@ internal sealed class InMemoryStorefrontQueryRepository :
 
         if (tenant is null ||
             tenant.IsDeleted ||
-            tenant.Status !=
-                TenantStatus.Active)
+            tenant.Status != TenantStatus.Active)
         {
             return null;
         }
@@ -80,8 +86,7 @@ internal sealed class InMemoryStorefrontQueryRepository :
                 _verticalStore.Items
                     .SingleOrDefault(
                         item =>
-                            item.TenantId ==
-                                tenant.Id &&
+                            item.TenantId == tenant.Id &&
                             item.IsEnabled &&
                             item.IsPrimary);
         }
@@ -124,8 +129,7 @@ internal sealed class InMemoryStorefrontQueryRepository :
                 _categoryStore.Items
                     .Where(
                         item =>
-                            item.TenantId ==
-                                tenantId &&
+                            item.TenantId == tenantId &&
                             !item.IsDeleted &&
                             item.IsVisible)
                     .OrderBy(
@@ -169,12 +173,10 @@ internal sealed class InMemoryStorefrontQueryRepository :
                     _categoryStore.Items
                         .SingleOrDefault(
                             item =>
-                                item.TenantId ==
-                                    tenantId &&
+                                item.TenantId == tenantId &&
                                 !item.IsDeleted &&
                                 item.IsVisible &&
-                                item.Slug ==
-                                    categorySlug);
+                                item.Slug == categorySlug);
 
                 if (category is null)
                 {
@@ -197,12 +199,16 @@ internal sealed class InMemoryStorefrontQueryRepository :
                 _productStore.Items
                     .Where(
                         item =>
-                            item.TenantId ==
-                                tenantId &&
+                            item.TenantId == tenantId &&
                             !item.IsDeleted &&
                             item.Status ==
                                 ProductStatus.Published &&
-                            item.IsVisible);
+                            item.IsVisible)
+                    .Where(
+                        item =>
+                            HasValidImageGallery(
+                                tenantId,
+                                item.Id));
 
             if (categoryId.HasValue)
             {
@@ -257,7 +263,18 @@ internal sealed class InMemoryStorefrontQueryRepository :
             pageItems
                 .Select(
                     product =>
-                        new StorefrontProductSummaryResult(
+                    {
+                        var images =
+                            GetImages(
+                                tenantId,
+                                product.Id);
+
+                        var primaryImage =
+                            images.Single(
+                                image =>
+                                    image.IsPrimary);
+
+                        return new StorefrontProductSummaryResult(
                             product.Id.Value,
                             product.Name,
                             product.Slug,
@@ -268,7 +285,10 @@ internal sealed class InMemoryStorefrontQueryRepository :
                             product.CompareAtPrice?.Amount,
                             HasAvailableVariant(
                                 tenantId,
-                                product.Id)))
+                                product.Id),
+                            primaryImage.Url,
+                            primaryImage.AltText);
+                    })
                 .ToArray();
 
         var totalPages =
@@ -300,8 +320,7 @@ internal sealed class InMemoryStorefrontQueryRepository :
                 _productStore.Items
                     .SingleOrDefault(
                         item =>
-                            item.TenantId ==
-                                tenantId &&
+                            item.TenantId == tenantId &&
                             !item.IsDeleted &&
                             item.Status ==
                                 ProductStatus.Published &&
@@ -317,6 +336,35 @@ internal sealed class InMemoryStorefrontQueryRepository :
                     null);
         }
 
+        var images =
+            GetImages(
+                tenantId,
+                product.Id);
+
+        if (images.Length < 2)
+        {
+            return Task.FromResult<
+                StorefrontProductDetailResult?>(
+                    null);
+        }
+
+        var primaryImages =
+            images
+                .Where(
+                    image =>
+                        image.IsPrimary)
+                .ToArray();
+
+        if (primaryImages.Length != 1)
+        {
+            return Task.FromResult<
+                StorefrontProductDetailResult?>(
+                    null);
+        }
+
+        var primaryImage =
+            primaryImages[0];
+
         Category? category =
             null;
 
@@ -331,10 +379,8 @@ internal sealed class InMemoryStorefrontQueryRepository :
                     _categoryStore.Items
                         .SingleOrDefault(
                             item =>
-                                item.TenantId ==
-                                    tenantId &&
-                                item.Id ==
-                                    categoryId &&
+                                item.TenantId == tenantId &&
+                                item.Id == categoryId &&
                                 !item.IsDeleted &&
                                 item.IsVisible);
             }
@@ -348,10 +394,8 @@ internal sealed class InMemoryStorefrontQueryRepository :
                 _variantStore.Items
                     .Where(
                         item =>
-                            item.TenantId ==
-                                tenantId &&
-                            item.ProductId ==
-                                product.Id &&
+                            item.TenantId == tenantId &&
+                            item.ProductId == product.Id &&
                             !item.IsDeleted &&
                             item.IsEnabled)
                     .OrderByDescending(
@@ -395,6 +439,18 @@ internal sealed class InMemoryStorefrontQueryRepository :
                 tenantId,
                 product.Id);
 
+        var imageResults =
+            images
+                .Select(
+                    image =>
+                        new StorefrontProductImageResult(
+                            image.Id.Value,
+                            image.Url,
+                            image.AltText,
+                            image.SortOrder,
+                            image.IsPrimary))
+                .ToArray();
+
         return Task.FromResult<
             StorefrontProductDetailResult?>(
                 new StorefrontProductDetailResult(
@@ -411,6 +467,9 @@ internal sealed class InMemoryStorefrontQueryRepository :
                     variantResults.Any(
                         item =>
                             item.AvailableForSale),
+                    primaryImage.Url,
+                    primaryImage.AltText,
+                    imageResults,
                     variantResults,
                     attributes));
     }
@@ -423,14 +482,49 @@ internal sealed class InMemoryStorefrontQueryRepository :
         {
             return _variantStore.Items.Any(
                 item =>
-                    item.TenantId ==
-                        tenantId &&
-                    item.ProductId ==
-                        productId &&
+                    item.TenantId == tenantId &&
+                    item.ProductId == productId &&
                     !item.IsDeleted &&
                     item.IsEnabled &&
                     item.Inventory
                         .IsAvailableForSale);
+        }
+    }
+
+    private bool HasValidImageGallery(
+        TenantId tenantId,
+        ProductId productId)
+    {
+        var images =
+            GetImages(
+                tenantId,
+                productId);
+
+        return
+            images.Length >= 2 &&
+            images.Count(
+                image =>
+                    image.IsPrimary) == 1;
+    }
+
+    private ProductImage[] GetImages(
+        TenantId tenantId,
+        ProductId productId)
+    {
+        lock (_imageStore.SyncRoot)
+        {
+            return _imageStore.Items
+                .Where(
+                    image =>
+                        image.TenantId == tenantId &&
+                        image.ProductId == productId)
+                .OrderBy(
+                    image =>
+                        image.SortOrder)
+                .ThenBy(
+                    image =>
+                        image.Id.Value)
+                .ToArray();
         }
     }
 
@@ -447,8 +541,7 @@ internal sealed class InMemoryStorefrontQueryRepository :
                 _verticalStore.Items
                     .SingleOrDefault(
                         item =>
-                            item.TenantId ==
-                                tenantId &&
+                            item.TenantId == tenantId &&
                             item.IsEnabled &&
                             item.IsPrimary);
         }
@@ -471,10 +564,8 @@ internal sealed class InMemoryStorefrontQueryRepository :
                 _attributeStore.Items
                     .Where(
                         item =>
-                            item.TenantId ==
-                                tenantId &&
-                            item.ProductId ==
-                                productId)
+                            item.TenantId == tenantId &&
+                            item.ProductId == productId)
                     .OrderBy(
                         item =>
                             item.Key)

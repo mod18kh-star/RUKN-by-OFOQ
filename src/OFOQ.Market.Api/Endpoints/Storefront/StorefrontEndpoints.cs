@@ -186,6 +186,18 @@ public static class StorefrontEndpoints
                     result.Currency,
                     result.CompareAtPrice,
                     result.AvailableForSale,
+                    result.PrimaryImageUrl,
+                    result.PrimaryImageAltText,
+                    result.Images
+                        .Select(
+                            image =>
+                                new StorefrontProductImageResponse(
+                                    image.ImageId,
+                                    image.Url,
+                                    image.AltText,
+                                    image.SortOrder,
+                                    image.IsPrimary))
+                        .ToArray(),
                     result.Variants
                         .Select(
                             variant =>
@@ -240,7 +252,9 @@ public static class StorefrontEndpoints
             result.Price,
             result.Currency,
             result.CompareAtPrice,
-            result.AvailableForSale);
+            result.AvailableForSale,
+            result.PrimaryImageUrl,
+            result.PrimaryImageAltText);
     }
 
     private static IResult StoreNotFound()

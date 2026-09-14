@@ -95,6 +95,8 @@ public sealed class MarketDbContext :
         Set<ProductVariantOptionValue>();
     public DbSet<ProductAttributeValue> ProductAttributeValues =>
         Set<ProductAttributeValue>();
+    public DbSet<ProductImage> ProductImages =>
+        Set<ProductImage>();
 
     // -------------------------------------------------
     // Commerce / Configuration

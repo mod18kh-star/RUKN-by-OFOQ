@@ -119,6 +119,11 @@ public static class DependencyInjection
             OFOQ.Market.Application.Catalog.ProductAttributes.SetProductAttributesHandler>();
         services.AddScoped<
             OFOQ.Market.Application.Storefront.StorefrontQueryService>();
+        services.AddScoped<
+            OFOQ.Market.Application.Catalog.ProductImages.GetProductImagesHandler>();
+
+        services.AddScoped<
+            OFOQ.Market.Application.Catalog.ProductImages.SetProductImagesHandler>();
 
         // -------------------------------------------------
         // Structured product options

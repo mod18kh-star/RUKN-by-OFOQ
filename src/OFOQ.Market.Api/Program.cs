@@ -296,6 +296,8 @@ app.MapProductEndpoints();
 
 app.MapProductAttributeEndpoints();
 
+app.MapProductImageEndpoints();
+
 app.MapStorefrontEndpoints();
 
 app.MapProductOptionEndpoints();

@@ -25,7 +25,9 @@ public sealed record StorefrontProductSummaryResult(
     decimal Price,
     string Currency,
     decimal? CompareAtPrice,
-    bool AvailableForSale);
+    bool AvailableForSale,
+    string PrimaryImageUrl,
+    string? PrimaryImageAltText);
 
 public sealed record StorefrontProductPageResult(
     int Page,
@@ -52,6 +54,13 @@ public sealed record StorefrontProductAttributeResult(
     string ValueType,
     string Value);
 
+public sealed record StorefrontProductImageResult(
+    Guid ImageId,
+    string Url,
+    string? AltText,
+    int SortOrder,
+    bool IsPrimary);
+
 public sealed record StorefrontProductDetailResult(
     Guid ProductId,
     string Name,
@@ -64,6 +73,9 @@ public sealed record StorefrontProductDetailResult(
     string Currency,
     decimal? CompareAtPrice,
     bool AvailableForSale,
+    string PrimaryImageUrl,
+    string? PrimaryImageAltText,
+    IReadOnlyList<StorefrontProductImageResult> Images,
     IReadOnlyList<StorefrontVariantResult> Variants,
     IReadOnlyList<StorefrontProductAttributeResult> Attributes);
 
