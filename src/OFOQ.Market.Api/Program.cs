@@ -312,6 +312,8 @@ app.MapCheckoutEndpoints();
 
 app.MapOrderEndpoints();
 
+app.MapAnalyticsEndpoints();
+
 app.MapPaymentEndpoints();
 
 app.Run();

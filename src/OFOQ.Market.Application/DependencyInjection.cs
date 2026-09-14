@@ -185,6 +185,8 @@ public static class DependencyInjection
 
         services.AddScoped<
             OFOQ.Market.Application.Commerce.Orders.State.ChangeOrderLifecycleHandler>();
+        services.AddScoped<
+            OFOQ.Market.Application.Commerce.Analytics.GetMerchantAnalyticsHandler>();
 
         // -------------------------------------------------
         // Commerce / Payments
