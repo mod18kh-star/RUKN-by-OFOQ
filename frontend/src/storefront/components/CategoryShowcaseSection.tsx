@@ -1,51 +1,37 @@
+import {
+  useStorefrontContent,
+} from "../data/storefrontContent";
+
 import type {
   StorefrontConfig,
 } from "../theme/theme.types";
 
-const categories = [
-  {
-    id: "fashion",
-    name: "الأزياء",
-
-    image:
-      "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?auto=format&fit=crop&w=1000&q=88",
-  },
-
-  {
-    id: "accessories",
-    name: "الإكسسوارات",
-
-    image:
-      "https://images.unsplash.com/photo-1584917865442-de89df76afd3?auto=format&fit=crop&w=1000&q=88",
-  },
-
-  {
-    id: "shoes",
-    name: "الأحذية",
-
-    image:
-      "https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=1000&q=88",
-  },
-
-  {
-    id: "fragrance",
-    name: "العطور",
-
-    image:
-      "https://images.unsplash.com/photo-1541643600914-78b084683601?auto=format&fit=crop&w=1000&q=88",
-  },
+const fallbackImages = [
+  "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?auto=format&fit=crop&w=1000&q=88",
+  "https://images.unsplash.com/photo-1584917865442-de89df76afd3?auto=format&fit=crop&w=1000&q=88",
+  "https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=1000&q=88",
+  "https://images.unsplash.com/photo-1541643600914-78b084683601?auto=format&fit=crop&w=1000&q=88",
+  "https://images.unsplash.com/photo-1529139574466-a303027c1d8b?auto=format&fit=crop&w=1000&q=88",
+  "https://images.unsplash.com/photo-1525507119028-ed4c629a60a3?auto=format&fit=crop&w=1000&q=88",
 ];
 
 export function CategoryShowcaseSection({
   config,
 }: {
-  config: StorefrontConfig;
+  config:
+    StorefrontConfig;
 }) {
+  const {
+    categories,
+  } =
+    useStorefrontContent();
+
   const section =
     config.categorySection;
 
   if (
-    !section.enabled
+    !section.enabled ||
+    categories.length === 0
   ) {
     return null;
   }
@@ -71,28 +57,26 @@ export function CategoryShowcaseSection({
 
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
           {categories.map(
-            (category) => (
-              <a
+            (
+              category,
+              index,
+            ) => (
+              <CategoryCommerceCard
                 key={
-                  category.id
+                  category.categoryId
                 }
-                href="#products"
-                className="flex items-center gap-3 rounded-[var(--store-radius)] border border-black/[0.08] bg-[var(--store-surface)] p-3"
-              >
-                <img
-                  src={
-                    category.image
-                  }
-                  alt={
-                    category.name
-                  }
-                  className="size-16 rounded-[8px] object-cover"
-                />
-
-                <p className="text-[12px] font-semibold">
-                  {category.name}
-                </p>
-              </a>
+                name={
+                  category.name
+                }
+                slug={
+                  category.slug
+                }
+                image={
+                  categoryImage(
+                    index,
+                  )
+                }
+              />
             ),
           )}
         </div>
@@ -121,18 +105,23 @@ export function CategoryShowcaseSection({
 
         <div className="grid grid-cols-2 gap-5 md:grid-cols-4">
           {categories.map(
-            (category) => (
+            (
+              category,
+              index,
+            ) => (
               <a
                 key={
-                  category.id
+                  category.categoryId
                 }
-                href="#products"
+                href={`#category-${category.slug}`}
                 className="group text-center"
               >
                 <div className="aspect-[3/4] overflow-hidden">
                   <img
                     src={
-                      category.image
+                      categoryImage(
+                        index,
+                      )
                     }
                     alt={
                       category.name
@@ -178,9 +167,9 @@ export function CategoryShowcaseSection({
             ) => (
               <a
                 key={
-                  category.id
+                  category.categoryId
                 }
-                href="#products"
+                href={`#category-${category.slug}`}
                 className={[
                   "group relative min-h-[300px] overflow-hidden rounded-[var(--store-radius)]",
                   index === 0
@@ -190,7 +179,9 @@ export function CategoryShowcaseSection({
               >
                 <img
                   src={
-                    category.image
+                    categoryImage(
+                      index,
+                    )
                   }
                   alt={
                     category.name
@@ -238,18 +229,25 @@ export function CategoryShowcaseSection({
             ) => (
               <a
                 key={
-                  category.id
+                  category.categoryId
                 }
-                href="#products"
+                href={`#category-${category.slug}`}
                 className="bg-[var(--store-surface)] p-4"
               >
                 <span className="text-[9px] text-[var(--store-muted)]">
-                  0{index + 1}
+                  {String(
+                    index + 1,
+                  ).padStart(
+                    2,
+                    "0",
+                  )}
                 </span>
 
                 <img
                   src={
-                    category.image
+                    categoryImage(
+                      index,
+                    )
                   }
                   alt={
                     category.name
@@ -284,18 +282,23 @@ export function CategoryShowcaseSection({
 
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
         {categories.map(
-          (category) => (
+          (
+            category,
+            index,
+          ) => (
             <a
               key={
-                category.id
+                category.categoryId
               }
-              href="#products"
+              href={`#category-${category.slug}`}
               className="group"
             >
               <div className="aspect-[4/5] overflow-hidden bg-[var(--store-soft)]">
                 <img
                   src={
-                    category.image
+                    categoryImage(
+                      index,
+                    )
                   }
                   alt={
                     category.name
@@ -312,6 +315,37 @@ export function CategoryShowcaseSection({
         )}
       </div>
     </section>
+  );
+}
+
+function CategoryCommerceCard({
+  name,
+  slug,
+  image,
+}: {
+  name: string;
+  slug: string;
+  image: string;
+}) {
+  return (
+    <a
+      href={`#category-${slug}`}
+      className="flex items-center gap-3 rounded-[var(--store-radius)] border border-black/[0.08] bg-[var(--store-surface)] p-3"
+    >
+      <img
+        src={
+          image
+        }
+        alt={
+          name
+        }
+        className="size-16 rounded-[8px] object-cover"
+      />
+
+      <p className="text-[12px] font-semibold">
+        {name}
+      </p>
+    </a>
   );
 }
 
@@ -349,4 +383,13 @@ function SectionHeading({
       </h2>
     </div>
   );
+}
+
+function categoryImage(
+  index: number,
+) {
+  return fallbackImages[
+    index %
+      fallbackImages.length
+  ];
 }

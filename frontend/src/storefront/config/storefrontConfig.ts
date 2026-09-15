@@ -14,7 +14,8 @@ const SECTION_KEYS:
     "story",
   ];
 
-export const DEFAULT_STOREFRONT_CONFIG: StorefrontConfig = {
+export const DEFAULT_STOREFRONT_CONFIG:
+  StorefrontConfig = {
   planTier:
     "business",
 
@@ -71,6 +72,15 @@ export const DEFAULT_STOREFRONT_CONFIG: StorefrontConfig = {
 
     title:
       "اكتشف ما يناسبك",
+
+    sourceType:
+      "all",
+
+    manualCategorySlugs:
+      [],
+
+    itemLimit:
+      4,
   },
 
   productSection: {
@@ -88,6 +98,18 @@ export const DEFAULT_STOREFRONT_CONFIG: StorefrontConfig = {
 
     layout:
       "theme-default",
+
+    sourceType:
+      "catalog",
+
+    categorySlug:
+      "",
+
+    manualProductIds:
+      [],
+
+    itemLimit:
+      8,
   },
 
   bannerSection: {
@@ -258,11 +280,29 @@ export function loadStorefrontConfig():
       categorySection: {
         ...DEFAULT_STOREFRONT_CONFIG.categorySection,
         ...(parsed.categorySection ?? {}),
+
+        manualCategorySlugs:
+          Array.isArray(
+            parsed.categorySection
+              ?.manualCategorySlugs,
+          )
+            ? parsed.categorySection
+                .manualCategorySlugs
+            : [],
       },
 
       productSection: {
         ...DEFAULT_STOREFRONT_CONFIG.productSection,
         ...(parsed.productSection ?? {}),
+
+        manualProductIds:
+          Array.isArray(
+            parsed.productSection
+              ?.manualProductIds,
+          )
+            ? parsed.productSection
+                .manualProductIds
+            : [],
       },
 
       bannerSection: {

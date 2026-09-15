@@ -41,60 +41,13 @@ import {
   resolveStorefrontConfig,
 } from "../theme/themeEngine";
 
+import {
+  StorefrontContentProvider,
+} from "../data/StorefrontContentProvider";
 
-const products = [
-  {
-    name: "Atelier 01",
-    category: "ساعات",
-    price: "1,490 ر.س",
-
-    image:
-      "https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=1100&q=88",
-
-    secondaryImage:
-      "https://images.unsplash.com/photo-1522312346375-d1a52e2b99b3?auto=format&fit=crop&w=1100&q=88",
-
-    badge: "جديد",
-  },
-
-  {
-    name: "Runner 02",
-    category: "أحذية",
-    price: "620 ر.س",
-    compareAtPrice:
-      "760 ر.س",
-
-    image:
-      "https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=1100&q=88",
-
-    secondaryImage:
-      "https://images.unsplash.com/photo-1549298916-b41d501d3772?auto=format&fit=crop&w=1100&q=88",
-  },
-
-  {
-    name: "No. 04",
-    category: "عطور",
-    price: "440 ر.س",
-
-    image:
-      "https://images.unsplash.com/photo-1541643600914-78b084683601?auto=format&fit=crop&w=1100&q=88",
-
-    secondaryImage:
-      "https://images.unsplash.com/photo-1594035910387-fea47794261f?auto=format&fit=crop&w=1100&q=88",
-  },
-
-  {
-    name: "Leather Carry",
-    category: "إكسسوارات",
-    price: "880 ر.س",
-
-    image:
-      "https://images.unsplash.com/photo-1584917865442-de89df76afd3?auto=format&fit=crop&w=1100&q=88",
-
-    secondaryImage:
-      "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?auto=format&fit=crop&w=1100&q=88",
-  },
-];
+import {
+  useStorefrontContent,
+} from "../data/storefrontContent";
 
 type ResolvedConfig =
   ReturnType<
@@ -186,7 +139,8 @@ export function StorefrontHomePage() {
   }, []);
 
   return (
-    <div
+    <StorefrontContentProvider config={config}>
+      <div
       dir="rtl"
       data-store-theme={
         config.themeId
@@ -290,6 +244,7 @@ export function StorefrontHomePage() {
         config={config}
       />
     </div>
+    </StorefrontContentProvider>
   );
 }
 
@@ -884,6 +839,11 @@ function EditorialProducts({
 }: {
   config: ResolvedConfig;
 }) {
+  const {
+    products,
+  } =
+    useStorefrontContent();
+
   return (
     <section
       id="products"
@@ -915,6 +875,11 @@ function MaisonProducts({
 }: {
   config: ResolvedConfig;
 }) {
+  const {
+    products,
+  } =
+    useStorefrontContent();
+
   return (
     <section
       id="products"
@@ -960,6 +925,11 @@ function CommerceProducts({
 }: {
   config: ResolvedConfig;
 }) {
+  const {
+    products,
+  } =
+    useStorefrontContent();
+
   return (
     <section
       id="products"
@@ -1017,6 +987,11 @@ function StudioProducts({
 }: {
   config: ResolvedConfig;
 }) {
+  const {
+    products,
+  } =
+    useStorefrontContent();
+
   return (
     <section
       id="products"
@@ -1059,6 +1034,11 @@ function TechnicalProducts({
 }: {
   config: ResolvedConfig;
 }) {
+  const {
+    products,
+  } =
+    useStorefrontContent();
+
   return (
     <section
       id="products"
@@ -1352,6 +1332,11 @@ function CustomProductLayout({
 }: {
   config: ResolvedConfig;
 }) {
+  const {
+    products,
+  } =
+    useStorefrontContent();
+
   const layout =
     config.productSection.layout;
 

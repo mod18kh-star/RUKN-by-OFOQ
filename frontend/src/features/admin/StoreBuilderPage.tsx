@@ -37,6 +37,10 @@ import {
 } from "./store-builder/SectionLayoutControls";
 
 import {
+  ContentSourceControls,
+} from "./store-builder/ContentSourceControls";
+
+import {
   loadStorefrontConfig,
   saveStorefrontConfig,
 } from "../../storefront/config/storefrontConfig";
@@ -885,6 +889,11 @@ function ContentEditor({
           />
         </div>
       </BuilderPanel>
+
+      <ContentSourceControls
+        config={config}
+        setConfig={setConfig}
+      />
 
       {config.bannerSection.enabled ? (
         <BuilderPanel

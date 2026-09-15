@@ -45,6 +45,15 @@ export type StorySectionLayout =
   | "centered"
   | "full-bleed";
 
+export type ProductContentSource =
+  | "catalog"
+  | "category"
+  | "manual";
+
+export type CategoryContentSource =
+  | "all"
+  | "manual";
+
 export type ExtraSectionType =
   | "categories"
   | "banner";
@@ -73,6 +82,14 @@ export interface CategorySectionContent {
 
   eyebrow: string;
   title: string;
+
+  sourceType:
+    CategoryContentSource;
+
+  manualCategorySlugs:
+    string[];
+
+  itemLimit: number;
 }
 
 export interface ProductSectionContent {
@@ -82,7 +99,18 @@ export interface ProductSectionContent {
   eyebrow: string;
   title: string;
 
-  layout: ProductSectionLayout;
+  layout:
+    ProductSectionLayout;
+
+  sourceType:
+    ProductContentSource;
+
+  categorySlug: string;
+
+  manualProductIds:
+    string[];
+
+  itemLimit: number;
 }
 
 export interface BannerSectionContent {
@@ -112,7 +140,8 @@ export interface StoryContent {
   ctaLabel: string;
   ctaHref: string;
 
-  layout: StorySectionLayout;
+  layout:
+    StorySectionLayout;
 }
 
 export interface StorefrontConfig {
@@ -124,15 +153,27 @@ export interface StorefrontConfig {
   themeId: ThemeId;
   fontId: FontId;
 
-  productCardStyle: ProductCardStyle;
-  heroLayout: HeroLayout;
+  productCardStyle:
+    ProductCardStyle;
 
-  hero: HeroContent;
+  heroLayout:
+    HeroLayout;
 
-  categorySection: CategorySectionContent;
-  productSection: ProductSectionContent;
-  bannerSection: BannerSectionContent;
-  story: StoryContent;
+  hero:
+    HeroContent;
 
-  sectionOrder: StorefrontSectionKey[];
+  categorySection:
+    CategorySectionContent;
+
+  productSection:
+    ProductSectionContent;
+
+  bannerSection:
+    BannerSectionContent;
+
+  story:
+    StoryContent;
+
+  sectionOrder:
+    StorefrontSectionKey[];
 }
