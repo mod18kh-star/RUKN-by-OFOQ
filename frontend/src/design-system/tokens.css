@@ -1,0 +1,25 @@
+:root {
+  --canvas: #f6f5f1;
+  --surface: #ffffff;
+  --surface-soft: #efeee9;
+
+  --ink: #191916;
+  --ink-soft: #5d5c56;
+  --ink-muted: #8a887f;
+
+  --border: rgba(25, 25, 22, 0.09);
+  --border-strong: rgba(25, 25, 22, 0.16);
+
+  --brand: #254c42;
+  --brand-dark: #193a32;
+  --brand-soft: #dce7e2;
+
+  --success: #3e7054;
+  --danger: #a23b33;
+
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 22px;
+
+  --content-width: 1440px;
+}
