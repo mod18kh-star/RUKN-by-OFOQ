@@ -6,6 +6,10 @@ import type {
   StorefrontConfig,
 } from "../theme/theme.types";
 
+import {
+  SmartImage,
+} from "./SmartImage";
+
 export function PromoBannerSection({
   config,
 }: {
@@ -33,7 +37,7 @@ export function PromoBannerSection({
         className="store-container py-14 md:py-20"
       >
         <div className="grid overflow-hidden rounded-[var(--store-radius)] bg-[var(--store-surface)] md:grid-cols-2">
-          <img
+          <SmartImage
             src={
               section.image
             }
@@ -84,7 +88,7 @@ export function PromoBannerSection({
       className="store-container py-16 md:py-24"
     >
       <div className="relative flex min-h-[560px] overflow-hidden rounded-[var(--store-radius)]">
-        <img
+        <SmartImage
           src={
             section.image
           }

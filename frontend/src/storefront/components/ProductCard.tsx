@@ -3,6 +3,14 @@ import {
   Plus,
 } from "lucide-react";
 
+import {
+  useState,
+} from "react";
+
+import {
+  SmartImage,
+} from "./SmartImage";
+
 import type {
   ProductCardStyle,
 } from "../theme/theme.types";
@@ -31,12 +39,34 @@ export function ProductCard({
   badge,
   variant,
 }: ProductCardProps) {
+  const [
+    secondaryRequested,
+    setSecondaryRequested,
+  ] =
+    useState(
+      false,
+    );
+
   const boxed =
-    variant === "commerce" ||
-    variant === "technical";
+    variant ===
+      "commerce" ||
+    variant ===
+      "technical";
 
   const compact =
-    variant === "compact";
+    variant ===
+    "compact";
+
+  function requestSecondary() {
+    if (
+      secondaryImage &&
+      !secondaryRequested
+    ) {
+      setSecondaryRequested(
+        true,
+      );
+    }
+  }
 
   return (
     <article
@@ -49,6 +79,12 @@ export function ProductCard({
           ? "grid grid-cols-[105px_1fr] gap-4 border-b border-black/10 py-4"
           : "",
       ].join(" ")}
+      onPointerEnter={
+        requestSecondary
+      }
+      onFocusCapture={
+        requestSecondary
+      }
     >
       <div
         className={[
@@ -58,17 +94,28 @@ export function ProductCard({
             : "aspect-[var(--store-image-ratio)]",
         ].join(" ")}
       >
-        <img
-          src={image}
-          alt={name}
+        <SmartImage
+          src={
+            image
+          }
+          alt={
+            name
+          }
+          sizes="(max-width: 767px) 50vw, (max-width: 1023px) 33vw, 25vw"
           className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.015]"
         />
 
         {secondaryImage &&
+        secondaryRequested &&
         !compact ? (
-          <img
-            src={secondaryImage}
+          <SmartImage
+            src={
+              secondaryImage
+            }
             alt=""
+            aria-hidden="true"
+            fetchPriority="low"
+            sizes="(max-width: 767px) 50vw, (max-width: 1023px) 33vw, 25vw"
             className="absolute inset-0 h-full w-full object-cover opacity-0 transition duration-500 group-hover:opacity-100"
           />
         ) : null}
@@ -84,9 +131,14 @@ export function ProductCard({
         {!compact ? (
           <button
             type="button"
+            aria-label={`إضافة ${name} إلى المفضلة`}
             className="absolute left-3 top-3 flex size-9 items-center justify-center rounded-full bg-white opacity-0 transition group-hover:opacity-100"
           >
-            <Heart size={17} />
+            <Heart
+              size={
+                17
+              }
+            />
           </button>
         ) : null}
 
@@ -95,9 +147,14 @@ export function ProductCard({
         !compact ? (
           <button
             type="button"
+            aria-label={`إضافة ${name} إلى السلة`}
             className="absolute bottom-3 left-3 flex size-10 items-center justify-center rounded-full bg-[var(--store-ink)] text-white opacity-0 transition group-hover:opacity-100"
           >
-            <Plus size={18} />
+            <Plus
+              size={
+                18
+              }
+            />
           </button>
         ) : null}
       </div>
@@ -125,7 +182,9 @@ export function ProductCard({
 
             {compareAtPrice ? (
               <span className="mr-2 text-[11px] text-[var(--store-muted)] line-through">
-                {compareAtPrice}
+                {
+                  compareAtPrice
+                }
               </span>
             ) : null}
           </div>

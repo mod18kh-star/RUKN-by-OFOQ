@@ -49,6 +49,10 @@ import {
   useStorefrontContent,
 } from "../data/storefrontContent";
 
+import {
+  SmartImage,
+} from "../components/SmartImage";
+
 type ResolvedConfig =
   ReturnType<
     typeof resolveStorefrontConfig
@@ -433,7 +437,7 @@ function ThemeHero({
             containerClass,
           ].join(" ")}
         >
-          <img
+          <SmartImage
             src={
               hero.primaryImage
             }
@@ -441,7 +445,7 @@ function ThemeHero({
               hero.title
             }
             className="absolute inset-0 h-full w-full object-cover"
-          />
+           priority sizes="100vw"/>
 
           <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/10 to-transparent" />
 
@@ -505,7 +509,7 @@ function ThemeHero({
               containerClass,
             ].join(" ")}
           >
-            <img
+            <SmartImage
               src={
                 hero.primaryImage
               }
@@ -513,7 +517,7 @@ function ThemeHero({
                 hero.title
               }
               className="absolute inset-0 h-full w-full object-cover"
-            />
+             priority sizes="100vw"/>
 
             <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/5 to-transparent" />
 
@@ -545,13 +549,13 @@ function ThemeHero({
               containerClass,
             ].join(" ")}
           >
-            <img
+            <SmartImage
               src={
                 hero.secondaryImage
               }
               alt=""
               className="absolute inset-0 h-full w-full object-cover"
-            />
+             loading="eager" sizes="100vw"/>
 
             {isStudio ? (
               <div className="absolute inset-x-5 bottom-5 rounded-[18px] bg-[var(--store-canvas)]/92 p-5 backdrop-blur">
@@ -585,7 +589,7 @@ function ThemeHero({
               containerClass,
             ].join(" ")}
           >
-            <img
+            <SmartImage
               src={
                 hero.primaryImage
               }
@@ -593,7 +597,7 @@ function ThemeHero({
                 hero.title
               }
               className="absolute inset-0 h-full w-full object-cover"
-            />
+             priority sizes="100vw"/>
 
             <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/5 to-transparent" />
 
@@ -625,13 +629,13 @@ function ThemeHero({
               containerClass,
             ].join(" ")}
           >
-            <img
+            <SmartImage
               src={
                 hero.secondaryImage
               }
               alt=""
               className="absolute inset-0 h-full w-full object-cover"
-            />
+             loading="eager" sizes="100vw"/>
           </div>
         </div>
       </section>
@@ -699,7 +703,7 @@ function ThemeHero({
           </div>
 
           <div className="bg-[var(--store-soft)]">
-            <img
+            <SmartImage
               src={
                 hero.primaryImage
               }
@@ -707,7 +711,7 @@ function ThemeHero({
                 hero.title
               }
               className="h-full min-h-[480px] w-full object-cover"
-            />
+             priority sizes="100vw"/>
           </div>
         </div>
       </section>
@@ -755,7 +759,7 @@ function ThemeHero({
         </div>
 
         <div className="grid grid-cols-2">
-          <img
+          <SmartImage
             src={
               hero.primaryImage
             }
@@ -763,15 +767,15 @@ function ThemeHero({
               hero.title
             }
             className="h-full min-h-[480px] w-full object-cover"
-          />
+           priority sizes="100vw"/>
 
-          <img
+          <SmartImage
             src={
               hero.secondaryImage
             }
             alt=""
             className="h-full min-h-[480px] w-full object-cover"
-          />
+           loading="eager" sizes="100vw"/>
         </div>
       </div>
     </section>
@@ -1138,7 +1142,7 @@ function ThemeStorySection({
           className="store-container pb-20 pt-10"
         >
           <div className="grid overflow-hidden rounded-[var(--store-radius)] bg-[var(--store-soft)] md:grid-cols-2">
-            <img
+            <SmartImage
               src={
                 config.story.image
               }
@@ -1181,7 +1185,7 @@ function ThemeStorySection({
         >
           <div className="relative">
             <div className="mr-auto w-full overflow-hidden rounded-[var(--store-radius)] lg:w-[74%]">
-              <img
+              <SmartImage
                 src={
                   config.story.image
                 }
@@ -1256,7 +1260,7 @@ function ThemeStorySection({
               </div>
             </div>
 
-            <img
+            <SmartImage
               src={
                 config.story.image
               }
@@ -1311,7 +1315,7 @@ function ThemeStorySection({
             </div>
 
             <div className="aspect-[16/10] overflow-hidden">
-              <img
+              <SmartImage
                 src={
                   config.story.image
                 }
@@ -1474,7 +1478,7 @@ function CustomProductLayout({
 
         <div className="grid overflow-hidden rounded-[var(--store-radius)] bg-[var(--store-surface)] lg:grid-cols-[1.15fr_.85fr]">
           <div className="bg-[var(--store-soft)]">
-            <img
+            <SmartImage
               src={
                 featured.image
               }
@@ -1521,7 +1525,7 @@ function CustomProductLayout({
                     className="min-w-0"
                   >
                     <div className="aspect-square overflow-hidden bg-[var(--store-soft)]">
-                      <img
+                      <SmartImage
                         src={
                           product.image
                         }
@@ -1596,7 +1600,7 @@ function CustomStoryLayout({
           ) : null}
 
           <div className="mx-auto mt-12 max-w-[1100px] overflow-hidden rounded-[var(--store-radius)]">
-            <img
+            <SmartImage
               src={
                 story.image
               }
@@ -1621,7 +1625,7 @@ function CustomStoryLayout({
         className="store-container py-16 md:py-24"
       >
         <div className="relative flex min-h-[650px] overflow-hidden rounded-[var(--store-radius)]">
-          <img
+          <SmartImage
             src={
               story.image
             }
@@ -1683,7 +1687,7 @@ function CustomStoryLayout({
               : "lg:order-2"
           }
         >
-          <img
+          <SmartImage
             src={
               story.image
             }

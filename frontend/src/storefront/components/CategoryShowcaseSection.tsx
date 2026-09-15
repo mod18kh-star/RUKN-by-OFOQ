@@ -6,6 +6,10 @@ import type {
   StorefrontConfig,
 } from "../theme/theme.types";
 
+import {
+  SmartImage,
+} from "./SmartImage";
+
 const fallbackImages = [
   "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?auto=format&fit=crop&w=1000&q=88",
   "https://images.unsplash.com/photo-1584917865442-de89df76afd3?auto=format&fit=crop&w=1000&q=88",
@@ -117,7 +121,7 @@ export function CategoryShowcaseSection({
                 className="group text-center"
               >
                 <div className="aspect-[3/4] overflow-hidden">
-                  <img
+                  <SmartImage
                     src={
                       categoryImage(
                         index,
@@ -177,7 +181,7 @@ export function CategoryShowcaseSection({
                     : "",
                 ].join(" ")}
               >
-                <img
+                <SmartImage
                   src={
                     categoryImage(
                       index,
@@ -243,7 +247,7 @@ export function CategoryShowcaseSection({
                   )}
                 </span>
 
-                <img
+                <SmartImage
                   src={
                     categoryImage(
                       index,
@@ -294,7 +298,7 @@ export function CategoryShowcaseSection({
               className="group"
             >
               <div className="aspect-[4/5] overflow-hidden bg-[var(--store-soft)]">
-                <img
+                <SmartImage
                   src={
                     categoryImage(
                       index,
@@ -332,7 +336,7 @@ function CategoryCommerceCard({
       href={`#category-${slug}`}
       className="flex items-center gap-3 rounded-[var(--store-radius)] border border-black/[0.08] bg-[var(--store-surface)] p-3"
     >
-      <img
+      <SmartImage
         src={
           image
         }

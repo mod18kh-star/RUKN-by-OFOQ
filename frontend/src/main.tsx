@@ -10,7 +10,9 @@ import {
   BrowserRouter,
 } from "react-router";
 
-import { App } from "./app/App";
+import {
+  App,
+} from "./app/App";
 
 import "./styles/global.css";
 
@@ -18,20 +20,37 @@ const queryClient =
   new QueryClient({
     defaultOptions: {
       queries: {
-        retry: 1,
-        refetchOnWindowFocus: false,
-        staleTime: 30_000,
+        retry:
+          1,
+
+        staleTime:
+          60_000,
+
+        gcTime:
+          10 * 60_000,
+
+        refetchOnWindowFocus:
+          false,
+
+        refetchOnReconnect:
+          true,
       },
     },
   });
 
 ReactDOM
   .createRoot(
-    document.getElementById("root")!,
+    document.getElementById(
+      "root",
+    )!,
   )
   .render(
     <React.StrictMode>
-      <QueryClientProvider client={queryClient}>
+      <QueryClientProvider
+        client={
+          queryClient
+        }
+      >
         <BrowserRouter>
           <App />
         </BrowserRouter>
