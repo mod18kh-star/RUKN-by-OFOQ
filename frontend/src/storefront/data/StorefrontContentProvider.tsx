@@ -44,12 +44,45 @@ export function StorefrontContentProvider({
 }>) {
   const params =
     useParams<{
-      storeSlug: string;
+      storeSlug:
+        string;
     }>();
 
   const storeSlug =
     params.storeSlug ??
     "demo";
+
+  const useLiveApi =
+    storefrontApiIsConfigured &&
+    storeSlug !==
+      "demo";
+
+  const productSource =
+    config.productSection
+      .sourceType;
+
+  const requestedItemLimit =
+    clampPageSize(
+      config.productSection
+        .itemLimit,
+    );
+
+  const requestedPageSize =
+    productSource ===
+    "manual"
+      ? 100
+      : requestedItemLimit;
+
+  const requestedCategory =
+    productSource ===
+      "category" &&
+    config.productSection
+      .categorySlug
+      .trim()
+      ? config.productSection
+          .categorySlug
+          .trim()
+      : undefined;
 
   const categoriesQuery =
     useQuery({
@@ -65,13 +98,13 @@ export function StorefrontContentProvider({
         ),
 
       enabled:
-        storefrontApiIsConfigured,
+        useLiveApi,
 
       retry:
-        false,
+        1,
 
       staleTime:
-        30_000,
+        5 * 60_000,
     });
 
   const productsQuery =
@@ -80,6 +113,10 @@ export function StorefrontContentProvider({
         "storefront-runtime",
         storeSlug,
         "products",
+        productSource,
+        requestedCategory ??
+          "",
+        requestedPageSize,
       ],
 
       queryFn: () =>
@@ -90,28 +127,39 @@ export function StorefrontContentProvider({
               1,
 
             pageSize:
-              100,
+              requestedPageSize,
+
+            category:
+              requestedCategory,
           },
         ),
 
       enabled:
-        storefrontApiIsConfigured,
+        useLiveApi,
 
       retry:
-        false,
+        1,
 
       staleTime:
-        30_000,
+        60_000,
     });
 
   const rawCategories =
-    categoriesQuery.data ??
-    DEMO_STOREFRONT_CATEGORIES;
+    useLiveApi
+      ? (
+          categoriesQuery.data ??
+          []
+        )
+      : DEMO_STOREFRONT_CATEGORIES;
 
   const rawProducts =
-    productsQuery.data
-      ?.items ??
-    DEMO_STOREFRONT_PRODUCTS;
+    useLiveApi
+      ? (
+          productsQuery.data
+            ?.items ??
+          []
+        )
+      : DEMO_STOREFRONT_PRODUCTS;
 
   const categories =
     resolveCategoryContent(
@@ -188,21 +236,55 @@ export function StorefrontContentProvider({
       }),
     );
 
-  const usingDemoData =
-    !storefrontApiIsConfigured ||
-    categoriesQuery.isError ||
-    productsQuery.isError;
+  const isLoading =
+    useLiveApi &&
+    (
+      categoriesQuery.isPending ||
+      productsQuery.isPending
+    );
+
+  const hasError =
+    useLiveApi &&
+    (
+      categoriesQuery.isError ||
+      productsQuery.isError
+    );
 
   return (
     <StorefrontContentContext.Provider
       value={{
         products,
         categories,
-        usingDemoData,
+        usingDemoData:
+          !useLiveApi,
+        isLoading,
+        hasError,
       }}
     >
       {children}
     </StorefrontContentContext.Provider>
+  );
+}
+
+function clampPageSize(
+  value: number,
+) {
+  if (
+    !Number.isFinite(
+      value,
+    )
+  ) {
+    return 8;
+  }
+
+  return Math.min(
+    100,
+    Math.max(
+      1,
+      Math.round(
+        value,
+      ),
+    ),
   );
 }
 

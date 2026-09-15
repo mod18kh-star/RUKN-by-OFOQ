@@ -4,42 +4,69 @@ import {
   type SyntheticEvent,
 } from "react";
 
+import {
+  buildResponsiveMedia,
+  resolveMediaUrl,
+} from "../media/mediaUrl";
+
 const DEFAULT_FALLBACK =
   "data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1200' height='900' viewBox='0 0 1200 900'%3E%3Crect width='1200' height='900' fill='%23ecece7'/%3E%3C/svg%3E";
 
 interface SmartImageProps
   extends Omit<
     ImgHTMLAttributes<HTMLImageElement>,
-    "src" | "alt" | "decoding"
+    | "src"
+    | "alt"
+    | "decoding"
   > {
-  src: string;
-  alt: string;
+  src:
+    string;
+
+  alt:
+    string;
 
   priority?:
     boolean;
 
   fallbackSrc?:
     string;
+
+  responsiveWidths?:
+    readonly number[];
+
+  quality?:
+    number;
+
+  fallbackWidth?:
+    number;
 }
 
 export function SmartImage({
   src,
   alt,
   priority = false,
-  fallbackSrc = DEFAULT_FALLBACK,
+  fallbackSrc =
+    DEFAULT_FALLBACK,
+  responsiveWidths,
+  quality,
+  fallbackWidth,
   loading,
   fetchPriority,
   className = "",
   onLoad,
   onError,
   draggable,
+  srcSet,
+  sizes,
   ...props
 }: SmartImageProps) {
   const [
     failedSource,
     setFailedSource,
   ] =
-    useState<string | null>(
+    useState<
+      string | null
+    >(
       null,
     );
 
@@ -47,18 +74,51 @@ export function SmartImage({
     loadedSource,
     setLoadedSource,
   ] =
-    useState<string | null>(
+    useState<
+      string | null
+    >(
       null,
     );
 
+  const requestedSource =
+    src.trim()
+      ? src
+      : fallbackSrc;
+
   const failed =
     failedSource ===
-    src;
+    requestedSource;
+
+  const responsive =
+    buildResponsiveMedia(
+      requestedSource,
+      {
+        widths:
+          responsiveWidths,
+
+        quality,
+
+        fallbackWidth,
+      },
+    );
+
+  const fallback =
+    resolveMediaUrl(
+      fallbackSrc,
+    );
 
   const resolvedSource =
     failed
-      ? fallbackSrc
-      : src;
+      ? fallback
+      : responsive.src;
+
+  const resolvedSrcSet =
+    failed
+      ? undefined
+      : (
+          srcSet ??
+          responsive.srcSet
+        );
 
   const loaded =
     loadedSource ===
@@ -83,12 +143,12 @@ export function SmartImage({
   ) {
     if (
       !failed &&
-      fallbackSrc &&
-      fallbackSrc !==
-        src
+      fallback &&
+      fallback !==
+        resolvedSource
     ) {
       setFailedSource(
-        src,
+        requestedSource,
       );
 
       setLoadedSource(
@@ -106,6 +166,12 @@ export function SmartImage({
       {...props}
       src={
         resolvedSource
+      }
+      srcSet={
+        resolvedSrcSet
+      }
+      sizes={
+        sizes
       }
       alt={
         alt
@@ -144,8 +210,12 @@ export function SmartImage({
           : "opacity-0",
         className,
       ]
-        .filter(Boolean)
-        .join(" ")}
+        .filter(
+          Boolean,
+        )
+        .join(
+          " ",
+        )}
     />
   );
 }

@@ -8,22 +8,29 @@ import type {
 } from "./storefrontApi";
 
 export interface RuntimeProduct {
-  productId: string;
-  slug: string;
+  productId:
+    string;
 
-  name: string;
+  slug:
+    string;
+
+  name:
+    string;
 
   category:
     string;
 
-  price: string;
+  price:
+    string;
 
   compareAtPrice?:
     string;
 
-  image: string;
+  image:
+    string;
 
-  primaryImage: string;
+  primaryImage:
+    string;
 
   secondaryImage?:
     string;
@@ -41,11 +48,18 @@ export interface StorefrontContentValue {
 
   usingDemoData:
     boolean;
+
+  isLoading:
+    boolean;
+
+  hasError:
+    boolean;
 }
 
 export const StorefrontContentContext =
   createContext<
-    StorefrontContentValue | null
+    StorefrontContentValue |
+    null
   >(
     null,
   );

@@ -90,3 +90,14 @@ img {
     );
   }
 }
+
+/* OFOQ OFFSCREEN SECTION PERFORMANCE */
+@supports (content-visibility: auto) {
+  #categories,
+  #products,
+  #banner,
+  #story {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 720px;
+  }
+}

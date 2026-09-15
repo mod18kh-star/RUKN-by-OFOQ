@@ -101,6 +101,14 @@ export function ProductCard({
           alt={
             name
           }
+          responsiveWidths={[
+            240,
+            360,
+            480,
+            640,
+            800,
+          ]}
+          fallbackWidth={640}
           sizes="(max-width: 767px) 50vw, (max-width: 1023px) 33vw, 25vw"
           className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.015]"
         />
@@ -115,6 +123,14 @@ export function ProductCard({
             alt=""
             aria-hidden="true"
             fetchPriority="low"
+            responsiveWidths={[
+              240,
+              360,
+              480,
+              640,
+              800,
+            ]}
+            fallbackWidth={640}
             sizes="(max-width: 767px) 50vw, (max-width: 1023px) 33vw, 25vw"
             className="absolute inset-0 h-full w-full object-cover opacity-0 transition duration-500 group-hover:opacity-100"
           />
