@@ -41,6 +41,13 @@ internal sealed class MfaLoginChallengeConfiguration :
             .IsRequired();
 
         builder.Property(
+                challenge => challenge.AuthenticationMethod)
+            .HasColumnName("authentication_method")
+            .HasConversion<int>()
+            .HasDefaultValue(UserSessionAuthenticationMethod.Password)
+            .IsRequired();
+
+        builder.Property(
                 challenge => challenge.ExpiresAtUtc)
             .HasColumnName("expires_at_utc")
             .IsRequired();

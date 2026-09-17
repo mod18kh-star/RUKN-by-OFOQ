@@ -1,17 +1,32 @@
 namespace OFOQ.Market.Contracts.Storefront;
 
+public sealed record StorefrontPresentationResponse(
+    string? LogoUrl,
+    string? CoverImageUrl,
+    string? Announcement,
+    string? PrimaryColor,
+    string? AccentColor,
+    string ThemePresetCode,
+    string FontCode,
+    bool ShowCategoriesOnHome,
+    bool ShowProductsOnHome,
+    string CategorySectionTitle,
+    string ProductSectionTitle);
+
 public sealed record StorefrontInfoResponse(
     string Name,
     string Slug,
     string? Vertical,
-    string? VerticalCode);
+    string? VerticalCode,
+    StorefrontPresentationResponse Presentation);
 
 public sealed record StorefrontCategoryResponse(
     Guid CategoryId,
     string Name,
     string Slug,
     Guid? ParentCategoryId,
-    int SortOrder);
+    int SortOrder,
+    string? ImageUrl = null);
 
 public sealed record StorefrontProductSummaryResponse(
     Guid ProductId,

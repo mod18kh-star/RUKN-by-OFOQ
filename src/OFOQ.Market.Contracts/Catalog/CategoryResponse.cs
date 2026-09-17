@@ -7,4 +7,5 @@ public sealed record CategoryResponse(
     Guid? ParentCategoryId,
     int SortOrder,
     bool IsVisible,
-    DateTimeOffset CreatedAtUtc);
+    DateTimeOffset CreatedAtUtc,
+    string? ImageUrl = null);

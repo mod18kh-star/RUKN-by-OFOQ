@@ -20,6 +20,9 @@ export const DEMO_STOREFRONT_CATEGORIES:
 
     sortOrder:
       1,
+
+    imageUrl:
+      null,
   },
 
   {
@@ -37,6 +40,9 @@ export const DEMO_STOREFRONT_CATEGORIES:
 
     sortOrder:
       2,
+
+    imageUrl:
+      null,
   },
 
   {
@@ -54,6 +60,9 @@ export const DEMO_STOREFRONT_CATEGORIES:
 
     sortOrder:
       3,
+
+    imageUrl:
+      null,
   },
 
   {
@@ -71,6 +80,9 @@ export const DEMO_STOREFRONT_CATEGORIES:
 
     sortOrder:
       4,
+
+    imageUrl:
+      null,
   },
 ];
 

@@ -50,7 +50,7 @@ public sealed class MfaEnrollmentHandlerTests
             result.ManualEntryKey);
 
         Assert.Equal(
-            "otpauth://totp/OFOQ:user@example.com",
+            "otpauth://totp/RUKN:user@example.com",
             result.ProvisioningUri);
 
         Assert.NotNull(
@@ -570,7 +570,7 @@ public sealed class MfaEnrollmentHandlerTests
         {
             return new MfaEnrollmentData(
                 "RAW-TOTP-SECRET",
-                "otpauth://totp/OFOQ:user@example.com");
+                "otpauth://totp/RUKN:user@example.com");
         }
 
         public TotpVerificationResult Verify(

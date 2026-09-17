@@ -150,6 +150,12 @@ export interface StorefrontConfig {
   storeName: string;
   announcement: string;
 
+  logoUrl: string;
+  coverImageUrl: string;
+
+  brandPrimaryColor: string;
+  brandAccentColor: string;
+
   themeId: ThemeId;
   fontId: FontId;
 

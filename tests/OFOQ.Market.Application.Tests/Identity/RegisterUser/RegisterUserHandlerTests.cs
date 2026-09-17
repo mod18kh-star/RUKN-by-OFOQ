@@ -29,7 +29,9 @@ public sealed class RegisterUserHandlerTests
             await handler.HandleAsync(
                 new RegisterUserCommand(
                     "user@example.com",
-                    "StrongPassword123"));
+                    "StrongPassword123",
+                    "  محمد الأحمد  ",
+                    " +966 55 123 4567 "));
 
         Assert.NotEqual(
             Guid.Empty,
@@ -43,12 +45,28 @@ public sealed class RegisterUserHandlerTests
             UserStatus.Active,
             result.Status);
 
+        Assert.Equal(
+            "محمد الأحمد",
+            result.FullName);
+
+        Assert.Equal(
+            "+966551234567",
+            result.PhoneNumber);
+
         Assert.NotNull(
             repository.AddedUser);
 
         Assert.Equal(
             "HASHED::StrongPassword123",
             repository.AddedUser.PasswordHash);
+
+        Assert.Equal(
+            "محمد الأحمد",
+            repository.AddedUser.FullName);
+
+        Assert.Equal(
+            "+966551234567",
+            repository.AddedUser.PhoneNumber);
 
         Assert.NotEqual(
             "StrongPassword123",

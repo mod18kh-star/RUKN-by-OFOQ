@@ -22,7 +22,8 @@ public sealed class Category :
         CategoryId? parentCategoryId,
         int sortOrder,
         DateTimeOffset createdAtUtc,
-        Guid? createdByUserId)
+        Guid? createdByUserId,
+        string? imageUrl)
         : base(id)
     {
         TenantId =
@@ -42,6 +43,10 @@ public sealed class Category :
         SortOrder =
             NormalizeSortOrder(
                 sortOrder);
+
+        ImageUrl =
+            NormalizeImageUrl(
+                imageUrl);
 
         IsVisible =
             true;
@@ -64,6 +69,8 @@ public sealed class Category :
     public CategoryId? ParentCategoryId { get; private set; }
 
     public int SortOrder { get; private set; }
+
+    public string? ImageUrl { get; private set; }
 
     public bool IsVisible { get; private set; }
 
@@ -88,7 +95,8 @@ public sealed class Category :
         DateTimeOffset createdAtUtc,
         CategoryId? parentCategoryId = null,
         int sortOrder = 0,
-        Guid? createdByUserId = null)
+        Guid? createdByUserId = null,
+        string? imageUrl = null)
     {
         if (tenantId.IsEmpty)
         {
@@ -105,7 +113,8 @@ public sealed class Category :
             parentCategoryId,
             sortOrder,
             createdAtUtc,
-            createdByUserId);
+            createdByUserId,
+            imageUrl);
     }
 
     public void Rename(
@@ -191,6 +200,32 @@ public sealed class Category :
 
         SortOrder =
             normalizedSortOrder;
+
+        MarkUpdated(
+            updatedAtUtc,
+            updatedByUserId);
+    }
+
+
+    public void ChangeImage(
+        string? imageUrl,
+        DateTimeOffset updatedAtUtc,
+        Guid? updatedByUserId = null)
+    {
+        var normalized =
+            NormalizeImageUrl(
+                imageUrl);
+
+        if (string.Equals(
+                ImageUrl,
+                normalized,
+                StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        ImageUrl =
+            normalized;
 
         MarkUpdated(
             updatedAtUtc,
@@ -335,6 +370,41 @@ public sealed class Category :
                     "Category slug may contain only letters, numbers and hyphens.",
                     nameof(slug));
             }
+        }
+
+        return normalized;
+    }
+
+    private static string? NormalizeImageUrl(
+        string? imageUrl)
+    {
+        if (string.IsNullOrWhiteSpace(
+                imageUrl))
+        {
+            return null;
+        }
+
+        var normalized =
+            imageUrl.Trim();
+
+        if (normalized.Length >
+            2048)
+        {
+            throw new ArgumentException(
+                "Category image URL cannot exceed 2048 characters.",
+                nameof(imageUrl));
+        }
+
+        if (!Uri.TryCreate(
+                normalized,
+                UriKind.Absolute,
+                out var uri) ||
+            (uri.Scheme != Uri.UriSchemeHttp &&
+             uri.Scheme != Uri.UriSchemeHttps))
+        {
+            throw new ArgumentException(
+                "Category image URL must be an absolute HTTP or HTTPS URL.",
+                nameof(imageUrl));
         }
 
         return normalized;

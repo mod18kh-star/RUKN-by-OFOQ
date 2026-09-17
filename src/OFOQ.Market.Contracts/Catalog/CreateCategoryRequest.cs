@@ -4,4 +4,6 @@ public sealed record CreateCategoryRequest(
     string Name,
     string Slug,
     Guid? ParentCategoryId = null,
-    int SortOrder = 0);
+    int? Position = null,
+    int? SortOrder = null,
+    string? ImageUrl = null);

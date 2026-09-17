@@ -9,8 +9,17 @@ import {
 
 import {
   useEffect,
+  useMemo,
   useState,
 } from "react";
+
+import {
+  useQuery,
+} from "@tanstack/react-query";
+
+import {
+  useParams,
+} from "react-router";
 
 import {
   ProductCard,
@@ -37,6 +46,15 @@ import {
 } from "../config/storefrontConfig";
 
 import {
+  createLiveStorefrontConfig,
+} from "../config/liveStorefrontConfig";
+
+import {
+  getStorefrontInfo,
+  storefrontApiIsConfigured,
+} from "../data/storefrontApi";
+
+import {
   createThemeStyle,
   resolveStorefrontConfig,
 } from "../theme/themeEngine";
@@ -59,7 +77,24 @@ type ResolvedConfig =
   >;
 
 export function StorefrontHomePage() {
-  const [config, setConfig] =
+  const params =
+    useParams<{
+      storeSlug:
+        string;
+    }>();
+
+  const storeSlug =
+    params.storeSlug ??
+    "demo";
+
+  const liveStore =
+    storeSlug !==
+      "demo";
+
+  const [
+    previewConfig,
+    setPreviewConfig,
+  ] =
     useState(
       () =>
         resolveStorefrontConfig(
@@ -67,9 +102,96 @@ export function StorefrontHomePage() {
         ),
     );
 
+  const storeQuery =
+    useQuery({
+      queryKey: [
+        "storefront-runtime",
+        storeSlug,
+        "info",
+      ],
+
+      queryFn: () =>
+        getStorefrontInfo(
+          storeSlug,
+        ),
+
+      enabled:
+        liveStore &&
+        storefrontApiIsConfigured,
+
+      retry:
+        1,
+
+      staleTime:
+        5 * 60_000,
+    });
+
+  const config =
+    useMemo(
+      () =>
+        liveStore
+          ? (
+              storeQuery.data
+                ? resolveStorefrontConfig(
+                    createLiveStorefrontConfig(
+                      storeQuery.data,
+                    ),
+                  )
+                : resolveStorefrontConfig(
+                    {
+                      ...createLiveStorefrontConfig({
+                        name:
+                          storeSlug,
+                        slug:
+                          storeSlug,
+                        vertical:
+                          null,
+                        verticalCode:
+                          null,
+                        presentation: {
+                          logoUrl:
+                            null,
+                          coverImageUrl:
+                            null,
+                          announcement:
+                            null,
+                          primaryColor:
+                            null,
+                          accentColor:
+                            null,
+                          themePresetCode:
+                            "editorial",
+                          fontCode:
+                            "plex",
+                          showCategoriesOnHome:
+                            true,
+                          showProductsOnHome:
+                            true,
+                          categorySectionTitle:
+                            "تصفح الأقسام",
+                          productSectionTitle:
+                            "منتجات المتجر",
+                        },
+                      }),
+                    },
+                  )
+            )
+          : previewConfig,
+      [
+        liveStore,
+        previewConfig,
+        storeQuery.data,
+        storeSlug,
+      ],
+    );
+
   useEffect(() => {
+    if (liveStore) {
+      return;
+    }
+
     function refreshConfig() {
-      setConfig(
+      setPreviewConfig(
         resolveStorefrontConfig(
           loadStorefrontConfig(),
         ),
@@ -102,7 +224,7 @@ export function StorefrontHomePage() {
         return;
       }
 
-      setConfig(
+      setPreviewConfig(
         resolveStorefrontConfig(
           payload.config,
         ),
@@ -140,7 +262,17 @@ export function StorefrontHomePage() {
         receivePreviewConfig,
       );
     };
-  }, []);
+  }, [
+    liveStore,
+  ]);
+
+  const heroVisible =
+    Boolean(
+      config.hero.title.trim() ||
+      config.hero.description.trim() ||
+      config.hero.primaryImage.trim() ||
+      config.hero.secondaryImage.trim(),
+    );
 
   return (
     <StorefrontContentProvider config={config}>
@@ -162,6 +294,9 @@ export function StorefrontHomePage() {
         storeName={
           config.storeName
         }
+        logoUrl={
+          config.logoUrl
+        }
         announcement={
           config.announcement
         }
@@ -171,9 +306,11 @@ export function StorefrontHomePage() {
       />
 
       <main>
-        <ThemeHero
-          config={config}
-        />
+        {heroVisible ? (
+          <ThemeHero
+            config={config}
+          />
+        ) : null}
 
         {config.themeId ===
         "commerce" ? (
@@ -786,6 +923,18 @@ function ThemeProductSection({
 }: {
   config: ResolvedConfig;
 }) {
+  const {
+    products,
+  } =
+    useStorefrontContent();
+
+  if (
+    products.length ===
+    0
+  ) {
+    return null;
+  }
+
   if (
     config.productSection.layout !==
     "theme-default"

@@ -132,10 +132,17 @@ public sealed partial class Order :
             item =>
                 item.Quantity);
 
-    public decimal TotalAmount =>
+    public decimal SubtotalAmount =>
         _items.Sum(
             item =>
                 item.LineTotal);
+
+    public decimal TotalAmount =>
+        Math.Max(
+            0m,
+            SubtotalAmount +
+            ShippingAmount -
+            DiscountAmount);
 
     public DateTimeOffset CreatedAtUtc { get; private set; }
 

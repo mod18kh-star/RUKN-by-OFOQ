@@ -62,13 +62,29 @@ public static class CheckoutEndpoints
                 });
         }
 
+        CheckoutRequest? request = null;
+
+        if (httpContext.Request.ContentLength is > 0)
+        {
+            request =
+                await httpContext.Request.ReadFromJsonAsync<CheckoutRequest>(
+                    cancellationToken);
+        }
+
         try
         {
             var result =
                 await handler.HandleAsync(
                     new CheckoutCommand(
                         customerUserId.Value,
-                        idempotencyKey),
+                        idempotencyKey,
+                        request?.CustomerAddressId is { } addressId
+                            ? OFOQ.Market.Domain.Commerce.Customers.CustomerAddressId.From(addressId)
+                            : null,
+                        request?.ShippingMethodId is { } shippingMethodId
+                            ? OFOQ.Market.Domain.Commerce.Fulfillment.ShippingMethodId.From(shippingMethodId)
+                            : null,
+                        request?.CouponCode),
                     cancellationToken);
 
             if (result.IsIdempotentReplay)
@@ -136,6 +152,12 @@ public static class CheckoutEndpoints
                 "checkout_currency_changed",
                 exception.Message);
         }
+        catch (CheckoutPricingException exception)
+        {
+            return Conflict(
+                exception.Code,
+                exception.Message);
+        }
         catch (TenantScopeViolationException)
         {
             return Results.Forbid();
@@ -185,7 +207,12 @@ public static class CheckoutEndpoints
             result.Status,
             result.Currency,
             result.TotalQuantity,
+            result.SubtotalAmount,
+            result.ShippingAmount,
+            result.DiscountAmount,
             result.TotalAmount,
+            result.AppliedCouponCode,
+            result.ShippingMethodName,
             result.CreatedAtUtc,
             result.IsIdempotentReplay,
             result.Items

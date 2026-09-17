@@ -66,12 +66,28 @@ public sealed class TenantMembershipRepository :
             UserId userId,
             CancellationToken cancellationToken = default)
     {
+        /*
+         * This is an authenticated user-level discovery query.
+         *
+         * There is intentionally no tenant route at this point:
+         * the purpose of this query is to discover which tenants
+         * the authenticated user belongs to.
+         *
+         * Tenant query filters are therefore bypassed here only.
+         * The query remains strictly constrained to the exact
+         * authenticated UserId and excludes deleted memberships.
+         */
         return await _dbContext
-            .TenantMemberships
+            .Set<TenantMembership>()
+            .IgnoreQueryFilters()
+            .AsNoTracking()
             .Where(
                 membership =>
-                    membership.UserId ==
-                    userId)
+                    membership.UserId == userId &&
+                    !membership.IsDeleted)
+            .OrderByDescending(
+                membership =>
+                    membership.CreatedAtUtc)
             .ToListAsync(
                 cancellationToken);
     }

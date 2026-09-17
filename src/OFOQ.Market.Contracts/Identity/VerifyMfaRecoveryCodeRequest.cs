@@ -2,4 +2,5 @@ namespace OFOQ.Market.Contracts.Identity;
 
 public sealed record VerifyMfaRecoveryCodeRequest(
     string ChallengeToken,
-    string RecoveryCode);
+    string RecoveryCode,
+    bool RememberDevice = false);

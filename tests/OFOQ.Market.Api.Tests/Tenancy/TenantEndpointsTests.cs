@@ -328,6 +328,107 @@ public sealed class TenantEndpointsTests
             response.StatusCode);
     }
 
+    [Fact]
+    public async Task GetSlugAvailability_WithoutAccessToken_ReturnsUnauthorized()
+    {
+        await using var factory =
+            new MarketApiFactory();
+
+        using var client =
+            factory.CreateClient();
+
+        var response =
+            await client.GetAsync(
+                "/api/tenants/slug-availability/my-store");
+
+        Assert.Equal(
+            HttpStatusCode.Unauthorized,
+            response.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetSlugAvailability_ReturnsTrue_WhenSlugIsFree()
+    {
+        await using var factory =
+            new MarketApiFactory();
+
+        using var client =
+            factory.CreateClient();
+
+        await AuthenticateUserAsync(
+            factory,
+            client,
+            "owner@example.com");
+
+        var response =
+            await client.GetAsync(
+                "/api/tenants/slug-availability/NEW-STORE");
+
+        Assert.Equal(
+            HttpStatusCode.OK,
+            response.StatusCode);
+
+        var result =
+            await response.Content
+                .ReadFromJsonAsync<
+                    TenantSlugAvailabilityResponse>();
+
+        Assert.NotNull(
+            result);
+
+        Assert.Equal(
+            "new-store",
+            result.Slug);
+
+        Assert.True(
+            result.Available);
+    }
+
+    [Fact]
+    public async Task GetSlugAvailability_ReturnsFalse_WhenDraftTenantAlreadyReservedSlug()
+    {
+        await using var factory =
+            new MarketApiFactory();
+
+        using var client =
+            factory.CreateClient();
+
+        await AuthenticateUserAsync(
+            factory,
+            client,
+            "owner@example.com");
+
+        var createResponse =
+            await client.PostAsJsonAsync(
+                "/api/tenants",
+                new CreateTenantRequest(
+                    "Reserved Store",
+                    "reserved-store"));
+
+        Assert.Equal(
+            HttpStatusCode.Created,
+            createResponse.StatusCode);
+
+        var response =
+            await client.GetAsync(
+                "/api/tenants/slug-availability/reserved-store");
+
+        Assert.Equal(
+            HttpStatusCode.OK,
+            response.StatusCode);
+
+        var result =
+            await response.Content
+                .ReadFromJsonAsync<
+                    TenantSlugAvailabilityResponse>();
+
+        Assert.NotNull(
+            result);
+
+        Assert.False(
+            result.Available);
+    }
+
     private static async Task<User> AuthenticateUserAsync(
         MarketApiFactory factory,
         HttpClient client,

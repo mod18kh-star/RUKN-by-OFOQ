@@ -11,12 +11,22 @@ internal sealed class FakeTotpService :
     public const long VerifiedTimeStep =
         101;
 
+    public const string EnrollmentSecret =
+        "TEST-RAW-SECRET";
+
     public MfaEnrollmentData CreateEnrollment(
         string accountName,
         string issuer)
     {
-        throw new NotSupportedException(
-            "Enrollment is not used by these API tests.");
+        ArgumentException.ThrowIfNullOrWhiteSpace(
+            accountName);
+
+        ArgumentException.ThrowIfNullOrWhiteSpace(
+            issuer);
+
+        return new MfaEnrollmentData(
+            EnrollmentSecret,
+            $"otpauth://totp/{issuer}:{accountName}?secret={EnrollmentSecret}&issuer={issuer}");
     }
 
     public TotpVerificationResult Verify(
@@ -25,7 +35,7 @@ internal sealed class FakeTotpService :
         DateTimeOffset nowUtc)
     {
         if (secret !=
-            "TEST-RAW-SECRET")
+            EnrollmentSecret)
         {
             return new TotpVerificationResult(
                 false,

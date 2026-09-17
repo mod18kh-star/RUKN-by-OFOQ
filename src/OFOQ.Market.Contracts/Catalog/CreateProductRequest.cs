@@ -12,4 +12,5 @@ public sealed record CreateProductRequest(
     bool TrackInventory,
     int Quantity,
     int LowStockThreshold,
-    bool ContinueSellingWhenOutOfStock);
+    bool ContinueSellingWhenOutOfStock,
+    string? PrimaryImageUrl = null);

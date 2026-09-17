@@ -65,6 +65,9 @@ internal sealed class MarketApiFactory :
                 services.RemoveAll<
                     ITenantMembershipRepository>();
 
+                services.RemoveAll<
+                    ITenantStorefrontPresentationRepository>();
+
                 // Catalog
                 services.RemoveAll<
                     ICategoryRepository>();
@@ -177,6 +180,12 @@ internal sealed class MarketApiFactory :
                 services.RemoveAll<
                     IMfaLoginChallengeRepository>();
 
+                services.RemoveAll<
+                    IUserSessionRepository>();
+
+                services.RemoveAll<
+                    IUserTrustedDeviceRepository>();
+
                 // Infrastructure abstractions
                 services.RemoveAll<
                     ITransactionExecutor>();
@@ -214,6 +223,13 @@ internal sealed class MarketApiFactory :
                         provider =>
                             provider.GetRequiredService<
                                 InMemoryTenantMembershipRepository>());
+
+                services.AddSingleton<
+                    InMemoryTenantStorefrontPresentationStore>();
+
+                services.AddScoped<
+                    ITenantStorefrontPresentationRepository,
+                    InMemoryTenantStorefrontPresentationRepository>();
 
                 // -------------------------------------------------
                 // Category fakes
@@ -501,6 +517,25 @@ internal sealed class MarketApiFactory :
                         provider =>
                             provider.GetRequiredService<
                                 InMemoryMfaLoginChallengeRepository>());
+
+
+                services.AddSingleton<
+                    InMemoryUserSessionRepository>();
+
+                services.AddSingleton<
+                    IUserSessionRepository>(
+                        provider =>
+                            provider.GetRequiredService<
+                                InMemoryUserSessionRepository>());
+
+                services.AddSingleton<
+                    InMemoryUserTrustedDeviceRepository>();
+
+                services.AddSingleton<
+                    IUserTrustedDeviceRepository>(
+                        provider =>
+                            provider.GetRequiredService<
+                                InMemoryUserTrustedDeviceRepository>());
 
                 // -------------------------------------------------
                 // Transaction / security fakes

@@ -85,7 +85,8 @@ public static class StorefrontEndpoints
                                 item.Name,
                                 item.Slug,
                                 item.ParentCategoryId,
-                                item.SortOrder))
+                                item.SortOrder,
+                                item.ImageUrl))
                     .ToArray());
         }
         catch (ArgumentException exception)
@@ -237,7 +238,19 @@ public static class StorefrontEndpoints
             result.Name,
             result.Slug,
             result.Vertical,
-            result.VerticalCode);
+            result.VerticalCode,
+            new StorefrontPresentationResponse(
+                result.Presentation.LogoUrl,
+                result.Presentation.CoverImageUrl,
+                result.Presentation.Announcement,
+                result.Presentation.PrimaryColor,
+                result.Presentation.AccentColor,
+                result.Presentation.ThemePresetCode,
+                result.Presentation.FontCode,
+                result.Presentation.ShowCategoriesOnHome,
+                result.Presentation.ShowProductsOnHome,
+                result.Presentation.CategorySectionTitle,
+                result.Presentation.ProductSectionTitle));
     }
 
     private static StorefrontProductSummaryResponse Map(

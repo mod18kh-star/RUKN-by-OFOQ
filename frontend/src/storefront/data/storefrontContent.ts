@@ -17,6 +17,12 @@ export interface RuntimeProduct {
   name:
     string;
 
+  description?:
+    string;
+
+  href?:
+    string;
+
   category:
     string;
 

@@ -52,6 +52,7 @@ public sealed class GetCategoryByIdHandler
             category.ParentCategoryId,
             category.SortOrder,
             category.IsVisible,
-            category.CreatedAtUtc);
+            category.CreatedAtUtc,
+            category.ImageUrl);
     }
 }

@@ -25,6 +25,18 @@ export const DEFAULT_STOREFRONT_CONFIG:
   announcement:
     "شحن مجاني للطلبات فوق 300 ر.س",
 
+  logoUrl:
+    "",
+
+  coverImageUrl:
+    "",
+
+  brandPrimaryColor:
+    "",
+
+  brandAccentColor:
+    "",
+
   themeId:
     "editorial",
 

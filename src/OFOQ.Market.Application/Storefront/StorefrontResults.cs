@@ -2,19 +2,34 @@ using OFOQ.Market.Domain.Tenancy;
 
 namespace OFOQ.Market.Application.Storefront;
 
+public sealed record StorefrontPresentationPublicResult(
+    string? LogoUrl,
+    string? CoverImageUrl,
+    string? Announcement,
+    string? PrimaryColor,
+    string? AccentColor,
+    string ThemePresetCode,
+    string FontCode,
+    bool ShowCategoriesOnHome,
+    bool ShowProductsOnHome,
+    string CategorySectionTitle,
+    string ProductSectionTitle);
+
 public sealed record StorefrontInfoResult(
     TenantId TenantId,
     string Name,
     string Slug,
     string? Vertical,
-    string? VerticalCode);
+    string? VerticalCode,
+    StorefrontPresentationPublicResult Presentation);
 
 public sealed record StorefrontCategoryResult(
     Guid CategoryId,
     string Name,
     string Slug,
     Guid? ParentCategoryId,
-    int SortOrder);
+    int SortOrder,
+    string? ImageUrl = null);
 
 public sealed record StorefrontProductSummaryResult(
     Guid ProductId,

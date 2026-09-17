@@ -128,7 +128,7 @@ public sealed class ProductImageEndpointsTests
     }
 
     [Fact]
-    public async Task PutImages_OneImage_ReturnsBadRequest()
+    public async Task PutImages_OneImage_SavesPrimaryImage()
     {
         await using var factory =
             new MarketApiFactory();
@@ -161,7 +161,7 @@ public sealed class ProductImageEndpointsTests
                     }));
 
         Assert.Equal(
-            HttpStatusCode.BadRequest,
+            HttpStatusCode.OK,
             response.StatusCode);
     }
 

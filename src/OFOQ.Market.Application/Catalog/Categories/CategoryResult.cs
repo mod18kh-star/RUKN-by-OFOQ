@@ -9,4 +9,5 @@ public sealed record CategoryResult(
     CategoryId? ParentCategoryId,
     int SortOrder,
     bool IsVisible,
-    DateTimeOffset CreatedAtUtc);
+    DateTimeOffset CreatedAtUtc,
+    string? ImageUrl = null);

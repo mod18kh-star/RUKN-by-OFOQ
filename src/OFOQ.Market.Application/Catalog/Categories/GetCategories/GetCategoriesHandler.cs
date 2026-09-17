@@ -42,7 +42,8 @@ public sealed class GetCategoriesHandler
                         category.ParentCategoryId,
                         category.SortOrder,
                         category.IsVisible,
-                        category.CreatedAtUtc))
+                        category.CreatedAtUtc,
+                        category.ImageUrl))
             .ToArray();
     }
 

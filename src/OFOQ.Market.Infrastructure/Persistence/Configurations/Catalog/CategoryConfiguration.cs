@@ -92,6 +92,13 @@ public sealed class CategoryConfiguration :
 
         builder.Property(
                 category =>
+                    category.ImageUrl)
+            .HasColumnName(
+                "image_url")
+            .HasMaxLength(2048);
+
+        builder.Property(
+                category =>
                     category.IsVisible)
             .HasColumnName(
                 "is_visible")

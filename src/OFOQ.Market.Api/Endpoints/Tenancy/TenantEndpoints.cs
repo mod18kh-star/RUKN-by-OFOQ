@@ -1,4 +1,5 @@
 using System.IdentityModel.Tokens.Jwt;
+using OFOQ.Market.Application.Common.Persistence;
 using OFOQ.Market.Application.Tenancy.CreateTenant;
 using OFOQ.Market.Application.Tenancy.GetTenantById;
 using OFOQ.Market.Contracts.Tenancy;
@@ -31,6 +32,17 @@ public static class TenantEndpoints
         group.MapPost(
                 "/",
                 CreateTenantAsync)
+            .RequireAuthorization();
+
+        /*
+         * Slug availability is part of the authenticated onboarding
+         * flow. It checks every tenant state, not just active stores,
+         * so a merchant never sees a false "available" result for a
+         * slug already reserved by a draft/suspended tenant.
+         */
+        group.MapGet(
+                "/slug-availability/{slug}",
+                GetSlugAvailabilityAsync)
             .RequireAuthorization();
 
         /*
@@ -91,10 +103,6 @@ public static class TenantEndpoints
         }
         catch (TenantCreationNotAllowedException)
         {
-            /*
-             * Do not reveal whether the live account was
-             * suspended, disabled, deleted or otherwise invalid.
-             */
             return Results.Forbid();
         }
         catch (TenantSlugAlreadyExistsException exception)
@@ -119,6 +127,43 @@ public static class TenantEndpoints
                 {
                     code =
                         "validation_error",
+
+                    message =
+                        exception.Message
+                });
+        }
+    }
+
+    private static async Task<IResult> GetSlugAvailabilityAsync(
+        string slug,
+        ITenantRepository tenantRepository,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var tenantSlug =
+                TenantSlug.Create(
+                    slug);
+
+            var exists =
+                await tenantRepository
+                    .SlugExistsAsync(
+                        tenantSlug,
+                        excludingTenantId: null,
+                        cancellationToken);
+
+            return Results.Ok(
+                new TenantSlugAvailabilityResponse(
+                    tenantSlug.Value,
+                    !exists));
+        }
+        catch (ArgumentException exception)
+        {
+            return Results.BadRequest(
+                new
+                {
+                    code =
+                        "invalid_tenant_slug",
 
                     message =
                         exception.Message

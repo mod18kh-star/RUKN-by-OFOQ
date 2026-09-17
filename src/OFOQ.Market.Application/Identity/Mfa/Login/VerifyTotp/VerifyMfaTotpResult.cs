@@ -6,4 +6,5 @@ public sealed record VerifyMfaTotpResult(
     UserId UserId,
     string Email,
     string AccessToken,
-    DateTimeOffset ExpiresAtUtc);
+    DateTimeOffset ExpiresAtUtc,
+    UserSessionAuthenticationMethod AuthenticationMethod);

@@ -58,6 +58,22 @@ public static class DependencyInjection
             ITenantMembershipRepository,
             TenantMembershipRepository>();
 
+        services.AddScoped<
+            ITenantStoreProfileRepository,
+            TenantStoreProfileRepository>();
+
+        services.AddScoped<
+            ITenantStorefrontPresentationRepository,
+            TenantStorefrontPresentationRepository>();
+
+        services.AddScoped<
+            ITenantStoreSocialLinkRepository,
+            TenantStoreSocialLinkRepository>();
+
+        services.AddScoped<
+            IStoreReadinessQueryRepository,
+            StoreReadinessQueryRepository>();
+
         // -------------------------------------------------
         // Catalog
         // -------------------------------------------------
@@ -75,6 +91,17 @@ public static class DependencyInjection
         services.AddScoped<
             IProductImageRepository,
             ProductImageRepository>();
+        services.AddScoped<
+            IProductContentBlockRepository,
+            ProductContentBlockRepository>();
+
+        services.AddScoped<
+            IProductRelationRepository,
+            ProductRelationRepository>();
+
+        services.AddScoped<
+            ITenantProductRecommendationSettingsRepository,
+            TenantProductRecommendationSettingsRepository>();
         services.AddScoped<
             IStorefrontQueryRepository,
             StorefrontQueryRepository>();
@@ -94,6 +121,18 @@ public static class DependencyInjection
         services.AddScoped<
             IProductVariantOptionValueRepository,
             ProductVariantOptionValueRepository>();
+
+        services.AddScoped<
+            IContentPageRepository,
+            ContentPageRepository>();
+
+        services.AddScoped<
+            INavigationItemRepository,
+            NavigationItemRepository>();
+
+        services.AddScoped<
+            IStorefrontContentQueryRepository,
+            StorefrontContentQueryRepository>();
 
         // -------------------------------------------------
         // Commerce / Configuration
@@ -144,11 +183,63 @@ public static class DependencyInjection
             OrderRepository>();
 
         services.AddScoped<
+            IReturnRequestRepository,
+            ReturnRequestRepository>();
+
+        services.AddScoped<
+            IReturnRequestLockRepository,
+            ReturnRequestLockRepository>();
+
+        services.AddScoped<
+            IProductReviewRepository,
+            ProductReviewRepository>();
+
+        services.AddScoped<
+            ITenantTrustMetricSettingsRepository,
+            TenantTrustMetricSettingsRepository>();
+
+        services.AddScoped<
+            IReviewQueryRepository,
+            ReviewQueryRepository>();
+
+        services.AddScoped<
+            ICustomerProfileRepository,
+            CustomerProfileRepository>();
+
+        services.AddScoped<
+            ICustomerAddressRepository,
+            CustomerAddressRepository>();
+
+        services.AddScoped<
+            IFulfillmentLocationRepository,
+            FulfillmentLocationRepository>();
+
+        services.AddScoped<
+            IShippingMethodRepository,
+            ShippingMethodRepository>();
+
+        services.AddScoped<
+            IDiscountCouponRepository,
+            DiscountCouponRepository>();
+
+        services.AddScoped<
+            ICouponRedemptionRepository,
+            CouponRedemptionRepository>();
+
+        services.AddScoped<
+            IDiscountCouponLockRepository,
+            DiscountCouponLockRepository>();
+
+        services.AddScoped<
             IMerchantOrderQueryRepository,
             MerchantOrderQueryRepository>();
         services.AddScoped<
             IMerchantAnalyticsQueryRepository,
             MerchantAnalyticsQueryRepository>();
+
+        services.AddScoped<
+            IMerchantOperationsDashboardQueryRepository,
+            MerchantOperationsDashboardQueryRepository>();
 
         services.AddScoped<
             ICheckoutLockRepository,
@@ -219,8 +310,28 @@ public static class DependencyInjection
             MfaLoginChallengeRepository>();
 
         services.AddScoped<
+            IEmailVerificationChallengeRepository,
+            EmailVerificationChallengeRepository>();
+
+        services.AddScoped<
+            IUserSessionRepository,
+            UserSessionRepository>();
+
+        services.AddScoped<
+            IUserExternalLoginRepository,
+            UserExternalLoginRepository>();
+
+        services.AddScoped<
+            IUserTrustedDeviceRepository,
+            UserTrustedDeviceRepository>();
+
+        services.AddScoped<
             IPlatformUserRoleAssignmentRepository,
             PlatformUserRoleAssignmentRepository>();
+
+        services.AddScoped<
+            ITenantNotificationPreferencesRepository,
+            TenantNotificationPreferencesRepository>();
 
         // -------------------------------------------------
         // Security
@@ -241,6 +352,22 @@ public static class DependencyInjection
         services.AddSingleton<
             IMfaLoginChallengeTokenService,
             MfaLoginChallengeTokenService>();
+
+        services.AddSingleton<
+            IEmailVerificationTokenService,
+            EmailVerificationTokenService>();
+
+        services.AddSingleton<
+            IRefreshTokenService,
+            RefreshTokenService>();
+
+        services.AddSingleton<
+            IGoogleIdentityTokenValidator,
+            GoogleIdentityTokenValidator>();
+
+        services.AddSingleton<
+            ITrustedDeviceTokenService,
+            TrustedDeviceTokenService>();
 
         services.AddSingleton<
             IPaymentProviderCredentialProtector,

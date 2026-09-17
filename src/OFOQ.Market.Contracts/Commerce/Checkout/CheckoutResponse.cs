@@ -6,7 +6,12 @@ public sealed record CheckoutResponse(
     string Status,
     string Currency,
     int TotalQuantity,
+    decimal SubtotalAmount,
+    decimal ShippingAmount,
+    decimal DiscountAmount,
     decimal TotalAmount,
+    string? AppliedCouponCode,
+    string? ShippingMethodName,
     DateTimeOffset CreatedAtUtc,
     bool IdempotentReplay,
     IReadOnlyList<CheckoutItemResponse> Items);

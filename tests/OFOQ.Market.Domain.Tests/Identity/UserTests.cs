@@ -97,4 +97,24 @@ public sealed class UserTests
             "new-hash",
             user.PasswordHash);
     }
+
+    [Fact]
+    public void Create_NormalizesBasicProfile()
+    {
+        var user =
+            User.Create(
+                "test@example.com",
+                "hashed-password",
+                DateTimeOffset.UtcNow,
+                fullName: "  محمد الأحمد  ",
+                phoneNumber: " +966 55 123 4567 ");
+
+        Assert.Equal(
+            "محمد الأحمد",
+            user.FullName);
+
+        Assert.Equal(
+            "+966551234567",
+            user.PhoneNumber);
+    }
 }

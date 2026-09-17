@@ -12,11 +12,15 @@ public sealed class User :
         EmailAddress email,
         string passwordHash,
         DateTimeOffset createdAtUtc,
-        Guid? createdByUserId)
+        Guid? createdByUserId,
+        string? fullName,
+        string? phoneNumber)
         : base(id)
     {
         Email = email;
         PasswordHash = NormalizePasswordHash(passwordHash);
+        FullName = NormalizeOptionalFullName(fullName);
+        PhoneNumber = NormalizeOptionalPhoneNumber(phoneNumber);
         Status = UserStatus.Active;
 
         CreatedAtUtc = createdAtUtc;
@@ -30,6 +34,10 @@ public sealed class User :
     public EmailAddress Email { get; private set; }
 
     public string PasswordHash { get; private set; } = string.Empty;
+
+    public string? FullName { get; private set; }
+
+    public string? PhoneNumber { get; private set; }
 
     public UserStatus Status { get; private set; }
 
@@ -53,7 +61,9 @@ public sealed class User :
         string email,
         string passwordHash,
         DateTimeOffset createdAtUtc,
-        Guid? createdByUserId = null)
+        Guid? createdByUserId = null,
+        string? fullName = null,
+        string? phoneNumber = null)
     {
         var user =
             new User(
@@ -61,7 +71,9 @@ public sealed class User :
                 EmailAddress.Create(email),
                 passwordHash,
                 createdAtUtc,
-                createdByUserId);
+                createdByUserId,
+                fullName,
+                phoneNumber);
 
         user.RaiseDomainEvent(
             new UserRegisteredDomainEvent(
@@ -70,6 +82,25 @@ public sealed class User :
                 createdAtUtc));
 
         return user;
+    }
+
+    public void UpdateProfile(
+        string? fullName,
+        string? phoneNumber,
+        DateTimeOffset updatedAtUtc,
+        Guid? updatedByUserId = null)
+    {
+        FullName =
+            NormalizeOptionalFullName(
+                fullName);
+
+        PhoneNumber =
+            NormalizeOptionalPhoneNumber(
+                phoneNumber);
+
+        MarkUpdated(
+            updatedAtUtc,
+            updatedByUserId);
     }
 
     public void MarkEmailVerified(
@@ -83,6 +114,26 @@ public sealed class User :
 
         MarkUpdated(
             verifiedAtUtc,
+            updatedByUserId);
+    }
+
+    public void ChangeEmail(
+        string email,
+        DateTimeOffset updatedAtUtc,
+        Guid? updatedByUserId = null)
+    {
+        var normalized = EmailAddress.Create(email);
+
+        if (Email == normalized)
+        {
+            return;
+        }
+
+        Email = normalized;
+        EmailVerifiedAtUtc = null;
+
+        MarkUpdated(
+            updatedAtUtc,
             updatedByUserId);
     }
 
@@ -163,6 +214,64 @@ public sealed class User :
     {
         UpdatedAtUtc = updatedAtUtc;
         UpdatedByUserId = updatedByUserId;
+    }
+
+    private static string? NormalizeOptionalFullName(
+        string? fullName)
+    {
+        if (string.IsNullOrWhiteSpace(fullName))
+        {
+            return null;
+        }
+
+        var normalized =
+            fullName.Trim();
+
+        if (normalized.Length is < 2 or > 160)
+        {
+            throw new ArgumentException(
+                "Full name must be between 2 and 160 characters.",
+                nameof(fullName));
+        }
+
+        return normalized;
+    }
+
+    private static string? NormalizeOptionalPhoneNumber(
+        string? phoneNumber)
+    {
+        if (string.IsNullOrWhiteSpace(phoneNumber))
+        {
+            return null;
+        }
+
+        var normalized =
+            new string(
+                phoneNumber
+                    .Trim()
+                    .Where(
+                        character =>
+                            !char.IsWhiteSpace(character) &&
+                            character is not '-' and not '(' and not ')')
+                    .ToArray());
+
+        var digits =
+            normalized.StartsWith(
+                '+')
+                ? normalized[1..]
+                : normalized;
+
+        if (digits.Length is < 8 or > 20 ||
+            digits.Any(
+                character =>
+                    !char.IsDigit(character)))
+        {
+            throw new ArgumentException(
+                "Phone number must contain between 8 and 20 digits and may start with +.",
+                nameof(phoneNumber));
+        }
+
+        return normalized;
     }
 
     private static string NormalizePasswordHash(

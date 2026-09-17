@@ -1,3 +1,24 @@
+export interface StorefrontPresentation {
+  logoUrl: string | null;
+  coverImageUrl: string | null;
+  announcement: string | null;
+
+  primaryColor:
+    string | null;
+
+  accentColor:
+    string | null;
+
+  themePresetCode: string;
+  fontCode: string;
+
+  showCategoriesOnHome: boolean;
+  showProductsOnHome: boolean;
+
+  categorySectionTitle: string;
+  productSectionTitle: string;
+}
+
 export interface StorefrontInfo {
   name: string;
   slug: string;
@@ -7,6 +28,9 @@ export interface StorefrontInfo {
 
   verticalCode:
     string | null;
+
+  presentation:
+    StorefrontPresentation;
 }
 
 export interface StorefrontCategory {
@@ -18,6 +42,25 @@ export interface StorefrontCategory {
     string | null;
 
   sortOrder: number;
+
+  imageUrl:
+    string | null;
+}
+
+export interface StorefrontContentPage {
+  id: string;
+  title: string;
+  slug: string;
+  body: string;
+
+  seoTitle:
+    string | null;
+
+  seoDescription:
+    string | null;
+
+  publishedAtUtc:
+    string | null;
 }
 
 export interface StorefrontProductSummary {
@@ -193,5 +236,76 @@ export function getStorefrontProducts(
     `${storePath(
       storeSlug,
     )}/products?${params.toString()}`,
+  );
+}
+
+export function getStorefrontContentPage(
+  storeSlug: string,
+  pageSlug: string,
+) {
+  return fetchJson<
+    StorefrontContentPage
+  >(
+    `${storePath(
+      storeSlug,
+    )}/pages/${encodeURIComponent(
+      pageSlug,
+    )}`,
+  );
+}
+
+export interface StorefrontProductImage {
+  imageId: string;
+  url: string;
+  altText: string | null;
+  sortOrder: number;
+  isPrimary: boolean;
+}
+
+export interface StorefrontVariant {
+  variantId: string;
+  name: string;
+  sku: string;
+  isDefault: boolean;
+  price: number;
+  currency: string;
+  trackInventory: boolean;
+  quantity: number | null;
+  continueSellingWhenOutOfStock: boolean;
+  availableForSale: boolean;
+}
+
+export interface StorefrontProductAttribute {
+  key: string;
+  label: string;
+  valueType: string;
+  value: string;
+}
+
+export interface StorefrontProductDetail {
+  productId: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  categoryId: string | null;
+  categoryName: string | null;
+  categorySlug: string | null;
+  price: number;
+  currency: string;
+  compareAtPrice: number | null;
+  availableForSale: boolean;
+  primaryImageUrl: string;
+  primaryImageAltText: string | null;
+  images: StorefrontProductImage[];
+  variants: StorefrontVariant[];
+  attributes: StorefrontProductAttribute[];
+}
+
+export function getStorefrontProduct(
+  storeSlug: string,
+  productSlug: string,
+) {
+  return fetchJson<StorefrontProductDetail>(
+    `${storePath(storeSlug)}/products/${encodeURIComponent(productSlug)}`,
   );
 }

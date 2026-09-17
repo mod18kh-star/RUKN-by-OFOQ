@@ -115,7 +115,19 @@ internal sealed class InMemoryStorefrontQueryRepository :
             tenant.Name,
             tenant.Slug.Value,
             verticalName,
-            verticalCode);
+            verticalCode,
+            new StorefrontPresentationPublicResult(
+                null,
+                null,
+                null,
+                null,
+                null,
+                TenantStorefrontPresentation.DefaultThemePresetCode,
+                TenantStorefrontPresentation.DefaultFontCode,
+                true,
+                true,
+                TenantStorefrontPresentation.DefaultCategorySectionTitle,
+                TenantStorefrontPresentation.DefaultProductSectionTitle));
     }
 
     public Task<IReadOnlyList<StorefrontCategoryResult>>
@@ -341,7 +353,7 @@ internal sealed class InMemoryStorefrontQueryRepository :
                 tenantId,
                 product.Id);
 
-        if (images.Length < 2)
+        if (images.Length < 1)
         {
             return Task.FromResult<
                 StorefrontProductDetailResult?>(
@@ -501,7 +513,7 @@ internal sealed class InMemoryStorefrontQueryRepository :
                 productId);
 
         return
-            images.Length >= 2 &&
+            images.Length >= 1 &&
             images.Count(
                 image =>
                     image.IsPrimary) == 1;

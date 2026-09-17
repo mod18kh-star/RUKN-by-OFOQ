@@ -4,6 +4,8 @@ using OFOQ.Market.Application.Catalog.Categories;
 using OFOQ.Market.Application.Catalog.Categories.CreateCategory;
 using OFOQ.Market.Application.Catalog.Categories.GetCategories;
 using OFOQ.Market.Application.Catalog.Categories.GetCategoryById;
+using OFOQ.Market.Application.Catalog.Categories.MoveCategory;
+using OFOQ.Market.Application.Catalog.Categories.UpdateCategory;
 using OFOQ.Market.Application.Common.Tenancy;
 using OFOQ.Market.Contracts.Catalog;
 using OFOQ.Market.Domain.Catalog;
@@ -37,6 +39,14 @@ public static class CategoryEndpoints
             "/{categoryId:guid}",
             GetCategoryByIdAsync);
 
+        group.MapPut(
+            "/{categoryId:guid}",
+            UpdateCategoryAsync);
+
+        group.MapPut(
+            "/{categoryId:guid}/placement",
+            MoveCategoryAsync);
+
         return endpoints;
     }
 
@@ -46,42 +56,19 @@ public static class CategoryEndpoints
         HttpContext httpContext,
         CancellationToken cancellationToken)
     {
-        var subject =
-            httpContext.User
-                .FindFirst(
-                    JwtRegisteredClaimNames.Sub)?
-                .Value;
-
-        if (!Guid.TryParse(
-                subject,
-                out var actorGuid) ||
-            actorGuid == Guid.Empty)
+        if (!TryGetActorUserId(
+                httpContext,
+                out var actorUserId))
         {
             return Results.Unauthorized();
         }
 
-        CategoryId? parentCategoryId =
-            null;
-
-        if (request.ParentCategoryId.HasValue)
+        if (!TryMapParentCategoryId(
+                request.ParentCategoryId,
+                out var parentCategoryId,
+                out var validationResult))
         {
-            if (request.ParentCategoryId.Value ==
-                Guid.Empty)
-            {
-                return Results.BadRequest(
-                    new
-                    {
-                        code =
-                            "invalid_parent_category_id",
-
-                        message =
-                            "Parent category ID must be a valid non-empty GUID."
-                    });
-            }
-
-            parentCategoryId =
-                CategoryId.From(
-                    request.ParentCategoryId.Value);
+            return validationResult!;
         }
 
         try
@@ -92,58 +79,117 @@ public static class CategoryEndpoints
                         request.Name,
                         request.Slug,
                         parentCategoryId,
+                        request.Position,
                         request.SortOrder,
-                        UserId.From(
-                            actorGuid)),
+                        actorUserId,
+                        request.ImageUrl),
                     cancellationToken);
-
-            var response =
-                Map(
-                    result);
 
             return Results.Created(
                 $"/api/tenants/{httpContext.Request.RouteValues["tenantId"]}/backoffice/categories/{result.CategoryId.Value}",
-                response);
+                Map(
+                    result));
         }
-        catch (CategorySlugAlreadyExistsException exception)
+        catch (Exception exception)
         {
-            return Results.Conflict(
-                new
-                {
-                    code =
-                        "category_slug_already_exists",
+            return MapException(
+                exception);
+        }
+    }
 
-                    message =
-                        exception.Message
-                });
-        }
-        catch (CategoryParentNotFoundException)
+    private static async Task<IResult> UpdateCategoryAsync(
+        Guid categoryId,
+        UpdateCategoryRequest request,
+        UpdateCategoryHandler handler,
+        HttpContext httpContext,
+        CancellationToken cancellationToken)
+    {
+        if (categoryId ==
+            Guid.Empty)
         {
-            return Results.BadRequest(
-                new
-                {
-                    code =
-                        "category_parent_not_found",
+            return InvalidCategoryId();
+        }
 
-                    message =
-                        "The requested parent category was not found."
-                });
-        }
-        catch (TenantScopeViolationException)
+        if (!TryGetActorUserId(
+                httpContext,
+                out var actorUserId))
         {
-            return Results.Forbid();
+            return Results.Unauthorized();
         }
-        catch (ArgumentException exception)
-        {
-            return Results.BadRequest(
-                new
-                {
-                    code =
-                        "validation_error",
 
-                    message =
-                        exception.Message
-                });
+        try
+        {
+            var result =
+                await handler.HandleAsync(
+                    new UpdateCategoryCommand(
+                        CategoryId.From(
+                            categoryId),
+                        request.Name,
+                        request.Slug,
+                        request.IsVisible,
+                        actorUserId,
+                        request.ImageUrl),
+                    cancellationToken);
+
+            return Results.Ok(
+                Map(
+                    result));
+        }
+        catch (Exception exception)
+        {
+            return MapException(
+                exception);
+        }
+    }
+
+    private static async Task<IResult> MoveCategoryAsync(
+        Guid categoryId,
+        MoveCategoryRequest request,
+        MoveCategoryHandler handler,
+        HttpContext httpContext,
+        CancellationToken cancellationToken)
+    {
+        if (categoryId ==
+            Guid.Empty)
+        {
+            return InvalidCategoryId();
+        }
+
+        if (!TryGetActorUserId(
+                httpContext,
+                out var actorUserId))
+        {
+            return Results.Unauthorized();
+        }
+
+        if (!TryMapParentCategoryId(
+                request.ParentCategoryId,
+                out var parentCategoryId,
+                out var validationResult))
+        {
+            return validationResult!;
+        }
+
+        try
+        {
+            var result =
+                await handler.HandleAsync(
+                    new MoveCategoryCommand(
+                        CategoryId.From(
+                            categoryId),
+                        parentCategoryId,
+                        request.Position,
+                        actorUserId),
+                    cancellationToken);
+
+            return Results.Ok(
+                Map(
+                    result));
+        }
+        catch (Exception exception)
+        {
+            return MapException(
+                exception);
         }
     }
 
@@ -157,14 +203,11 @@ public static class CategoryEndpoints
                 await handler.HandleAsync(
                     cancellationToken);
 
-            var response =
+            return Results.Ok(
                 results
                     .Select(
                         Map)
-                    .ToArray();
-
-            return Results.Ok(
-                response);
+                    .ToArray());
         }
         catch (TenantScopeViolationException)
         {
@@ -180,15 +223,7 @@ public static class CategoryEndpoints
         if (categoryId ==
             Guid.Empty)
         {
-            return Results.BadRequest(
-                new
-                {
-                    code =
-                        "invalid_category_id",
-
-                    message =
-                        "Category ID must be a valid non-empty GUID."
-                });
+            return InvalidCategoryId();
         }
 
         try
@@ -222,6 +257,156 @@ public static class CategoryEndpoints
         }
     }
 
+    private static bool TryGetActorUserId(
+        HttpContext httpContext,
+        out UserId actorUserId)
+    {
+        var subject =
+            httpContext.User
+                .FindFirst(
+                    JwtRegisteredClaimNames.Sub)?
+                .Value;
+
+        if (!Guid.TryParse(
+                subject,
+                out var actorGuid) ||
+            actorGuid ==
+            Guid.Empty)
+        {
+            actorUserId =
+                default;
+
+            return false;
+        }
+
+        actorUserId =
+            UserId.From(
+                actorGuid);
+
+        return true;
+    }
+
+    private static bool TryMapParentCategoryId(
+        Guid? parentCategoryGuid,
+        out CategoryId? parentCategoryId,
+        out IResult? validationResult)
+    {
+        parentCategoryId =
+            null;
+
+        validationResult =
+            null;
+
+        if (!parentCategoryGuid.HasValue)
+        {
+            return true;
+        }
+
+        if (parentCategoryGuid.Value ==
+            Guid.Empty)
+        {
+            validationResult =
+                Results.BadRequest(
+                    new
+                    {
+                        code =
+                            "invalid_parent_category_id",
+
+                        message =
+                            "Parent category ID must be a valid non-empty GUID."
+                    });
+
+            return false;
+        }
+
+        parentCategoryId =
+            CategoryId.From(
+                parentCategoryGuid.Value);
+
+        return true;
+    }
+
+    private static IResult MapException(
+        Exception exception)
+    {
+        return exception switch
+        {
+            CategorySlugAlreadyExistsException =>
+                Results.Conflict(
+                    new
+                    {
+                        code =
+                            "category_slug_already_exists",
+
+                        message =
+                            exception.Message
+                    }),
+
+            CategoryParentNotFoundException =>
+                Results.BadRequest(
+                    new
+                    {
+                        code =
+                            "category_parent_not_found",
+
+                        message =
+                            "The requested parent category was not found."
+                    }),
+
+            CategoryHierarchyCycleException =>
+                Results.BadRequest(
+                    new
+                    {
+                        code =
+                            "category_hierarchy_cycle",
+
+                        message =
+                            exception.Message
+                    }),
+
+            CategoryNotFoundException =>
+                Results.NotFound(
+                    new
+                    {
+                        code =
+                            "category_not_found",
+
+                        message =
+                            exception.Message
+                    }),
+
+            TenantScopeViolationException =>
+                Results.Forbid(),
+
+            ArgumentException =>
+                Results.BadRequest(
+                    new
+                    {
+                        code =
+                            "validation_error",
+
+                        message =
+                            exception.Message
+                    }),
+
+            _ =>
+                throw exception
+        };
+    }
+
+    private static IResult InvalidCategoryId()
+    {
+        return Results.BadRequest(
+            new
+            {
+                code =
+                    "invalid_category_id",
+
+                message =
+                    "Category ID must be a valid non-empty GUID."
+            });
+    }
+
     private static CategoryResponse Map(
         CategoryResult result)
     {
@@ -232,6 +417,7 @@ public static class CategoryEndpoints
             result.ParentCategoryId?.Value,
             result.SortOrder,
             result.IsVisible,
-            result.CreatedAtUtc);
+            result.CreatedAtUtc,
+            result.ImageUrl);
     }
 }

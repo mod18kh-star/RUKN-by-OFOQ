@@ -7,13 +7,17 @@ using OFOQ.Market.Domain.Identity;
 namespace OFOQ.Market.Api.Security;
 
 public sealed class JwtAccessTokenService :
-    IAccessTokenService
+    IAccessTokenService,
+    ISessionAccessTokenService
 {
     private const string AuthenticationMethodClaim =
         "amr";
 
     private const string PasswordAuthenticationMethod =
         "pwd";
+
+    private const string GoogleAuthenticationMethod =
+        "google";
 
     private const string MultiFactorAuthenticationMethod =
         "mfa";
@@ -33,6 +37,63 @@ public sealed class JwtAccessTokenService :
         DateTimeOffset nowUtc,
         AccessTokenAuthenticationLevel authenticationLevel)
     {
+        return CreateCore(
+            userId,
+            email,
+            nowUtc,
+            authenticationLevel,
+            UserSessionAuthenticationMethod.Password,
+            sessionId: null);
+    }
+
+    public AccessTokenResult Create(
+        UserId userId,
+        string email,
+        DateTimeOffset nowUtc,
+        AccessTokenAuthenticationLevel authenticationLevel,
+        UserSessionAuthenticationMethod authenticationMethod)
+    {
+        return CreateCore(
+            userId,
+            email,
+            nowUtc,
+            authenticationLevel,
+            authenticationMethod,
+            sessionId: null);
+    }
+
+    public AccessTokenResult Create(
+        UserId userId,
+        string email,
+        DateTimeOffset nowUtc,
+        AccessTokenAuthenticationLevel authenticationLevel,
+        UserSessionAuthenticationMethod authenticationMethod,
+        UserSessionId sessionId)
+    {
+        if (sessionId.IsEmpty)
+        {
+            throw new ArgumentException(
+                "User session ID cannot be empty.",
+                nameof(sessionId));
+        }
+
+        return CreateCore(
+            userId,
+            email,
+            nowUtc,
+            authenticationLevel,
+            authenticationMethod,
+            sessionId);
+    }
+
+    private AccessTokenResult CreateCore(
+        UserId userId,
+        string email,
+        DateTimeOffset nowUtc,
+        AccessTokenAuthenticationLevel authenticationLevel,
+        UserSessionAuthenticationMethod authenticationMethod,
+        UserSessionId? sessionId)
+    {
         if (userId.IsEmpty)
         {
             throw new ArgumentException(
@@ -46,6 +107,13 @@ public sealed class JwtAccessTokenService :
             throw new ArgumentException(
                 "Email is required.",
                 nameof(email));
+        }
+
+        if (!Enum.IsDefined(
+                authenticationMethod))
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(authenticationMethod));
         }
 
         var expiresAtUtc =
@@ -69,8 +137,27 @@ public sealed class JwtAccessTokenService :
 
                 new(
                     AuthenticationMethodClaim,
-                    PasswordAuthenticationMethod)
+                    authenticationMethod switch
+                    {
+                        UserSessionAuthenticationMethod.Password =>
+                            PasswordAuthenticationMethod,
+
+                        UserSessionAuthenticationMethod.Google =>
+                            GoogleAuthenticationMethod,
+
+                        _ =>
+                            throw new ArgumentOutOfRangeException(
+                                nameof(authenticationMethod))
+                    })
             };
+
+        if (sessionId.HasValue)
+        {
+            claims.Add(
+                new Claim(
+                    "sid",
+                    sessionId.Value.Value.ToString()));
+        }
 
         switch (authenticationLevel)
         {

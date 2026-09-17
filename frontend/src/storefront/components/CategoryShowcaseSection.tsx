@@ -10,15 +10,6 @@ import {
   SmartImage,
 } from "./SmartImage";
 
-const fallbackImages = [
-  "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?auto=format&fit=crop&w=1000&q=88",
-  "https://images.unsplash.com/photo-1584917865442-de89df76afd3?auto=format&fit=crop&w=1000&q=88",
-  "https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=1000&q=88",
-  "https://images.unsplash.com/photo-1541643600914-78b084683601?auto=format&fit=crop&w=1000&q=88",
-  "https://images.unsplash.com/photo-1529139574466-a303027c1d8b?auto=format&fit=crop&w=1000&q=88",
-  "https://images.unsplash.com/photo-1525507119028-ed4c629a60a3?auto=format&fit=crop&w=1000&q=88",
-];
-
 export function CategoryShowcaseSection({
   config,
 }: {
@@ -76,9 +67,7 @@ export function CategoryShowcaseSection({
                   category.slug
                 }
                 image={
-                  categoryImage(
-                    index,
-                  )
+                  categoryImage(category.imageUrl, index)
                 }
               />
             ),
@@ -123,9 +112,7 @@ export function CategoryShowcaseSection({
                 <div className="aspect-[3/4] overflow-hidden">
                   <SmartImage
                     src={
-                      categoryImage(
-                        index,
-                      )
+                      categoryImage(category.imageUrl, index)
                     }
                     alt={
                       category.name
@@ -183,9 +170,7 @@ export function CategoryShowcaseSection({
               >
                 <SmartImage
                   src={
-                    categoryImage(
-                      index,
-                    )
+                    categoryImage(category.imageUrl, index)
                   }
                   alt={
                     category.name
@@ -249,9 +234,7 @@ export function CategoryShowcaseSection({
 
                 <SmartImage
                   src={
-                    categoryImage(
-                      index,
-                    )
+                    categoryImage(category.imageUrl, index)
                   }
                   alt={
                     category.name
@@ -300,9 +283,7 @@ export function CategoryShowcaseSection({
               <div className="aspect-[4/5] overflow-hidden bg-[var(--store-soft)]">
                 <SmartImage
                   src={
-                    categoryImage(
-                      index,
-                    )
+                    categoryImage(category.imageUrl, index)
                   }
                   alt={
                     category.name
@@ -390,10 +371,11 @@ function SectionHeading({
 }
 
 function categoryImage(
+  imageUrl: string | null,
   index: number,
 ) {
-  return fallbackImages[
-    index %
-      fallbackImages.length
-  ];
+  void index;
+
+  return imageUrl?.trim() ??
+    "";
 }

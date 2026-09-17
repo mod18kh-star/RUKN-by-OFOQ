@@ -10,7 +10,7 @@ namespace OFOQ.Market.Api.Tests.Commerce;
 public sealed class StorefrontImageRequirementTests
 {
     [Fact]
-    public async Task PublishedProduct_WithOnlyOneImage_IsNotPublic()
+    public async Task PublishedProduct_WithOnePrimaryImage_IsPublic()
     {
         await using var factory =
             new MarketApiFactory();
@@ -93,7 +93,7 @@ public sealed class StorefrontImageRequirementTests
                 $"/api/storefront/{tenant.Slug.Value}/products/incomplete-product");
 
         Assert.Equal(
-            HttpStatusCode.NotFound,
+            HttpStatusCode.OK,
             detailResponse.StatusCode);
     }
 }

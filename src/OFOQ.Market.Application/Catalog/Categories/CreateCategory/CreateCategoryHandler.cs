@@ -67,29 +67,95 @@ public sealed class CreateCategoryHandler
                 command.Slug);
         }
 
-        if (command.ParentCategoryId.HasValue)
-        {
-            var parent =
-                await _categoryRepository
-                    .GetByIdAsync(
-                        command.ParentCategoryId.Value,
-                        cancellationToken);
+        var categories =
+            await _categoryRepository
+                .GetAllAsync(
+                    cancellationToken);
 
-            /*
-             * The repository is tenant-filtered.
-             *
-             * Therefore a parent from another tenant is
-             * indistinguishable from a nonexistent parent.
-             */
-            if (parent is null)
-            {
-                throw new CategoryParentNotFoundException(
-                    command.ParentCategoryId.Value);
-            }
+        if (command.ParentCategoryId.HasValue &&
+            categories.All(
+                category =>
+                    category.Id !=
+                    command.ParentCategoryId.Value))
+        {
+            throw new CategoryParentNotFoundException(
+                command.ParentCategoryId.Value);
         }
 
         var now =
             _timeProvider.GetUtcNow();
+
+        /*
+         * Legacy SortOrder remains accepted temporarily so older
+         * clients/tests continue to work during the V1 contract
+         * migration. New clients use Position. When neither is
+         * supplied the category is appended to its sibling group.
+         */
+        if (!command.Position.HasValue &&
+            command.LegacySortOrder.HasValue)
+        {
+            var legacyCategory =
+                Category.Create(
+                    tenantId,
+                    command.Name,
+                    command.Slug,
+                    now,
+                    command.ParentCategoryId,
+                    command.LegacySortOrder.Value,
+                    command.ActorUserId.Value,
+                    command.ImageUrl);
+
+            await _categoryRepository
+                .AddAsync(
+                    legacyCategory,
+                    cancellationToken);
+
+            await _unitOfWork
+                .SaveChangesAsync(
+                    cancellationToken);
+
+            return Map(
+                legacyCategory);
+        }
+
+        var siblings =
+            categories
+                .Where(
+                    category =>
+                        category.ParentCategoryId ==
+                        command.ParentCategoryId)
+                .OrderBy(
+                    category =>
+                        category.SortOrder)
+                .ThenBy(
+                    category =>
+                        category.CreatedAtUtc)
+                .ThenBy(
+                    category =>
+                        category.Id.Value)
+                .ToList();
+
+        CategoryPosition.Normalize(
+            siblings,
+            now,
+            command.ActorUserId.Value);
+
+        var position =
+            CategoryPosition.Resolve(
+                command.Position,
+                siblings.Count + 1);
+
+        for (var index =
+                 position - 1;
+             index < siblings.Count;
+             index++)
+        {
+            siblings[index]
+                .ChangeSortOrder(
+                    index + 2,
+                    now,
+                    command.ActorUserId.Value);
+        }
 
         var category =
             Category.Create(
@@ -98,8 +164,9 @@ public sealed class CreateCategoryHandler
                 command.Slug,
                 now,
                 command.ParentCategoryId,
-                command.SortOrder,
-                command.ActorUserId.Value);
+                position,
+                command.ActorUserId.Value,
+                command.ImageUrl);
 
         await _categoryRepository
             .AddAsync(
@@ -124,6 +191,7 @@ public sealed class CreateCategoryHandler
             category.ParentCategoryId,
             category.SortOrder,
             category.IsVisible,
-            category.CreatedAtUtc);
+            category.CreatedAtUtc,
+            category.ImageUrl);
     }
 }

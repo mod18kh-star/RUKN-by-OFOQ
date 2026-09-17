@@ -78,12 +78,50 @@ internal sealed class StorefrontQueryRepository :
                 definition.Code;
         }
 
+        var presentation =
+            await _dbContext
+                .TenantStorefrontPresentations
+                .IgnoreQueryFilters()
+                .AsNoTracking()
+                .SingleOrDefaultAsync(
+                    item =>
+                        item.TenantId == tenant.Id,
+                    cancellationToken);
+
+        var publicPresentation =
+            presentation is null
+                ? new StorefrontPresentationPublicResult(
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    TenantStorefrontPresentation.DefaultThemePresetCode,
+                    TenantStorefrontPresentation.DefaultFontCode,
+                    true,
+                    true,
+                    TenantStorefrontPresentation.DefaultCategorySectionTitle,
+                    TenantStorefrontPresentation.DefaultProductSectionTitle)
+                : new StorefrontPresentationPublicResult(
+                    presentation.LogoUrl,
+                    presentation.CoverImageUrl,
+                    presentation.Announcement,
+                    presentation.PrimaryColor,
+                    presentation.AccentColor,
+                    presentation.ThemePresetCode,
+                    presentation.FontCode,
+                    presentation.ShowCategoriesOnHome,
+                    presentation.ShowProductsOnHome,
+                    presentation.CategorySectionTitle,
+                    presentation.ProductSectionTitle);
+
         return new StorefrontInfoResult(
             tenant.Id,
             tenant.Name,
             tenant.Slug.Value,
             verticalName,
-            verticalCode);
+            verticalCode,
+            publicPresentation);
     }
 
     public async Task<IReadOnlyList<StorefrontCategoryResult>>
@@ -118,7 +156,8 @@ internal sealed class StorefrontQueryRepository :
                         category.Name,
                         category.Slug,
                         category.ParentCategoryId?.Value,
-                        category.SortOrder))
+                        category.SortOrder,
+                        category.ImageUrl))
             .ToArray();
     }
 
@@ -151,7 +190,7 @@ internal sealed class StorefrontQueryRepository :
                                 image =>
                                     image.TenantId == tenantId &&
                                     image.ProductId == product.Id) >=
-                            2)
+                            1)
                 .Where(
                     product =>
                         _dbContext
@@ -342,7 +381,7 @@ internal sealed class StorefrontQueryRepository :
                 .ToArrayAsync(
                     cancellationToken);
 
-        if (images.Length < 2)
+        if (images.Length < 1)
         {
             return null;
         }

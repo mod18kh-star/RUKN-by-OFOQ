@@ -459,6 +459,308 @@ public sealed class CategoryEndpointsTests
                 .GetString());
     }
 
+
+    [Fact]
+    public async Task CreateCategory_WithoutPosition_AppendsToSiblingGroup()
+    {
+        await using var factory =
+            new MarketApiFactory();
+
+        using var client =
+            factory.CreateClient();
+
+        var setup =
+            await CreateMerchantAsync(
+                factory,
+                client,
+                "merchant@example.com",
+                AccessTokenAuthenticationLevel.MultiFactor);
+
+        var url =
+            $"/api/tenants/{setup.Tenant.Id.Value}/backoffice/categories/";
+
+        var firstResponse =
+            await client.PostAsJsonAsync(
+                url,
+                new CreateCategoryRequest(
+                    "First",
+                    "first"));
+
+        var secondResponse =
+            await client.PostAsJsonAsync(
+                url,
+                new CreateCategoryRequest(
+                    "Second",
+                    "second"));
+
+        Assert.Equal(
+            HttpStatusCode.Created,
+            firstResponse.StatusCode);
+
+        Assert.Equal(
+            HttpStatusCode.Created,
+            secondResponse.StatusCode);
+
+        var first =
+            await firstResponse.Content
+                .ReadFromJsonAsync<CategoryResponse>();
+
+        var second =
+            await secondResponse.Content
+                .ReadFromJsonAsync<CategoryResponse>();
+
+        Assert.NotNull(
+            first);
+
+        Assert.NotNull(
+            second);
+
+        Assert.Equal(
+            1,
+            first.SortOrder);
+
+        Assert.Equal(
+            2,
+            second.SortOrder);
+    }
+
+    [Fact]
+    public async Task CreateCategory_AtPositionOne_ShiftsExistingSibling()
+    {
+        await using var factory =
+            new MarketApiFactory();
+
+        using var client =
+            factory.CreateClient();
+
+        var setup =
+            await CreateMerchantAsync(
+                factory,
+                client,
+                "merchant@example.com",
+                AccessTokenAuthenticationLevel.MultiFactor);
+
+        var url =
+            $"/api/tenants/{setup.Tenant.Id.Value}/backoffice/categories/";
+
+        await AssertCreatedAsync(
+            client.PostAsJsonAsync(
+                url,
+                new CreateCategoryRequest(
+                    "Existing",
+                    "existing")));
+
+        var insertedResponse =
+            await client.PostAsJsonAsync(
+                url,
+                new CreateCategoryRequest(
+                    "Inserted",
+                    "inserted",
+                    Position: 1));
+
+        Assert.Equal(
+            HttpStatusCode.Created,
+            insertedResponse.StatusCode);
+
+        var listResponse =
+            await client.GetAsync(
+                url);
+
+        var categories =
+            await listResponse.Content
+                .ReadFromJsonAsync<CategoryResponse[]>();
+
+        Assert.NotNull(
+            categories);
+
+        var inserted =
+            Assert.Single(
+                categories.Where(
+                    item =>
+                        item.Slug ==
+                        "inserted"));
+
+        var existing =
+            Assert.Single(
+                categories.Where(
+                    item =>
+                        item.Slug ==
+                        "existing"));
+
+        Assert.Equal(
+            1,
+            inserted.SortOrder);
+
+        Assert.Equal(
+            2,
+            existing.SortOrder);
+    }
+
+    [Fact]
+    public async Task MoveCategory_BeneathDescendant_ReturnsHierarchyCycle()
+    {
+        await using var factory =
+            new MarketApiFactory();
+
+        using var client =
+            factory.CreateClient();
+
+        var setup =
+            await CreateMerchantAsync(
+                factory,
+                client,
+                "merchant@example.com",
+                AccessTokenAuthenticationLevel.MultiFactor);
+
+        var url =
+            $"/api/tenants/{setup.Tenant.Id.Value}/backoffice/categories/";
+
+        var rootResponse =
+            await client.PostAsJsonAsync(
+                url,
+                new CreateCategoryRequest(
+                    "Root",
+                    "root"));
+
+        var root =
+            await rootResponse.Content
+                .ReadFromJsonAsync<CategoryResponse>();
+
+        Assert.NotNull(
+            root);
+
+        var childResponse =
+            await client.PostAsJsonAsync(
+                url,
+                new CreateCategoryRequest(
+                    "Child",
+                    "child",
+                    ParentCategoryId:
+                        root.CategoryId));
+
+        var child =
+            await childResponse.Content
+                .ReadFromJsonAsync<CategoryResponse>();
+
+        Assert.NotNull(
+            child);
+
+        var moveResponse =
+            await client.PutAsJsonAsync(
+                $"{url}{root.CategoryId}/placement",
+                new MoveCategoryRequest(
+                    ParentCategoryId:
+                        child.CategoryId,
+                    Position: 1));
+
+        Assert.Equal(
+            HttpStatusCode.BadRequest,
+            moveResponse.StatusCode);
+
+        using var json =
+            JsonDocument.Parse(
+                await moveResponse.Content
+                    .ReadAsStringAsync());
+
+        Assert.Equal(
+            "category_hierarchy_cycle",
+            json.RootElement
+                .GetProperty(
+                    "code")
+                .GetString());
+    }
+
+    [Fact]
+    public async Task MoveCategory_ToFirstPosition_ReordersSiblingGroup()
+    {
+        await using var factory =
+            new MarketApiFactory();
+
+        using var client =
+            factory.CreateClient();
+
+        var setup =
+            await CreateMerchantAsync(
+                factory,
+                client,
+                "merchant@example.com",
+                AccessTokenAuthenticationLevel.MultiFactor);
+
+        var url =
+            $"/api/tenants/{setup.Tenant.Id.Value}/backoffice/categories/";
+
+        var firstResponse =
+            await client.PostAsJsonAsync(
+                url,
+                new CreateCategoryRequest(
+                    "First",
+                    "first"));
+
+        var secondResponse =
+            await client.PostAsJsonAsync(
+                url,
+                new CreateCategoryRequest(
+                    "Second",
+                    "second"));
+
+        var first =
+            await firstResponse.Content
+                .ReadFromJsonAsync<CategoryResponse>();
+
+        var second =
+            await secondResponse.Content
+                .ReadFromJsonAsync<CategoryResponse>();
+
+        Assert.NotNull(
+            first);
+
+        Assert.NotNull(
+            second);
+
+        var moveResponse =
+            await client.PutAsJsonAsync(
+                $"{url}{second.CategoryId}/placement",
+                new MoveCategoryRequest(
+                    Position: 1));
+
+        Assert.Equal(
+            HttpStatusCode.OK,
+            moveResponse.StatusCode);
+
+        var listResponse =
+            await client.GetAsync(
+                url);
+
+        var categories =
+            await listResponse.Content
+                .ReadFromJsonAsync<CategoryResponse[]>();
+
+        Assert.NotNull(
+            categories);
+
+        var moved =
+            Assert.Single(
+                categories.Where(
+                    item =>
+                        item.CategoryId ==
+                        second.CategoryId));
+
+        var shifted =
+            Assert.Single(
+                categories.Where(
+                    item =>
+                        item.CategoryId ==
+                        first.CategoryId));
+
+        Assert.Equal(
+            1,
+            moved.SortOrder);
+
+        Assert.Equal(
+            2,
+            shifted.SortOrder);
+    }
+
     private static async Task<MerchantSetup> CreateMerchantAsync(
         MarketApiFactory factory,
         HttpClient client,

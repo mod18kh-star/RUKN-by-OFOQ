@@ -199,18 +199,20 @@ public sealed class VerifyMfaTotpHandler
             .SaveChangesAsync(
                 cancellationToken);
 
-    var accessToken =
-    _accessTokenService.Create(
-        user.Id,
-        user.Email.Value,
-        now,
-        AccessTokenAuthenticationLevel.MultiFactor);
+        var accessToken =
+            _accessTokenService.Create(
+                user.Id,
+                user.Email.Value,
+                now,
+                AccessTokenAuthenticationLevel.MultiFactor,
+                challenge.AuthenticationMethod);
 
         return new VerifyMfaTotpResult(
             user.Id,
             user.Email.Value,
             accessToken.Token,
-            accessToken.ExpiresAtUtc);
+            accessToken.ExpiresAtUtc,
+            challenge.AuthenticationMethod);
     }
 
     private async Task RejectAttemptAsync(

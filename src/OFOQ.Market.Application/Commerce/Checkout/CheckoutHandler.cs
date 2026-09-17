@@ -1,3 +1,4 @@
+using OFOQ.Market.Application.Common.Notifications;
 using OFOQ.Market.Application.Common.Persistence;
 using OFOQ.Market.Application.Common.Tenancy;
 using OFOQ.Market.Domain.Catalog;
@@ -41,6 +42,12 @@ public sealed class CheckoutHandler
     private readonly TimeProvider
         _timeProvider;
 
+    private readonly CheckoutPricingService?
+        _checkoutPricingService;
+
+    private readonly ITransactionalEmailQueue?
+        _emailQueue;
+
     public CheckoutHandler(
         ICartRepository cartRepository,
         ICheckoutLockRepository checkoutLockRepository,
@@ -51,7 +58,9 @@ public sealed class CheckoutHandler
         ICurrentTenant currentTenant,
         ITransactionExecutor transactionExecutor,
         IUnitOfWork unitOfWork,
-        TimeProvider timeProvider)
+        TimeProvider timeProvider,
+        CheckoutPricingService? checkoutPricingService = null,
+        ITransactionalEmailQueue? emailQueue = null)
     {
         _cartRepository =
             cartRepository;
@@ -82,6 +91,12 @@ public sealed class CheckoutHandler
 
         _timeProvider =
             timeProvider;
+
+        _checkoutPricingService =
+            checkoutPricingService;
+
+        _emailQueue =
+            emailQueue;
     }
 
     public async Task<CheckoutResult> HandleAsync(
@@ -319,6 +334,23 @@ public sealed class CheckoutHandler
                         throw new CheckoutCartEmptyException();
                     }
 
+                    var pricingContext =
+                        _checkoutPricingService is null
+                            ? CheckoutPricingContext.Empty
+                            : await _checkoutPricingService.ResolveAsync(
+                                command.CustomerUserId,
+                                command.CustomerAddressId,
+                                command.ShippingMethodId,
+                                command.CouponCode,
+                                snapshots
+                                    .Select(snapshot =>
+                                        new CheckoutPricingItem(
+                                            snapshot.ProductId,
+                                            snapshot.UnitPrice.Amount * snapshot.Quantity))
+                                    .ToArray(),
+                                orderCurrency.Value,
+                                transactionCancellationToken);
+
                     var now =
                         _timeProvider.GetUtcNow();
 
@@ -331,6 +363,25 @@ public sealed class CheckoutHandler
                             snapshots,
                             now,
                             command.CustomerUserId.Value);
+
+                    order.ApplyCheckoutContext(
+                        pricingContext.ShippingAmount,
+                        pricingContext.DiscountAmount,
+                        pricingContext.ShippingMethodId,
+                        pricingContext.ShippingMethodName,
+                        pricingContext.ShippingMethodType,
+                        pricingContext.ShippingAddressId,
+                        pricingContext.RecipientName,
+                        pricingContext.RecipientPhone,
+                        pricingContext.CountryCode,
+                        pricingContext.Region,
+                        pricingContext.City,
+                        pricingContext.PostalCode,
+                        pricingContext.AddressLine1,
+                        pricingContext.AddressLine2,
+                        pricingContext.CouponCode,
+                        now,
+                        command.CustomerUserId.Value);
 
                     foreach (var item in
                              cart.Items)
@@ -365,9 +416,29 @@ public sealed class CheckoutHandler
                             idempotencyKey,
                             transactionCancellationToken);
 
+                    if (_checkoutPricingService is not null)
+                    {
+                        await _checkoutPricingService.RecordRedemptionAsync(
+                            order,
+                            pricingContext,
+                            command.CustomerUserId,
+                            transactionCancellationToken);
+                    }
+
                     cart.MarkConverted(
                         now,
                         command.CustomerUserId.Value);
+
+                    if (_emailQueue is not null)
+                    {
+                        await _emailQueue.QueueNewOrderAsync(
+                            _currentTenant.TenantId!.Value,
+                            order.Id,
+                            order.TotalAmount,
+                            order.Currency.Value,
+                            now,
+                            transactionCancellationToken);
+                    }
 
                     await _unitOfWork
                         .SaveChangesAsync(
@@ -505,7 +576,12 @@ public sealed class CheckoutHandler
             order.Status.ToString(),
             order.Currency.Value,
             order.TotalQuantity,
+            order.SubtotalAmount,
+            order.ShippingAmount,
+            order.DiscountAmount,
             order.TotalAmount,
+            order.AppliedCouponCode,
+            order.ShippingMethodName,
             order.CreatedAtUtc,
             isIdempotentReplay,
             order.Items

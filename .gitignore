@@ -480,3 +480,20 @@ $RECYCLE.BIN/
 
 # Vim temporary swap files
 *.swp
+.rukn-backups/
+**/App_Data/
+*.local
+.env.*
+!.env.example
+
+frontend/.env
+
+frontend/.env.local
+
+**/bin/
+
+**/obj/
+
+frontend/node_modules/
+
+frontend/dist/

@@ -6,4 +6,6 @@ public sealed record RegisterUserResult(
     UserId UserId,
     string Email,
     UserStatus Status,
-    DateTimeOffset CreatedAtUtc);
+    DateTimeOffset CreatedAtUtc,
+    string? FullName = null,
+    string? PhoneNumber = null);

@@ -38,6 +38,14 @@ public sealed class UserConfiguration :
             .HasMaxLength(1024)
             .IsRequired();
 
+        builder.Property(user => user.FullName)
+            .HasColumnName("full_name")
+            .HasMaxLength(160);
+
+        builder.Property(user => user.PhoneNumber)
+            .HasColumnName("phone_number")
+            .HasMaxLength(24);
+
         builder.Property(user => user.Status)
             .HasColumnName("status")
             .HasConversion<string>()

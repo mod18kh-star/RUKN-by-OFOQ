@@ -1,6 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using OFOQ.Market.Domain.Commerce.Carts;
+using OFOQ.Market.Domain.Commerce.Fulfillment;
+using OFOQ.Market.Domain.Commerce.Customers;
 using OFOQ.Market.Domain.Commerce.Orders;
 using OFOQ.Market.Domain.Tenancy;
 
@@ -159,6 +161,54 @@ public sealed class OrderConfiguration :
                 "cancellation_reason")
             .HasMaxLength(
                 500);
+
+        builder.Property(
+                order =>
+                    order.ShippingAmount)
+            .HasField(
+                "_shippingAmount")
+            .HasColumnName(
+                "shipping_amount")
+            .HasPrecision(18, 2)
+            .HasDefaultValue(0m)
+            .IsRequired();
+
+        builder.Property(
+                order =>
+                    order.DiscountAmount)
+            .HasField(
+                "_discountAmount")
+            .HasColumnName(
+                "discount_amount")
+            .HasPrecision(18, 2)
+            .HasDefaultValue(0m)
+            .IsRequired();
+
+        builder.Ignore(order => order.ShippingMethodId);
+        builder.Property<ShippingMethodId?>("_shippingMethodId")
+            .HasColumnName("shipping_method_id")
+            .HasConversion(
+                id => id.HasValue ? id.Value.Value : (Guid?)null,
+                value => value.HasValue ? ShippingMethodId.From(value.Value) : null);
+
+        builder.Ignore(order => order.ShippingAddressId);
+        builder.Property<CustomerAddressId?>("_shippingAddressId")
+            .HasColumnName("shipping_address_id")
+            .HasConversion(
+                id => id.HasValue ? id.Value.Value : (Guid?)null,
+                value => value.HasValue ? CustomerAddressId.From(value.Value) : null);
+
+        builder.Property(order => order.ShippingMethodName).HasColumnName("shipping_method_name").HasMaxLength(160);
+        builder.Property(order => order.ShippingMethodType).HasColumnName("shipping_method_type").HasMaxLength(40);
+        builder.Property(order => order.ShippingRecipientName).HasColumnName("shipping_recipient_name").HasMaxLength(160);
+        builder.Property(order => order.ShippingRecipientPhone).HasColumnName("shipping_recipient_phone").HasMaxLength(40);
+        builder.Property(order => order.ShippingCountryCode).HasColumnName("shipping_country_code").HasMaxLength(2);
+        builder.Property(order => order.ShippingRegion).HasColumnName("shipping_region").HasMaxLength(120);
+        builder.Property(order => order.ShippingCity).HasColumnName("shipping_city").HasMaxLength(120);
+        builder.Property(order => order.ShippingPostalCode).HasColumnName("shipping_postal_code").HasMaxLength(32);
+        builder.Property(order => order.ShippingAddressLine1).HasColumnName("shipping_address_line1").HasMaxLength(240);
+        builder.Property(order => order.ShippingAddressLine2).HasColumnName("shipping_address_line2").HasMaxLength(240);
+        builder.Property(order => order.AppliedCouponCode).HasColumnName("applied_coupon_code").HasMaxLength(60);
 
         builder.Property(
                 order =>

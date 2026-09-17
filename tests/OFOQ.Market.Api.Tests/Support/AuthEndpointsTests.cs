@@ -22,7 +22,9 @@ public sealed class AuthEndpointsTests
                 "/api/auth/register",
                 new RegisterUserRequest(
                     "USER@Example.COM",
-                    "StrongPassword123"));
+                    "StrongPassword123",
+                    "محمد الأحمد",
+                    "+966551234567"));
 
         Assert.Equal(
             HttpStatusCode.Created,
@@ -45,6 +47,14 @@ public sealed class AuthEndpointsTests
         Assert.Equal(
             "Active",
             result.Status);
+
+        Assert.Equal(
+            "محمد الأحمد",
+            result.FullName);
+
+        Assert.Equal(
+            "+966551234567",
+            result.PhoneNumber);
     }
 
     [Fact]

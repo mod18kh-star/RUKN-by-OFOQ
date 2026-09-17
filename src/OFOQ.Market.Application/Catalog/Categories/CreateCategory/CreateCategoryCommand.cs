@@ -7,5 +7,7 @@ public sealed record CreateCategoryCommand(
     string Name,
     string Slug,
     CategoryId? ParentCategoryId,
-    int SortOrder,
-    UserId ActorUserId);
+    int? Position,
+    int? LegacySortOrder,
+    UserId ActorUserId,
+    string? ImageUrl = null);

@@ -11,12 +11,14 @@ import type {
 
 interface Props {
   storeName: string;
+  logoUrl: string;
   announcement: string;
   themeId: ThemeId;
 }
 
 export function StorefrontHeader({
   storeName,
+  logoUrl,
   announcement,
   themeId,
 }: Props) {
@@ -52,7 +54,10 @@ export function StorefrontHeader({
                 href="#"
                 className="w-1/3 text-center text-[25px] font-medium tracking-[0.12em]"
               >
-                {storeName}
+                <StoreBrand
+                  storeName={storeName}
+                  logoUrl={logoUrl}
+                />
               </a>
 
               <div className="flex w-1/3 justify-end gap-1">
@@ -125,7 +130,10 @@ export function StorefrontHeader({
               href="#"
               className="shrink-0 text-[23px] font-bold tracking-[-0.04em]"
             >
-              {storeName}
+              <StoreBrand
+                storeName={storeName}
+                logoUrl={logoUrl}
+              />
             </a>
 
             <button
@@ -192,7 +200,10 @@ export function StorefrontHeader({
               href="#"
               className="shrink-0 text-[22px] font-bold tracking-[-0.045em]"
             >
-              {storeName}
+              <StoreBrand
+                storeName={storeName}
+                logoUrl={logoUrl}
+              />
             </a>
 
             <nav className="hidden items-center gap-7 text-[12px] font-medium lg:flex">
@@ -270,7 +281,10 @@ export function StorefrontHeader({
                 href="#"
                 className="text-[25px] font-bold tracking-[-0.06em]"
               >
-                {storeName}
+                <StoreBrand
+                  storeName={storeName}
+                  logoUrl={logoUrl}
+                />
               </a>
             </div>
 
@@ -340,7 +354,10 @@ export function StorefrontHeader({
               href="#"
               className="text-[23px] font-bold tracking-[-0.045em]"
             >
-              {storeName}
+              <StoreBrand
+                storeName={storeName}
+                logoUrl={logoUrl}
+              />
             </a>
 
             <nav className="hidden items-center gap-8 text-[13px] font-medium md:flex">
@@ -387,6 +404,30 @@ export function StorefrontHeader({
           </div>
         </div>
       </header>
+    </>
+  );
+}
+
+function StoreBrand({
+  storeName,
+  logoUrl,
+}: {
+  storeName: string;
+  logoUrl: string;
+}) {
+  if (logoUrl.trim()) {
+    return (
+      <img
+        src={logoUrl}
+        alt={storeName}
+        className="max-h-11 max-w-[170px] object-contain"
+      />
+    );
+  }
+
+  return (
+    <>
+      {storeName}
     </>
   );
 }

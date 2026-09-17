@@ -164,6 +164,7 @@ export function createThemeStyle(
       theme.soft,
 
     "--store-ink":
+      config.brandPrimaryColor ||
       theme.ink,
 
     "--store-ink-soft":
@@ -173,6 +174,7 @@ export function createThemeStyle(
       theme.muted,
 
     "--store-accent":
+      config.brandAccentColor ||
       theme.accent,
 
     "--store-radius":

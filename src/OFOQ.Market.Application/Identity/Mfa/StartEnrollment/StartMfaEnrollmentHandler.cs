@@ -7,7 +7,7 @@ namespace OFOQ.Market.Application.Identity.Mfa.StartEnrollment;
 public sealed class StartMfaEnrollmentHandler
 {
     private const string Issuer =
-        "OFOQ";
+        "RUKN";
 
     private readonly IUserRepository _userRepository;
     private readonly IUserMfaRepository _userMfaRepository;

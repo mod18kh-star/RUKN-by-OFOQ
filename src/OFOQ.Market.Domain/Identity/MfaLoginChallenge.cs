@@ -15,7 +15,8 @@ public sealed class MfaLoginChallenge :
         string tokenHash,
         DateTimeOffset expiresAtUtc,
         DateTimeOffset createdAtUtc,
-        Guid? createdByUserId)
+        Guid? createdByUserId,
+        UserSessionAuthenticationMethod authenticationMethod)
         : base(id)
     {
         UserId =
@@ -23,6 +24,9 @@ public sealed class MfaLoginChallenge :
 
         TokenHash =
             tokenHash;
+
+        AuthenticationMethod =
+            authenticationMethod;
 
         ExpiresAtUtc =
             expiresAtUtc;
@@ -42,6 +46,9 @@ public sealed class MfaLoginChallenge :
 
     public string TokenHash { get; private set; } =
         string.Empty;
+
+    public UserSessionAuthenticationMethod AuthenticationMethod { get; private set; } =
+        UserSessionAuthenticationMethod.Password;
 
     public DateTimeOffset ExpiresAtUtc { get; private set; }
 
@@ -74,7 +81,8 @@ public sealed class MfaLoginChallenge :
         string tokenHash,
         DateTimeOffset expiresAtUtc,
         DateTimeOffset createdAtUtc,
-        Guid? createdByUserId = null)
+        Guid? createdByUserId = null,
+        UserSessionAuthenticationMethod authenticationMethod = UserSessionAuthenticationMethod.Password)
     {
         if (userId.IsEmpty)
         {
@@ -91,6 +99,12 @@ public sealed class MfaLoginChallenge :
                 nameof(tokenHash));
         }
 
+        if (!Enum.IsDefined(authenticationMethod))
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(authenticationMethod));
+        }
+
         if (expiresAtUtc <= createdAtUtc)
         {
             throw new ArgumentException(
@@ -104,7 +118,8 @@ public sealed class MfaLoginChallenge :
             tokenHash,
             expiresAtUtc,
             createdAtUtc,
-            createdByUserId);
+            createdByUserId,
+            authenticationMethod);
     }
 
     public bool IsUsable(

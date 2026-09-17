@@ -30,6 +30,11 @@ public static class ProductImageEndpoints
             "/{productId:guid}/images",
             SetAsync);
 
+        group.MapPost(
+            "/assets",
+            UploadAssetAsync)
+            .DisableAntiforgery();
+
         return endpoints;
     }
 
@@ -125,6 +130,72 @@ public static class ProductImageEndpoints
             return ValidationError(
                 exception.Message);
         }
+    }
+
+
+    private static async Task<IResult> UploadAssetAsync(
+        Guid tenantId,
+        HttpRequest request,
+        ICurrentTenant currentTenant,
+        IWebHostEnvironment environment,
+        CancellationToken cancellationToken)
+    {
+        if (!currentTenant.IsAvailable ||
+            currentTenant.TenantId?.Value != tenantId)
+        {
+            return Results.Forbid();
+        }
+
+        var form = await request.ReadFormAsync(cancellationToken);
+        var file = form.Files.GetFile("file");
+
+        if (file is null || file.Length <= 0)
+        {
+            return ValidationError("يرجى اختيار صورة صالحة.");
+        }
+
+        if (file.Length > 8 * 1024 * 1024)
+        {
+            return ValidationError("حجم صورة المنتج يجب أن يكون أقل من 8MB.");
+        }
+
+        var extension = Path.GetExtension(file.FileName);
+        var allowed = new[] { ".png", ".jpg", ".jpeg", ".webp" };
+
+        if (string.IsNullOrWhiteSpace(extension) ||
+            !allowed.Contains(extension, StringComparer.OrdinalIgnoreCase))
+        {
+            return ValidationError("الامتداد المدعوم هو PNG أو JPG أو WEBP.");
+        }
+
+        if (!string.IsNullOrWhiteSpace(file.ContentType) &&
+            !file.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
+        {
+            return ValidationError("نوع الملف يجب أن يكون صورة.");
+        }
+
+        var tenantFolder = tenantId.ToString("N");
+        var directory = Path.Combine(
+            environment.ContentRootPath,
+            "App_Data",
+            "public-uploads",
+            "products",
+            tenantFolder);
+
+        Directory.CreateDirectory(directory);
+
+        var fileName = $"product-{Guid.NewGuid():N}{extension.ToLowerInvariant()}";
+        var physicalPath = Path.Combine(directory, fileName);
+
+        await using (var stream = File.Create(physicalPath))
+        {
+            await file.CopyToAsync(stream, cancellationToken);
+        }
+
+        return Results.Ok(new
+        {
+            assetUrl = $"/public-uploads/products/{tenantFolder}/{fileName}"
+        });
     }
 
     private static ProductImagesResponse Map(

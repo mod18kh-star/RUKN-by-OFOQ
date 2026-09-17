@@ -5,6 +5,8 @@ using Microsoft.Extensions.DependencyInjection;
 using OFOQ.Market.Application.Catalog.Categories.CreateCategory;
 using OFOQ.Market.Application.Catalog.Categories.GetCategories;
 using OFOQ.Market.Application.Catalog.Categories.GetCategoryById;
+using OFOQ.Market.Application.Catalog.Categories.MoveCategory;
+using OFOQ.Market.Application.Catalog.Categories.UpdateCategory;
 
 using OFOQ.Market.Application.Catalog.Products.ChangeState;
 using OFOQ.Market.Application.Catalog.Products.CreateProduct;
@@ -25,8 +27,14 @@ using OFOQ.Market.Application.Commerce.Carts.ClearCart;
 using OFOQ.Market.Application.Commerce.Carts.GetCart;
 using OFOQ.Market.Application.Commerce.Carts.RemoveItem;
 using OFOQ.Market.Application.Commerce.Carts.UpdateItemQuantity;
+using OFOQ.Market.Application.Commerce.Dashboard;
 
 using OFOQ.Market.Application.Commerce.Checkout;
+using OFOQ.Market.Application.Commerce.Fulfillment;
+using OFOQ.Market.Application.Commerce.Customers;
+using OFOQ.Market.Application.Commerce.Discounts;
+using OFOQ.Market.Application.Commerce.Returns;
+using OFOQ.Market.Application.Commerce.Reviews;
 using OFOQ.Market.Application.Commerce.Orders.Cancel;
 
 using OFOQ.Market.Application.Commerce.Configuration.CapabilityOverrides;
@@ -45,7 +53,13 @@ using OFOQ.Market.Application.Commerce.Payments.ProviderAccounts.State;
 using OFOQ.Market.Application.Commerce.Payments.ProviderAccounts.Wallets;
 using OFOQ.Market.Application.Commerce.Payments.RetryIntent;
 
+using OFOQ.Market.Application.Identity.CurrentUserContext;
+using OFOQ.Market.Application.Content;
+using OFOQ.Market.Application.Identity.EmailVerification.Confirm;
+using OFOQ.Market.Application.Identity.GoogleSignIn;
+using OFOQ.Market.Application.Identity.EmailVerification.Start;
 using OFOQ.Market.Application.Identity.LoginUser;
+using OFOQ.Market.Application.Identity.Mfa.CompleteEnrollment;
 using OFOQ.Market.Application.Identity.Mfa.ConfirmEnrollment;
 using OFOQ.Market.Application.Identity.Mfa.Login.VerifyRecovery;
 using OFOQ.Market.Application.Identity.Mfa.Login.VerifyTotp;
@@ -54,9 +68,15 @@ using OFOQ.Market.Application.Identity.Mfa.RecoveryCodes.Generate;
 using OFOQ.Market.Application.Identity.Mfa.RecoveryCodes.Regenerate;
 using OFOQ.Market.Application.Identity.Mfa.StartEnrollment;
 using OFOQ.Market.Application.Identity.RegisterUser;
+using OFOQ.Market.Application.Identity.Sessions;
+using OFOQ.Market.Application.Identity.TrustedDevices;
+using OFOQ.Market.Application.Notifications;
 
 using OFOQ.Market.Application.Tenancy.CreateTenant;
 using OFOQ.Market.Application.Tenancy.GetTenantById;
+using OFOQ.Market.Application.Tenancy.StoreProfile;
+using OFOQ.Market.Application.Tenancy.StorefrontPresentation;
+using OFOQ.Market.Application.Tenancy.StoreReadiness;
 
 namespace OFOQ.Market.Application;
 
@@ -78,6 +98,24 @@ public static class DependencyInjection
         services.AddScoped<
             GetTenantByIdHandler>();
 
+        services.AddScoped<
+            GetStoreProfileHandler>();
+
+        services.AddScoped<
+            UpdateStoreProfileHandler>();
+
+        services.AddScoped<
+            ReplaceStoreSocialLinksHandler>();
+
+        services.AddScoped<
+            GetStorefrontPresentationHandler>();
+
+        services.AddScoped<
+            UpdateStorefrontPresentationHandler>();
+
+        services.AddScoped<
+            GetStoreReadinessHandler>();
+
         // -------------------------------------------------
         // Categories
         // -------------------------------------------------
@@ -90,6 +128,12 @@ public static class DependencyInjection
 
         services.AddScoped<
             GetCategoryByIdHandler>();
+
+        services.AddScoped<
+            UpdateCategoryHandler>();
+
+        services.AddScoped<
+            MoveCategoryHandler>();
 
         // -------------------------------------------------
         // Products
@@ -124,6 +168,21 @@ public static class DependencyInjection
 
         services.AddScoped<
             OFOQ.Market.Application.Catalog.ProductImages.SetProductImagesHandler>();
+
+        services.AddScoped<
+            OFOQ.Market.Application.Catalog.ProductContentBlocks.GetProductContentBlocksHandler>();
+
+        services.AddScoped<
+            OFOQ.Market.Application.Catalog.ProductContentBlocks.SetProductContentBlocksHandler>();
+
+        services.AddScoped<
+            OFOQ.Market.Application.Catalog.ProductRelations.GetProductRelationsHandler>();
+
+        services.AddScoped<
+            OFOQ.Market.Application.Catalog.ProductRelations.SetProductRelationsHandler>();
+
+        services.AddScoped<
+            OFOQ.Market.Application.Catalog.ProductRelations.ProductRecommendationSettingsHandler>();
 
         // -------------------------------------------------
         // Structured product options
@@ -180,12 +239,33 @@ public static class DependencyInjection
         services.AddScoped<
             ClearCartHandler>();
 
+        services.AddScoped<
+            GetMerchantOperationsDashboardHandler>();
+
         // -------------------------------------------------
         // Commerce / Checkout
         // -------------------------------------------------
 
         services.AddScoped<
             CheckoutHandler>();
+
+        services.AddScoped<
+            CheckoutPricingService>();
+
+        services.AddScoped<
+            CustomerAccountService>();
+
+        services.AddScoped<
+            CouponAdministrationService>();
+
+        services.AddScoped<
+            FulfillmentSettingsService>();
+
+        services.AddScoped<
+            ReturnManagementService>();
+
+        services.AddScoped<
+            ReviewManagementService>();
 
         services.AddScoped<
             CancelOrderHandler>();
@@ -199,6 +279,9 @@ public static class DependencyInjection
             OFOQ.Market.Application.Commerce.Orders.State.ChangeOrderLifecycleHandler>();
         services.AddScoped<
             OFOQ.Market.Application.Commerce.Analytics.GetMerchantAnalyticsHandler>();
+
+        services.AddScoped<
+            ContentManagementService>();
 
         // -------------------------------------------------
         // Commerce / Payments
@@ -300,6 +383,24 @@ public static class DependencyInjection
             LoginUserHandler>();
 
         services.AddScoped<
+            GetCurrentUserContextHandler>();
+
+        services.AddScoped<
+            StartEmailVerificationHandler>();
+
+        services.AddScoped<
+            ConfirmEmailVerificationHandler>();
+
+        services.AddScoped<
+            AuthenticationSessionService>();
+
+        services.AddScoped<
+            GoogleSignInHandler>();
+
+        services.AddScoped<
+            TrustedDeviceService>();
+
+        services.AddScoped<
             VerifyMfaTotpHandler>();
 
         services.AddScoped<
@@ -312,6 +413,9 @@ public static class DependencyInjection
             ConfirmMfaEnrollmentHandler>();
 
         services.AddScoped<
+            CompleteMfaEnrollmentHandler>();
+
+        services.AddScoped<
             GenerateRecoveryCodesHandler>();
 
         services.AddScoped<
@@ -319,6 +423,16 @@ public static class DependencyInjection
 
         services.AddScoped<
             ConsumeRecoveryCodeHandler>();
+
+        // -------------------------------------------------
+        // Notifications
+        // -------------------------------------------------
+
+        services.AddScoped<
+            GetNotificationPreferencesHandler>();
+
+        services.AddScoped<
+            UpdateNotificationPreferencesHandler>();
 
         return services;
     }

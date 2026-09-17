@@ -66,12 +66,6 @@ public sealed class SetProductImagesHandler
                 $"A product cannot have more than {MaximumImages} images.");
         }
 
-        if (command.Images.Count == 1)
-        {
-            throw new ArgumentException(
-                "A product image gallery must contain at least two images.");
-        }
-
         if (command.Images.Count >
                 0 &&
             command.Images.Count(

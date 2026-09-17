@@ -197,6 +197,12 @@ export function StorefrontContentProvider({
         name:
           product.name,
 
+        description:
+          product.description ?? undefined,
+
+        href:
+          `/store/${encodeURIComponent(storeSlug)}/products/${encodeURIComponent(product.slug)}`,
+
         category:
           product.categoryId
             ? (

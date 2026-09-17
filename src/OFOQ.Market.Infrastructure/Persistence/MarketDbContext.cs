@@ -5,12 +5,19 @@ using OFOQ.Market.Application.Common.Tenancy;
 using OFOQ.Market.Domain.Catalog;
 using OFOQ.Market.Domain.Catalog.Attributes;
 using OFOQ.Market.Domain.Commerce.Carts;
+using OFOQ.Market.Domain.Commerce.Fulfillment;
+using OFOQ.Market.Domain.Commerce.Customers;
+using OFOQ.Market.Domain.Commerce.Discounts;
 using OFOQ.Market.Domain.Commerce.Configuration;
 using OFOQ.Market.Domain.Commerce.Orders;
+using OFOQ.Market.Domain.Commerce.Returns;
+using OFOQ.Market.Domain.Commerce.Reviews;
 using OFOQ.Market.Domain.Commerce.Payments;
 using OFOQ.Market.Domain.Commerce.Verification;
 using OFOQ.Market.Domain.Common;
+using OFOQ.Market.Domain.Content;
 using OFOQ.Market.Domain.Identity;
+using OFOQ.Market.Domain.Notifications;
 using OFOQ.Market.Domain.Tenancy;
 
 namespace OFOQ.Market.Infrastructure.Persistence;
@@ -52,6 +59,16 @@ public sealed class MarketDbContext :
     public DbSet<TenantMembership> TenantMemberships =>
         Set<TenantMembership>();
 
+    public DbSet<TenantStoreProfile> TenantStoreProfiles =>
+        Set<TenantStoreProfile>();
+
+    public DbSet<TenantStorefrontPresentation>
+        TenantStorefrontPresentations =>
+            Set<TenantStorefrontPresentation>();
+
+    public DbSet<TenantStoreSocialLink> TenantStoreSocialLinks =>
+        Set<TenantStoreSocialLink>();
+
     // -------------------------------------------------
     // Identity
     // -------------------------------------------------
@@ -67,6 +84,19 @@ public sealed class MarketDbContext :
 
     public DbSet<MfaLoginChallenge> MfaLoginChallenges =>
         Set<MfaLoginChallenge>();
+
+    public DbSet<EmailVerificationChallenge>
+        EmailVerificationChallenges =>
+            Set<EmailVerificationChallenge>();
+
+    public DbSet<UserSession> UserSessions =>
+        Set<UserSession>();
+
+    public DbSet<UserExternalLogin> UserExternalLogins =>
+        Set<UserExternalLogin>();
+
+    public DbSet<UserTrustedDevice> UserTrustedDevices =>
+        Set<UserTrustedDevice>();
 
     public DbSet<PlatformUserRoleAssignment>
         PlatformUserRoleAssignments =>
@@ -97,6 +127,38 @@ public sealed class MarketDbContext :
         Set<ProductAttributeValue>();
     public DbSet<ProductImage> ProductImages =>
         Set<ProductImage>();
+
+    public DbSet<ProductContentBlock> ProductContentBlocks =>
+        Set<ProductContentBlock>();
+
+    public DbSet<ProductRelation> ProductRelations =>
+        Set<ProductRelation>();
+
+    public DbSet<TenantProductRecommendationSettings>
+        TenantProductRecommendationSettings =>
+            Set<TenantProductRecommendationSettings>();
+
+    // -------------------------------------------------
+    // Content
+    // -------------------------------------------------
+
+    public DbSet<ContentPage> ContentPages =>
+        Set<ContentPage>();
+
+    public DbSet<NavigationItem> NavigationItems =>
+        Set<NavigationItem>();
+
+    // -------------------------------------------------
+    // Notifications
+    // -------------------------------------------------
+
+    public DbSet<TenantNotificationPreferences>
+        TenantNotificationPreferences =>
+            Set<TenantNotificationPreferences>();
+
+    public DbSet<EmailOutboxMessage>
+        EmailOutboxMessages =>
+            Set<EmailOutboxMessage>();
 
     // -------------------------------------------------
     // Commerce / Configuration
@@ -129,6 +191,30 @@ public sealed class MarketDbContext :
     // Commerce
     // -------------------------------------------------
 
+    public DbSet<CustomerProfile> CustomerProfiles =>
+        Set<CustomerProfile>();
+
+    public DbSet<CustomerAddress> CustomerAddresses =>
+        Set<CustomerAddress>();
+
+    public DbSet<DiscountCoupon> DiscountCoupons =>
+        Set<DiscountCoupon>();
+
+    public DbSet<DiscountCouponProductTarget> DiscountCouponProductTargets =>
+        Set<DiscountCouponProductTarget>();
+
+    public DbSet<DiscountCouponCategoryTarget> DiscountCouponCategoryTargets =>
+        Set<DiscountCouponCategoryTarget>();
+
+    public DbSet<CouponRedemption> CouponRedemptions =>
+        Set<CouponRedemption>();
+
+    public DbSet<FulfillmentLocation> FulfillmentLocations =>
+        Set<FulfillmentLocation>();
+
+    public DbSet<ShippingMethod> ShippingMethods =>
+        Set<ShippingMethod>();
+
     public DbSet<Cart> Carts =>
         Set<Cart>();
 
@@ -146,6 +232,18 @@ public sealed class MarketDbContext :
 
     public DbSet<InventoryMovement> InventoryMovements =>
         Set<InventoryMovement>();
+
+    public DbSet<ReturnRequest> ReturnRequests =>
+        Set<ReturnRequest>();
+
+    public DbSet<ReturnRequestItem> ReturnRequestItems =>
+        Set<ReturnRequestItem>();
+
+    public DbSet<ProductReview> ProductReviews =>
+        Set<ProductReview>();
+
+    public DbSet<TenantTrustMetricSettings> TenantTrustMetricSettings =>
+        Set<TenantTrustMetricSettings>();
 
     // -------------------------------------------------
     // Commerce / Payments

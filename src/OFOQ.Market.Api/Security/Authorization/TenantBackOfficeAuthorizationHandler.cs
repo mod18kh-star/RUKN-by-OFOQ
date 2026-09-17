@@ -1,5 +1,6 @@
 using System.IdentityModel.Tokens.Jwt;
 using Microsoft.AspNetCore.Authorization;
+using OFOQ.Market.Api.Security;
 using OFOQ.Market.Application.Common.Persistence;
 using OFOQ.Market.Application.Common.Tenancy;
 using OFOQ.Market.Domain.Identity;
@@ -22,11 +23,19 @@ public sealed class TenantBackOfficeAuthorizationHandler :
     private readonly ICurrentTenant
         _currentTenant;
 
+    private readonly IHostEnvironment
+        _environment;
+
+    private readonly IConfiguration
+        _configuration;
+
     public TenantBackOfficeAuthorizationHandler(
         IUserRepository userRepository,
         ITenantRepository tenantRepository,
         ITenantMembershipRepository membershipRepository,
-        ICurrentTenant currentTenant)
+        ICurrentTenant currentTenant,
+        IHostEnvironment environment,
+        IConfiguration configuration)
     {
         _userRepository =
             userRepository;
@@ -39,6 +48,12 @@ public sealed class TenantBackOfficeAuthorizationHandler :
 
         _currentTenant =
             currentTenant;
+
+        _environment =
+            environment;
+
+        _configuration =
+            configuration;
     }
 
     protected override async Task HandleRequirementAsync(
@@ -65,7 +80,18 @@ public sealed class TenantBackOfficeAuthorizationHandler :
                     StringComparer.Ordinal);
 
         if (!authenticationMethods.Contains(
-                "pwd") ||
+                "pwd"))
+        {
+            return;
+        }
+
+        var developmentMfaBypass =
+            DevelopmentSecurity
+                .IsMfaBypassEnabled(
+                    _environment,
+                    _configuration);
+
+        if (!developmentMfaBypass &&
             !authenticationMethods.Contains(
                 "mfa"))
         {

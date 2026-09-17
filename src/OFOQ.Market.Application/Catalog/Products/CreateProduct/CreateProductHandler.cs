@@ -17,6 +17,9 @@ public sealed class CreateProductHandler
     private readonly ICategoryRepository
         _categoryRepository;
 
+    private readonly IProductImageRepository
+        _imageRepository;
+
     private readonly ICurrentTenant
         _currentTenant;
 
@@ -30,6 +33,7 @@ public sealed class CreateProductHandler
         IProductRepository productRepository,
         IProductVariantRepository variantRepository,
         ICategoryRepository categoryRepository,
+        IProductImageRepository imageRepository,
         ICurrentTenant currentTenant,
         IUnitOfWork unitOfWork,
         TimeProvider timeProvider)
@@ -37,6 +41,7 @@ public sealed class CreateProductHandler
         _productRepository = productRepository;
         _variantRepository = variantRepository;
         _categoryRepository = categoryRepository;
+        _imageRepository = imageRepository;
         _currentTenant = currentTenant;
         _unitOfWork = unitOfWork;
         _timeProvider = timeProvider;
@@ -183,9 +188,32 @@ public sealed class CreateProductHandler
                 defaultVariant,
                 cancellationToken);
 
+        if (!string.IsNullOrWhiteSpace(
+                command.PrimaryImageUrl))
+        {
+            var primaryImage =
+                ProductImage.Create(
+                    tenantId,
+                    product.Id,
+                    command.PrimaryImageUrl,
+                    product.Name,
+                    sortOrder: 0,
+                    isPrimary: true,
+                    now,
+                    command.ActorUserId.Value);
+
+            await _imageRepository
+                .AddRangeAsync(
+                    new[]
+                    {
+                        primaryImage
+                    },
+                    cancellationToken);
+        }
+
         /*
-         * One SaveChanges means Product + initial Variant are
-         * persisted atomically by EF Core.
+         * One SaveChanges means Product + initial Variant + optional
+         * primary image are persisted atomically by EF Core.
          */
         await _unitOfWork
             .SaveChangesAsync(

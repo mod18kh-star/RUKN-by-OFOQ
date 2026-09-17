@@ -82,7 +82,16 @@ public static class ProductAttributeSchemaCatalog
                     Integer("storage-gb", "Storage GB"),
                     Integer("ram-gb", "RAM GB"),
                     Text("color", "Color"),
-                    Boolean("dual-sim", "Dual SIM")),
+                    Decimal("screen-size-inch", "Screen Size Inch"),
+                    Integer("warranty-months", "Warranty Months"),
+                    Integer("release-year", "Release Year"),
+                    Boolean("dual-sim", "Dual SIM"),
+                    Choice(
+                        "condition",
+                        "Condition",
+                        "New",
+                        "Used",
+                        "Refurbished")),
 
             [CommerceVerticalType.Perfumes] =
                 Schema(

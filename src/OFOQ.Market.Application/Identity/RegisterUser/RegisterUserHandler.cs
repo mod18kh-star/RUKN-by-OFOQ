@@ -43,6 +43,14 @@ public sealed class RegisterUserHandler
                 email.Value);
         }
 
+        var fullName =
+            NormalizeOptionalFullName(
+                command.FullName);
+
+        var phoneNumber =
+            NormalizeOptionalPhoneNumber(
+                command.PhoneNumber);
+
         var passwordHash =
             _passwordHasher.Hash(
                 command.Password);
@@ -54,7 +62,11 @@ public sealed class RegisterUserHandler
             User.Create(
                 email.Value,
                 passwordHash,
-                now);
+                now,
+                fullName:
+                    fullName,
+                phoneNumber:
+                    phoneNumber);
 
         await _userRepository.AddAsync(
             user,
@@ -67,7 +79,67 @@ public sealed class RegisterUserHandler
             user.Id,
             user.Email.Value,
             user.Status,
-            user.CreatedAtUtc);
+            user.CreatedAtUtc,
+            user.FullName,
+            user.PhoneNumber);
+    }
+
+    private static string? NormalizeOptionalFullName(
+        string? fullName)
+    {
+        if (string.IsNullOrWhiteSpace(fullName))
+        {
+            return null;
+        }
+
+        var normalized =
+            fullName.Trim();
+
+        if (normalized.Length is < 2 or > 160)
+        {
+            throw new InvalidRegistrationProfileException(
+                "invalid_full_name",
+                "Full name must be between 2 and 160 characters.");
+        }
+
+        return normalized;
+    }
+
+    private static string? NormalizeOptionalPhoneNumber(
+        string? phoneNumber)
+    {
+        if (string.IsNullOrWhiteSpace(phoneNumber))
+        {
+            return null;
+        }
+
+        var normalized =
+            new string(
+                phoneNumber
+                    .Trim()
+                    .Where(
+                        character =>
+                            !char.IsWhiteSpace(character) &&
+                            character is not '-' and not '(' and not ')')
+                    .ToArray());
+
+        var digits =
+            normalized.StartsWith(
+                '+')
+                ? normalized[1..]
+                : normalized;
+
+        if (digits.Length is < 8 or > 20 ||
+            digits.Any(
+                character =>
+                    !char.IsDigit(character)))
+        {
+            throw new InvalidRegistrationProfileException(
+                "invalid_phone_number",
+                "Phone number must contain between 8 and 20 digits and may start with +.");
+        }
+
+        return normalized;
     }
 
     private static void ValidatePassword(

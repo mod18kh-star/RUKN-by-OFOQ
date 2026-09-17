@@ -208,7 +208,8 @@ public sealed class VerifyMfaRecoveryCodeHandler
 
                             return VerificationOutcome.Succeeded(
                                 user.Id,
-                                user.Email.Value);
+                                user.Email.Value,
+                                challenge.AuthenticationMethod);
                         },
                         cancellationToken);
         }
@@ -231,36 +232,42 @@ public sealed class VerifyMfaRecoveryCodeHandler
                 outcome.UserId,
                 outcome.Email,
                 now,
-                AccessTokenAuthenticationLevel.MultiFactor);
+                AccessTokenAuthenticationLevel.MultiFactor,
+                outcome.AuthenticationMethod);
 
         return new VerifyMfaRecoveryCodeResult(
             outcome.UserId,
             outcome.Email,
             accessToken.Token,
-            accessToken.ExpiresAtUtc);
+            accessToken.ExpiresAtUtc,
+            outcome.AuthenticationMethod);
     }
 
     private sealed record VerificationOutcome(
         bool IsSuccessful,
         UserId UserId,
-        string Email)
+        string Email,
+        UserSessionAuthenticationMethod AuthenticationMethod)
     {
         public static VerificationOutcome Failed()
         {
             return new VerificationOutcome(
                 false,
                 default,
-                string.Empty);
+                string.Empty,
+                UserSessionAuthenticationMethod.Password);
         }
 
         public static VerificationOutcome Succeeded(
             UserId userId,
-            string email)
+            string email,
+            UserSessionAuthenticationMethod authenticationMethod)
         {
             return new VerificationOutcome(
                 true,
                 userId,
-                email);
+                email,
+                authenticationMethod);
         }
     }
 }
