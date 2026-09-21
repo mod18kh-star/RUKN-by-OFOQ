@@ -42,6 +42,26 @@ public sealed class PaymentEndpointsTests
     }
 
     [Fact]
+    public async Task CreateIntent_ManualTransferSelected_ReturnsConflict()
+    {
+        await using var factory = new MarketApiFactory();
+        using var client = factory.CreateClient();
+        var setup = await CreateSetupAsync(factory, client);
+        var method = AddMethod(factory, setup);
+
+        factory.Services.GetRequiredService<InMemoryManualOrderPaymentSelectionReader>()
+            .SetManualPaymentSelected(setup.Order.Id.Value);
+
+        var response = await PostCreateIntentAsync(
+            client, setup, method.Id, "manual-transfer-already-selected");
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        var error = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+        Assert.NotNull(error);
+        Assert.Equal("manual_payment_selected", error.Code);
+    }
+
+    [Fact]
     public async Task CreateIntent_WithoutIdempotencyKey_ReturnsBadRequest()
     {
         await using var factory = new MarketApiFactory();

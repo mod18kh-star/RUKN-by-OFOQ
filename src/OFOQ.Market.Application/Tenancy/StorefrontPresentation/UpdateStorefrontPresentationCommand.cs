@@ -12,4 +12,5 @@ public sealed record UpdateStorefrontPresentationCommand(
     bool ShowProductsOnHome,
     string? CategorySectionTitle,
     string? ProductSectionTitle,
-    Guid ActorUserId);
+    Guid ActorUserId,
+    string? VisualContentJson = null);

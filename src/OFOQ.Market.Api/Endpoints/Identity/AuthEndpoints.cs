@@ -266,39 +266,6 @@ public static class AuthEndpoints
                         request.Password),
                     cancellationToken);
 
-            if (result.RequiresMfa &&
-                DevelopmentSecurity
-                    .IsMfaBypassEnabled(
-                        environment,
-                        configuration))
-            {
-                var developmentSession =
-                    await sessionService.IssueAsync(
-                        result.UserId,
-                        UserSessionAuthenticationLevel.PasswordOnly,
-                        GetClientIpAddress(httpContext),
-                        GetUserAgent(httpContext),
-                        cancellationToken);
-
-                SetRefreshTokenCookie(
-                    httpContext,
-                    developmentSession.RefreshToken,
-                    developmentSession.RefreshTokenExpiresAtUtc);
-
-                ClearTrustedDeviceCookie(
-                    httpContext);
-
-                return Results.Ok(
-                    new LoginUserResponse(
-                        result.UserId.Value,
-                        result.Email,
-                        RequiresMfa: false,
-                        developmentSession.AccessToken,
-                        developmentSession.AccessTokenExpiresAtUtc,
-                        null,
-                        null));
-            }
-
             if (result.RequiresMfa)
             {
                 var trustedDeviceToken =

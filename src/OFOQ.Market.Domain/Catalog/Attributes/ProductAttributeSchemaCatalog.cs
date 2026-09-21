@@ -19,6 +19,13 @@ public static class ProductAttributeSchemaCatalog
                 nameof(verticalType));
         }
 
+        if (SpecializedProductAttributeSchemaCatalog.TryGet(
+                verticalType,
+                out var specializedSchema))
+        {
+            return specializedSchema;
+        }
+
         return Schemas.TryGetValue(
             verticalType,
             out var schema)
@@ -44,23 +51,84 @@ public static class ProductAttributeSchemaCatalog
             [CommerceVerticalType.Apparel] =
                 Schema(
                     CommerceVerticalType.Apparel,
-                    Text("brand", "Brand"),
+
+                    Text(
+                        "brand",
+                        "العلامة التجارية"),
+
+                    Text(
+                        "garment-type",
+                        "نوع القطعة"),
+
                     Choice(
                         "gender",
-                        "Gender",
-                        "Unisex",
-                        "Men",
-                        "Women",
-                        "Kids"),
-                    Text("material", "Material"),
+                        "الفئة",
+                        "men",
+                        "women",
+                        "kids",
+                        "unisex"),
+
+                    Text(
+                        "material",
+                        "الخامة / التركيبة"),
+
+                    Text(
+                        "fabric",
+                        "نوع القماش"),
+
                     Choice(
                         "fit",
-                        "Fit",
-                        "Slim",
-                        "Regular",
-                        "Relaxed",
-                        "Oversized")),
+                        "القصة / Fit",
+                        "slim",
+                        "regular",
+                        "relaxed",
+                        "oversized"),
 
+                    Text(
+                        "style",
+                        "النمط"),
+
+                    Choice(
+                        "season",
+                        "الموسم",
+                        "summer",
+                        "winter",
+                        "spring",
+                        "autumn",
+                        "all-seasons"),
+
+                    Text(
+                        "sleeve-type",
+                        "نوع الأكمام"),
+
+                    Text(
+                        "neckline",
+                        "نوع الياقة"),
+
+                    Text(
+                        "length",
+                        "الطول"),
+
+                    Text(
+                        "pattern",
+                        "النقشة / التصميم"),
+
+                    Choice(
+                        "size-system",
+                        "نظام المقاسات",
+                        "letter",
+                        "eu",
+                        "us",
+                        "uk",
+                        "custom"),
+
+                    Text(
+                        "country-of-origin",
+                        "بلد الصنع"),
+
+                    Text(
+                        "care-instructions",
+                        "تعليمات الغسيل والعناية")),
             [CommerceVerticalType.Footwear] =
                 Schema(
                     CommerceVerticalType.Footwear,
@@ -73,25 +141,124 @@ public static class ProductAttributeSchemaCatalog
                         "Women",
                         "Kids"),
                     Text("material", "Material")),
-
             [CommerceVerticalType.MobilePhones] =
                 Schema(
                     CommerceVerticalType.MobilePhones,
-                    Text("brand", "Brand"),
-                    Text("model", "Model"),
-                    Integer("storage-gb", "Storage GB"),
-                    Integer("ram-gb", "RAM GB"),
-                    Text("color", "Color"),
-                    Decimal("screen-size-inch", "Screen Size Inch"),
-                    Integer("warranty-months", "Warranty Months"),
-                    Integer("release-year", "Release Year"),
-                    Boolean("dual-sim", "Dual SIM"),
+
+                    Text(
+                        "brand",
+                        "العلامة التجارية"),
+
+                    Text(
+                        "model",
+                        "الموديل"),
+
+                    Text(
+                        "color",
+                        "اللون"),
+
+                    Integer(
+                        "release-year",
+                        "سنة الإصدار"),
+
+                    Text(
+                        "chipset",
+                        "المعالج / Chipset"),
+
+                    Text(
+                        "gpu",
+                        "معالج الرسوميات"),
+
+                    Integer(
+                        "ram-gb",
+                        "الذاكرة RAM بالجيجابايت"),
+
+                    Integer(
+                        "storage-gb",
+                        "مساحة التخزين بالجيجابايت"),
+
+                    Decimal(
+                        "screen-size-inch",
+                        "حجم الشاشة بالبوصة"),
+
+                    Choice(
+                        "screen-type",
+                        "نوع الشاشة",
+                        "oled",
+                        "amoled",
+                        "ltpo-oled",
+                        "lcd",
+                        "other"),
+
+                    Text(
+                        "screen-resolution",
+                        "دقة الشاشة"),
+
+                    Integer(
+                        "refresh-rate-hz",
+                        "معدل تحديث الشاشة Hz"),
+
+                    Integer(
+                        "battery-mah",
+                        "سعة البطارية mAh"),
+
+                    Integer(
+                        "charging-watt",
+                        "سرعة الشحن W"),
+
+                    Boolean(
+                        "wireless-charging",
+                        "شحن لاسلكي"),
+
+                    Text(
+                        "operating-system",
+                        "نظام التشغيل"),
+
+                    Choice(
+                        "network",
+                        "شبكة الاتصال",
+                        "4g",
+                        "5g"),
+
+                    Boolean(
+                        "dual-sim",
+                        "شريحتان"),
+
+                    Boolean(
+                        "esim",
+                        "يدعم eSIM"),
+
+                    Boolean(
+                        "nfc",
+                        "يدعم NFC"),
+
+                    Text(
+                        "water-resistance",
+                        "مقاومة الماء والغبار"),
+
+                    Decimal(
+                        "main-camera-mp",
+                        "الكاميرا الرئيسية MP"),
+
+                    Decimal(
+                        "front-camera-mp",
+                        "الكاميرا الأمامية MP"),
+
+                    Integer(
+                        "warranty-months",
+                        "مدة الضمان بالأشهر"),
+
+                    Text(
+                        "warranty-provider",
+                        "جهة الضمان"),
+
                     Choice(
                         "condition",
-                        "Condition",
-                        "New",
-                        "Used",
-                        "Refurbished")),
+                        "حالة الجهاز",
+                        "new",
+                        "used",
+                        "refurbished")),
+
 
             [CommerceVerticalType.Perfumes] =
                 Schema(
@@ -113,15 +280,212 @@ public static class ProductAttributeSchemaCatalog
                         "EDT",
                         "EDP",
                         "Parfum")),
-
             [CommerceVerticalType.Electronics] =
                 Schema(
                     CommerceVerticalType.Electronics,
-                    Text("brand", "Brand"),
-                    Text("model", "Model"),
+
+                    Choice(
+                        "electronics-type",
+                        "نوع المنتج الإلكتروني",
+                        "laptop",
+                        "accessory"),
+
+                    Text(
+                        "brand",
+                        "العلامة التجارية"),
+
+                    Text(
+                        "model",
+                        "الموديل"),
+
+                    Integer(
+                        "release-year",
+                        "سنة الإصدار"),
+
                     Integer(
                         "warranty-months",
-                        "Warranty Months")),
+                        "مدة الضمان بالأشهر"),
+
+                    Text(
+                        "warranty-provider",
+                        "جهة الضمان"),
+
+                    Choice(
+                        "condition",
+                        "حالة المنتج",
+                        "new",
+                        "used",
+                        "refurbished"),
+
+                    Choice(
+                        "processor-brand",
+                        "شركة المعالج",
+                        "intel",
+                        "amd",
+                        "apple",
+                        "qualcomm",
+                        "other"),
+
+                    Text(
+                        "processor-model",
+                        "المعالج"),
+
+                    Text(
+                        "processor-generation",
+                        "جيل المعالج"),
+
+                    Integer(
+                        "cpu-cores",
+                        "عدد أنوية المعالج"),
+
+                    Text(
+                        "gpu-model",
+                        "كرت الشاشة"),
+
+                    Choice(
+                        "gpu-type",
+                        "نوع كرت الشاشة",
+                        "integrated",
+                        "dedicated"),
+
+                    Integer(
+                        "vram-gb",
+                        "ذاكرة كرت الشاشة VRAM"),
+
+                    Integer(
+                        "ram-gb",
+                        "الذاكرة RAM بالجيجابايت"),
+
+                    Text(
+                        "ram-type",
+                        "نوع RAM"),
+
+                    Integer(
+                        "ram-speed-mhz",
+                        "سرعة RAM MHz"),
+
+                    Integer(
+                        "storage-gb",
+                        "مساحة التخزين بالجيجابايت"),
+
+                    Choice(
+                        "storage-type",
+                        "نوع التخزين",
+                        "nvme",
+                        "ssd",
+                        "hdd",
+                        "emmc"),
+
+                    Decimal(
+                        "screen-size-inch",
+                        "حجم الشاشة بالبوصة"),
+
+                    Text(
+                        "screen-resolution",
+                        "دقة الشاشة"),
+
+                    Text(
+                        "screen-panel",
+                        "نوع لوحة الشاشة"),
+
+                    Integer(
+                        "refresh-rate-hz",
+                        "معدل تحديث الشاشة Hz"),
+
+                    Decimal(
+                        "battery-wh",
+                        "سعة البطارية Wh"),
+
+                    Integer(
+                        "charger-watt",
+                        "قدرة الشاحن W"),
+
+                    Text(
+                        "operating-system",
+                        "نظام التشغيل"),
+
+                    Text(
+                        "wifi",
+                        "Wi-Fi"),
+
+                    Text(
+                        "bluetooth",
+                        "Bluetooth"),
+
+                    Text(
+                        "ports",
+                        "المنافذ"),
+
+                    Boolean(
+                        "backlit-keyboard",
+                        "كيبورد بإضاءة"),
+
+                    Decimal(
+                        "weight-kg",
+                        "الوزن بالكيلوجرام"),
+
+                    Choice(
+                        "accessory-type",
+                        "نوع الإكسسوار",
+                        "headphones",
+                        "earbuds",
+                        "charger",
+                        "cable",
+                        "power-bank",
+                        "case",
+                        "mouse",
+                        "keyboard",
+                        "hub",
+                        "stand",
+                        "other"),
+
+                    Text(
+                        "compatibility",
+                        "الأجهزة المتوافقة"),
+
+                    Choice(
+                        "connection-type",
+                        "نوع الاتصال",
+                        "bluetooth",
+                        "usb-c",
+                        "usb-a",
+                        "lightning",
+                        "3.5mm",
+                        "wireless",
+                        "other"),
+
+                    Boolean(
+                        "wireless",
+                        "لاسلكي"),
+
+                    Integer(
+                        "battery-mah",
+                        "سعة البطارية mAh"),
+
+                    Decimal(
+                        "battery-life-hours",
+                        "مدة تشغيل البطارية بالساعات"),
+
+                    Decimal(
+                        "power-watt",
+                        "القدرة W"),
+
+                    Decimal(
+                        "cable-length-meter",
+                        "طول الكابل بالمتر"),
+
+                    Text(
+                        "material",
+                        "الخامة"),
+
+                    Text(
+                        "color",
+                        "اللون"),
+
+                    Text(
+                        "size",
+                        "المقاس / الأبعاد")),
+
 
             [CommerceVerticalType.Services] =
                 Schema(
@@ -361,4 +725,41 @@ public static class ProductAttributeSchemaCatalog
             label,
             ProductAttributeValueType.Choice,
             values);
+
+    public static ProductAttributeSchema GetByCode(
+        string verticalCode)
+    {
+        if (string.IsNullOrWhiteSpace(
+                verticalCode))
+        {
+            throw new ArgumentException(
+                "Product vertical code is required.",
+                nameof(verticalCode));
+        }
+
+        var normalized =
+            verticalCode
+                .Trim()
+                .ToLowerInvariant()
+                .Replace('_', '-');
+
+        foreach (var definition in
+                 CommerceVerticalCatalog.All)
+        {
+            if (!string.Equals(
+                    definition.Code,
+                    normalized,
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            return Get(
+                definition.VerticalType);
+        }
+
+        throw new ArgumentException(
+            $"Unsupported product vertical code '{normalized}'.",
+            nameof(verticalCode));
+    }
 }

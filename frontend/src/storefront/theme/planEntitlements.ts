@@ -1,3 +1,7 @@
+import {
+  VERTICAL_THEME_IDS,
+} from "./themePresets";
+
 import type {
   ExtraSectionType,
   FontId,
@@ -73,18 +77,26 @@ export const PLAN_ENTITLEMENTS: Record<
       "maison",
       "commerce",
       "studio",
+      "mobile-flagship",
+      "mobile-smart-market",
+      ...VERTICAL_THEME_IDS,
     ],
 
     fonts: [
       "plex",
       "tajawal",
       "cairo",
+      "readex",
     ],
 
     cardStyles: [
       "minimal",
       "editorial",
       "commerce",
+      "mobile-flagship",
+      "mobile-market",
+      "vertical-signature",
+      "vertical-market",
     ],
 
     heroLayouts: [
@@ -123,6 +135,9 @@ export const PLAN_ENTITLEMENTS: Record<
       "commerce",
       "studio",
       "technical",
+      "mobile-flagship",
+      "mobile-smart-market",
+      ...VERTICAL_THEME_IDS,
     ],
 
     fonts: [
@@ -138,6 +153,10 @@ export const PLAN_ENTITLEMENTS: Record<
       "commerce",
       "compact",
       "technical",
+      "mobile-flagship",
+      "mobile-market",
+      "vertical-signature",
+      "vertical-market",
     ],
 
     heroLayouts: [
@@ -182,6 +201,9 @@ export const PLAN_ENTITLEMENTS: Record<
       "commerce",
       "studio",
       "technical",
+      "mobile-flagship",
+      "mobile-smart-market",
+      ...VERTICAL_THEME_IDS,
     ],
 
     fonts: [
@@ -197,6 +219,10 @@ export const PLAN_ENTITLEMENTS: Record<
       "commerce",
       "compact",
       "technical",
+      "mobile-flagship",
+      "mobile-market",
+      "vertical-signature",
+      "vertical-market",
     ],
 
     heroLayouts: [

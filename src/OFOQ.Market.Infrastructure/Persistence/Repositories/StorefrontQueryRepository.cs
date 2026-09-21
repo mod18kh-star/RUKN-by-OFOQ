@@ -113,7 +113,73 @@ internal sealed class StorefrontQueryRepository :
                     presentation.ShowCategoriesOnHome,
                     presentation.ShowProductsOnHome,
                     presentation.CategorySectionTitle,
-                    presentation.ProductSectionTitle);
+                    presentation.ProductSectionTitle,
+                    presentation.VisualContentJson);
+
+        var profile =
+            await _dbContext
+                .TenantStoreProfiles
+                .IgnoreQueryFilters()
+                .AsNoTracking()
+                .SingleOrDefaultAsync(
+                    item =>
+                        item.TenantId == tenant.Id,
+                    cancellationToken);
+
+        var socialLinks =
+            await _dbContext
+                .TenantStoreSocialLinks
+                .IgnoreQueryFilters()
+                .AsNoTracking()
+                .Where(
+                    item =>
+                        item.TenantId == tenant.Id &&
+                        item.IsVisible)
+                .OrderBy(
+                    item =>
+                        item.SortOrder)
+                .ThenBy(
+                    item =>
+                        item.PlatformCode)
+                .Select(
+                    item =>
+                        new StorefrontSocialLinkPublicResult(
+                            item.PlatformCode,
+                            item.Label,
+                            item.Url,
+                            item.SortOrder))
+                .ToArrayAsync(
+                    cancellationToken);
+
+        var publicContact =
+            new StorefrontContactPublicResult(
+                profile?.ShowWebsite == true
+                    ? profile.WebsiteUrl
+                    : null,
+                profile?.ShowWhatsApp == true
+                    ? profile.WhatsAppNumber
+                    : null,
+                profile?.ShowCustomerServicePhone == true
+                    ? profile.CustomerServicePhone
+                    : null,
+                profile?.ShowSecondaryPhone == true
+                    ? profile.SecondaryPhone
+                    : null,
+                profile?.ShowLandlinePhone == true
+                    ? profile.LandlinePhone
+                    : null,
+                profile?.ShowPhysicalAddress == true
+                    ? profile.PhysicalAddress
+                    : null,
+                profile?.ShowPhysicalAddress == true
+                    ? profile.GoogleMapsUrl
+                    : null,
+                profile is not null &&
+                profile.ShowCommercialRegistration &&
+                !profile.CommercialRegistrationNotApplicable
+                    ? profile.CommercialRegistrationNumber
+                    : null,
+                socialLinks);
 
         return new StorefrontInfoResult(
             tenant.Id,
@@ -121,7 +187,8 @@ internal sealed class StorefrontQueryRepository :
             tenant.Slug.Value,
             verticalName,
             verticalCode,
-            publicPresentation);
+            publicPresentation,
+            publicContact);
     }
 
     public async Task<IReadOnlyList<StorefrontCategoryResult>>
@@ -181,26 +248,8 @@ internal sealed class StorefrontQueryRepository :
                         !product.IsDeleted &&
                         product.Status == ProductStatus.Published &&
                         product.IsVisible)
-                .Where(
-                    product =>
-                        _dbContext
-                            .ProductImages
-                            .IgnoreQueryFilters()
-                            .Count(
-                                image =>
-                                    image.TenantId == tenantId &&
-                                    image.ProductId == product.Id) >=
-                            1)
-                .Where(
-                    product =>
-                        _dbContext
-                            .ProductImages
-                            .IgnoreQueryFilters()
-                            .Any(
-                                image =>
-                                    image.TenantId == tenantId &&
-                                    image.ProductId == product.Id &&
-                                    image.IsPrimary));
+                ;
+
 
         if (!string.IsNullOrWhiteSpace(
                 categorySlug))
@@ -304,9 +353,9 @@ internal sealed class StorefrontQueryRepository :
                                         .IsAvailableForSale)
                             == true;
 
-                        var primaryImage =
-                            primaryImages[
-                                product.Id];
+                        primaryImages.TryGetValue(
+                            product.Id,
+                            out var primaryImage);
 
                         return new StorefrontProductSummaryResult(
                             product.Id.Value,
@@ -318,8 +367,8 @@ internal sealed class StorefrontQueryRepository :
                             product.Price.Currency.Value,
                             product.CompareAtPrice?.Amount,
                             available,
-                            primaryImage.Url,
-                            primaryImage.AltText);
+                            primaryImage?.Url,
+                            primaryImage?.AltText);
                     })
                 .ToArray();
 
@@ -381,26 +430,10 @@ internal sealed class StorefrontQueryRepository :
                 .ToArrayAsync(
                     cancellationToken);
 
-        if (images.Length < 1)
-        {
-            return null;
-        }
-
-        var primaryImages =
-            images
-                .Where(
-                    image =>
-                        image.IsPrimary)
-                .ToArray();
-
-        if (primaryImages.Length !=
-            1)
-        {
-            return null;
-        }
-
         var primaryImage =
-            primaryImages[0];
+            images.FirstOrDefault(
+                image =>
+                    image.IsPrimary);
 
         Category? category =
             null;
@@ -503,8 +536,8 @@ internal sealed class StorefrontQueryRepository :
             variantResults.Any(
                 variant =>
                     variant.AvailableForSale),
-            primaryImage.Url,
-            primaryImage.AltText,
+            primaryImage?.Url,
+            primaryImage?.AltText,
             imageResults,
             variantResults,
             attributes);
@@ -654,6 +687,110 @@ internal sealed class StorefrontQueryRepository :
             .ToArray();
     }
 
+    public async Task<IReadOnlyList<CartProductDisplayResult>>
+        GetCartProductsAsync(
+            TenantId tenantId,
+            IReadOnlyCollection<Guid> productIds,
+            CancellationToken cancellationToken = default)
+    {
+        if (tenantId.IsEmpty || productIds.Count == 0)
+        {
+            return Array.Empty<CartProductDisplayResult>();
+        }
+
+        var ids = productIds
+            .Where(id => id != Guid.Empty)
+            .Distinct()
+            .Select(ProductId.From)
+            .ToArray();
+
+        if (ids.Length == 0)
+        {
+            return Array.Empty<CartProductDisplayResult>();
+        }
+
+        var products = await _dbContext.Products
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(product =>
+                product.TenantId == tenantId &&
+                ids.Contains(product.Id) &&
+                !product.IsDeleted &&
+                product.Status == ProductStatus.Published &&
+                product.IsVisible)
+            .ToArrayAsync(cancellationToken);
+
+        if (products.Length == 0)
+        {
+            return Array.Empty<CartProductDisplayResult>();
+        }
+
+        var validIds = products
+            .Select(product => product.Id)
+            .ToArray();
+
+        var images = await _dbContext.ProductImages
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(image =>
+                image.TenantId == tenantId &&
+                validIds.Contains(image.ProductId))
+            .OrderByDescending(image => image.IsPrimary)
+            .ThenBy(image => image.SortOrder)
+            .ToArrayAsync(cancellationToken);
+
+        var variants = await _dbContext.ProductVariants
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(variant =>
+                variant.TenantId == tenantId &&
+                validIds.Contains(variant.ProductId) &&
+                !variant.IsDeleted &&
+                variant.IsEnabled)
+            .ToArrayAsync(cancellationToken);
+
+        var imagesByProduct = images
+            .GroupBy(image => image.ProductId)
+            .ToDictionary(
+                group => group.Key,
+                group => group.First());
+
+        var variantsByProduct = variants
+            .GroupBy(variant => variant.ProductId)
+            .ToDictionary(
+                group => group.Key,
+                group => group
+                    .Select(variant =>
+                        new CartVariantDisplayResult(
+                            variant.Id.Value,
+                            variant.Name))
+                    .ToArray());
+
+        return products
+            .Select(product =>
+            {
+                imagesByProduct.TryGetValue(
+                    product.Id,
+                    out var image);
+
+                variantsByProduct.TryGetValue(
+                    product.Id,
+                    out var productVariants);
+
+                return new CartProductDisplayResult(
+                    product.Id.Value,
+                    product.Name,
+                    product.Slug,
+                    product.Price.Currency.Value,
+                    product.Price.Amount,
+                    product.CompareAtPrice?.Amount,
+                    image?.Url,
+                    image?.AltText,
+                    productVariants ??
+                        Array.Empty<CartVariantDisplayResult>());
+            })
+            .ToArray();
+    }
     private static StorefrontProductPageResult EmptyPage(
         int page,
         int pageSize)

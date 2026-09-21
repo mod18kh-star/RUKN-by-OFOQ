@@ -145,6 +145,12 @@ public sealed class TenantStorefrontPresentationConfiguration :
                 TenantStorefrontPresentation.DefaultProductSectionTitle)
             .IsRequired();
 
+        builder.Property(entity => entity.VisualContentJson)
+            .HasColumnName("visual_content_json")
+            .HasMaxLength(TenantStorefrontPresentation.MaxVisualContentLength)
+            .HasDefaultValue("{}")
+            .IsRequired();
+
         builder.Property(
                 entity =>
                     entity.CreatedAtUtc)

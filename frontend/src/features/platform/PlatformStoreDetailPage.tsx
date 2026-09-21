@@ -47,6 +47,14 @@ import {
   type PlatformStoreDetail,
 } from "./platformApi";
 
+import {
+  beginPlatformTenantAdministration,
+} from "../auth/platformTenantAdministration";
+
+import {
+  saveAdminStore,
+} from "../admin/store-setup/storeSetupStorage";
+
 type Section =
   | "overview"
   | "capabilities"
@@ -843,14 +851,36 @@ function OverviewSection({
 
             <button
               type="button"
-              disabled
-              className="flex h-11 w-full items-center justify-center gap-2 rounded-[9px] border border-white/[0.09] text-[10px] font-semibold text-white/30"
+              onClick={() => {
+                beginPlatformTenantAdministration(
+                  store.tenantId,
+                );
+
+                saveAdminStore({
+                  tenantId:
+                    store.tenantId,
+                  name:
+                    store.name,
+                  slug:
+                    store.slug,
+                  status:
+                    store.status,
+                  verticalType:
+                    store.primaryVertical ??
+                    undefined,
+                  verticalCode:
+                    store.primaryVerticalCode ??
+                    undefined,
+                });
+
+                window.location.assign(
+                  `/admin?platformTenant=${encodeURIComponent(store.tenantId)}`,
+                );
+              }}
+              className="flex h-11 w-full items-center justify-center gap-2 rounded-[9px] border border-[#d0aa70]/45 bg-[#d0aa70]/10 text-[10px] font-semibold text-[#ead5b3] transition hover:border-[#d0aa70]/70 hover:bg-[#d0aa70]/15"
             >
               <Store size={13} />
               إدارة المتجر كمنصة
-              <span className="rounded-full bg-white/[0.06] px-2 py-1 text-[8px]">
-                قريبًا
-              </span>
             </button>
           </div>
         </section>

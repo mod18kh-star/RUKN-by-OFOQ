@@ -1,0 +1,233 @@
+import type { ProductVerticalDefinition } from "./types";
+
+const yesNoOptions = [
+  { value: "true", label: "نعم" },
+  { value: "false", label: "لا" },
+] as const;
+
+export const mobilePhonesVertical: ProductVerticalDefinition = {
+  code: "mobile-phones",
+
+  label: "جوالات",
+  badgeLabel: "جوال",
+
+  description:
+    "مواصفات متخصصة للجوالات تشمل المعالج، الذاكرة، التخزين، الشاشة، البطارية، الاتصال والضمان.",
+
+  fields: [
+    {
+      key: "brand",
+      label: "العلامة التجارية",
+      type: "text",
+      group: "identity",
+      placeholder: "Apple / Samsung / Xiaomi...",
+    },
+    {
+      key: "model",
+      label: "الموديل",
+      type: "text",
+      group: "identity",
+      placeholder: "مثال: iPhone 17 Pro",
+    },
+    {
+      key: "release-year",
+      label: "سنة الإصدار",
+      type: "number",
+      group: "details",
+      placeholder: "2026",
+    },
+    {
+      key: "condition",
+      label: "حالة الجهاز",
+      type: "select",
+      group: "details",
+      options: [
+        { value: "new", label: "جديد" },
+        { value: "used", label: "مستعمل" },
+        { value: "refurbished", label: "مجدد" },
+      ],
+    },
+    {
+      key: "chipset",
+      label: "المعالج / Chipset",
+      type: "text",
+      group: "performance",
+      placeholder: "A19 Pro / Snapdragon 8 Elite...",
+    },
+    {
+      key: "gpu",
+      label: "معالج الرسوميات",
+      type: "text",
+      group: "performance",
+    },
+    {
+      key: "ram-gb",
+      label: "RAM",
+      type: "number",
+      group: "performance",
+      placeholder: "8",
+      helpText: "بالجيجابايت.",
+    },
+    {
+      key: "storage-gb",
+      label: "مساحة التخزين",
+      type: "number",
+      group: "performance",
+      placeholder: "256",
+      helpText: "بالجيجابايت.",
+    },
+    {
+      key: "screen-size-inch",
+      label: "حجم الشاشة",
+      type: "number",
+      group: "display",
+      placeholder: "6.7",
+      helpText: "بالبوصة.",
+    },
+    {
+      key: "screen-type",
+      label: "نوع الشاشة",
+      type: "select",
+      group: "display",
+      options: [
+        { value: "oled", label: "OLED" },
+        { value: "amoled", label: "AMOLED" },
+        { value: "ltpo-oled", label: "LTPO OLED" },
+        { value: "lcd", label: "LCD" },
+        { value: "other", label: "أخرى" },
+      ],
+    },
+    {
+      key: "screen-resolution",
+      label: "دقة الشاشة",
+      type: "text",
+      group: "display",
+      placeholder: "مثال: 2796 × 1290",
+    },
+    {
+      key: "refresh-rate-hz",
+      label: "معدل تحديث الشاشة",
+      type: "number",
+      group: "display",
+      placeholder: "120",
+      helpText: "Hz",
+    },
+    {
+      key: "battery-mah",
+      label: "سعة البطارية",
+      type: "number",
+      group: "power",
+      placeholder: "5000",
+      helpText: "mAh",
+    },
+    {
+      key: "charging-watt",
+      label: "سرعة الشحن",
+      type: "number",
+      group: "power",
+      placeholder: "45",
+      helpText: "W",
+    },
+    {
+      key: "wireless-charging",
+      label: "شحن لاسلكي",
+      type: "select",
+      group: "power",
+      options: yesNoOptions,
+    },
+    {
+      key: "operating-system",
+      label: "نظام التشغيل",
+      type: "text",
+      group: "details",
+      placeholder: "iOS / Android",
+    },
+    {
+      key: "network",
+      label: "الشبكة",
+      type: "select",
+      group: "connectivity",
+      options: [
+        { value: "4g", label: "4G" },
+        { value: "5g", label: "5G" },
+      ],
+    },
+    {
+      key: "dual-sim",
+      label: "شريحتان",
+      type: "select",
+      group: "connectivity",
+      options: yesNoOptions,
+    },
+    {
+      key: "esim",
+      label: "eSIM",
+      type: "select",
+      group: "connectivity",
+      options: yesNoOptions,
+    },
+    {
+      key: "nfc",
+      label: "NFC",
+      type: "select",
+      group: "connectivity",
+      options: yesNoOptions,
+    },
+    {
+      key: "water-resistance",
+      label: "مقاومة الماء والغبار",
+      type: "text",
+      group: "details",
+      placeholder: "مثال: IP68",
+    },
+    {
+      key: "main-camera-mp",
+      label: "الكاميرا الرئيسية",
+      type: "number",
+      group: "details",
+      placeholder: "48",
+      helpText: "MP",
+    },
+    {
+      key: "front-camera-mp",
+      label: "الكاميرا الأمامية",
+      type: "number",
+      group: "details",
+      placeholder: "12",
+      helpText: "MP",
+    },
+    {
+      key: "warranty-months",
+      label: "مدة الضمان",
+      type: "number",
+      group: "warranty",
+      placeholder: "12",
+      helpText: "بالأشهر.",
+    },
+    {
+      key: "warranty-provider",
+      label: "جهة الضمان",
+      type: "text",
+      group: "warranty",
+      placeholder: "الوكيل / المتجر / الشركة المصنعة",
+    },
+  ],
+
+  variantDimensions: [
+    {
+      key: "color",
+      label: "اللون",
+      placeholder: "أسود / أبيض / تيتانيوم...",
+    },
+    {
+      key: "storage",
+      label: "السعة",
+      placeholder: "128 / 256 / 512 GB...",
+    },
+    {
+      key: "ram",
+      label: "RAM",
+      placeholder: "8 / 12 / 16 GB...",
+    },
+  ],
+};

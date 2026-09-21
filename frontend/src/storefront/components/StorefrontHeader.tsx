@@ -1,3 +1,4 @@
+import { StorefrontCartLink } from "./StorefrontCartLink";
 import {
   Menu,
   Search,
@@ -5,11 +6,24 @@ import {
   UserRound,
 } from "lucide-react";
 
+import {
+  useQuery,
+} from "@tanstack/react-query";
+
+import {
+  getStorefrontNavigation,
+} from "../data/storefrontApi";
+
+import {
+  getThemePreset,
+} from "../theme/themePresets";
+
 import type {
   ThemeId,
 } from "../theme/theme.types";
 
 interface Props {
+  storeSlug: string;
   storeName: string;
   logoUrl: string;
   announcement: string;
@@ -17,11 +31,274 @@ interface Props {
 }
 
 export function StorefrontHeader({
+  storeSlug,
   storeName,
   logoUrl,
   announcement,
   themeId,
 }: Props) {
+  const theme =
+    getThemePreset(themeId);
+
+  const currentStorefrontPath =
+  typeof window !== "undefined"
+    ? `${window.location.pathname}${window.location.search}`
+    : `/store/${encodeURIComponent(storeSlug)}`;
+
+const accountHref =
+  `/store/${encodeURIComponent(storeSlug)}/account?returnTo=${encodeURIComponent(
+    currentStorefrontPath,
+  )}`;
+
+  if (theme.headerStyle === "vertical-signature") {
+    return (
+      <>
+        {announcement ? (
+          <div className="border-b border-black/[0.06] bg-[var(--store-ink)] py-2.5 text-center text-[11px] font-medium text-[var(--store-ink-contrast)]">
+            {announcement}
+          </div>
+        ) : null}
+
+        <header className="sticky top-0 z-40 border-b border-black/[0.065] bg-[var(--store-canvas)]/94 backdrop-blur-xl">
+          <div className="store-container flex h-[92px] items-center gap-7">
+            <button
+              type="button"
+              aria-label="القائمة"
+              className="flex size-11 items-center justify-center rounded-full border border-black/[0.08] md:hidden"
+            >
+              <Menu size={19} />
+            </button>
+
+            <a href="#" className="shrink-0 text-[27px] font-semibold tracking-[-0.055em]">
+              <StoreBrand storeName={storeName} logoUrl={logoUrl} />
+            </a>
+
+            <nav className="hidden items-center gap-8 text-[12px] font-semibold text-[var(--store-ink-soft)] md:flex">
+              <a href="#products" className="transition hover:text-[var(--store-accent)]">
+                {theme.productLabel ?? "المنتجات"}
+              </a>
+              <a href="#categories" className="transition hover:text-[var(--store-accent)]">
+                {theme.categoryLabel ?? "الأقسام"}
+              </a>
+              <a href="#story" className="transition hover:text-[var(--store-accent)]">
+                عن المتجر
+              </a>
+              <StorefrontDynamicNavigation storeSlug={storeSlug} />
+            </nav>
+
+            <div className="mr-auto flex items-center gap-1">
+              <button type="button" aria-label="البحث" className="flex size-11 items-center justify-center rounded-full transition hover:bg-black/[0.045]">
+                <Search size={19} />
+              </button>
+              <a href={accountHref} aria-label="الحساب" className="hidden size-11 items-center justify-center rounded-full transition hover:bg-black/[0.045] sm:flex"><UserRound size={19} /></a>
+              <StorefrontCartLink storeSlug={storeSlug} aria-label="السلة" className="flex size-11 items-center justify-center rounded-full bg-[var(--store-ink)] text-[var(--store-ink-contrast)] transition hover:-translate-y-0.5">
+                <ShoppingBag size={18} />
+              </StorefrontCartLink>
+            </div>
+          </div>
+        </header>
+      </>
+    );
+  }
+
+  if (theme.headerStyle === "vertical-market") {
+    return (
+      <>
+        {announcement ? (
+          <div className="bg-[var(--store-accent)] py-2.5 text-center text-[11px] font-semibold text-[var(--store-accent-contrast)]">
+            {announcement}
+          </div>
+        ) : null}
+
+        <header className="sticky top-0 z-40 border-b border-black/[0.07] bg-[var(--store-surface)]/96 backdrop-blur-xl">
+          <div className="store-container flex min-h-[86px] items-center gap-4 md:gap-6">
+            <button type="button" aria-label="القائمة" className="flex size-10 items-center justify-center rounded-[12px] border border-black/[0.08] lg:hidden">
+              <Menu size={20} />
+            </button>
+
+            <a href="#" className="shrink-0 text-[24px] font-bold tracking-[-0.045em]">
+              <StoreBrand storeName={storeName} logoUrl={logoUrl} />
+            </a>
+
+            <button type="button" className="hidden h-12 flex-1 items-center gap-3 rounded-[14px] border border-black/[0.07] bg-[var(--store-canvas)] px-4 text-right text-[12px] font-medium text-[var(--store-muted)] md:flex">
+              <Search size={18} />
+              <span>{theme.searchPlaceholder ?? "ابحث في المتجر"}</span>
+            </button>
+
+            <div className="mr-auto flex items-center gap-1">
+              <button type="button" aria-label="البحث" className="flex size-10 items-center justify-center rounded-[11px] md:hidden">
+                <Search size={19} />
+              </button>
+              <a href={accountHref} aria-label="الحساب" className="flex size-10 items-center justify-center rounded-[11px]"><UserRound size={19} /></a>
+              <StorefrontCartLink storeSlug={storeSlug} aria-label="السلة" className="flex size-10 items-center justify-center rounded-[11px] bg-[var(--store-ink)] text-[var(--store-ink-contrast)]">
+                <ShoppingBag size={18} />
+              </StorefrontCartLink>
+            </div>
+          </div>
+
+          <div className="hidden border-t border-black/[0.05] md:block">
+            <nav className="store-container flex h-12 items-center gap-8 text-[11px] font-semibold text-[var(--store-ink-soft)]">
+              <a href="#categories" className="text-[var(--store-accent)]">
+                {theme.categoryLabel ?? "الأقسام"}
+              </a>
+              <a href="#products">{theme.productLabel ?? "المنتجات"}</a>
+              <a href="#products">الأحدث</a>
+              <a href="#products">العروض</a>
+              <StorefrontDynamicNavigation storeSlug={storeSlug} />
+            </nav>
+          </div>
+        </header>
+      </>
+    );
+  }
+
+  if (
+    themeId ===
+    "mobile-flagship"
+  ) {
+    return (
+      <>
+        {announcement ? (
+          <div className="bg-[var(--store-ink)] py-2.5 text-center text-[12px] font-medium text-[var(--store-ink-contrast)]">
+            {announcement}
+          </div>
+        ) : null}
+
+        <header className="sticky top-0 z-40 border-b border-black/[0.07] bg-[var(--store-canvas)]/95 backdrop-blur-xl">
+          <div className="store-container flex h-[92px] items-center gap-7">
+            <button
+              type="button"
+              aria-label="القائمة"
+              className="flex size-11 items-center justify-center rounded-full border border-black/[0.08] md:hidden"
+            >
+              <Menu size={20} />
+            </button>
+
+            <a
+              href="#"
+              className="shrink-0 text-[27px] font-semibold tracking-[-0.055em]"
+            >
+              <StoreBrand
+                storeName={storeName}
+                logoUrl={logoUrl}
+              />
+            </a>
+
+            <nav className="hidden items-center gap-8 text-[13px] font-semibold text-[var(--store-ink-soft)] md:flex">
+              <a href="#products" className="transition hover:text-[var(--store-accent)]">
+                أحدث الأجهزة
+              </a>
+              <a href="#categories" className="transition hover:text-[var(--store-accent)]">
+                الفئات
+              </a>
+              <a href="#products" className="transition hover:text-[var(--store-accent)]">
+                المختارات
+              </a>
+              <StorefrontDynamicNavigation storeSlug={storeSlug} />
+            </nav>
+
+            <div className="mr-auto flex items-center gap-1">
+              <button
+                type="button"
+                aria-label="البحث"
+                className="flex size-11 items-center justify-center rounded-full transition hover:bg-black/[0.045]"
+              >
+                <Search size={19} />
+              </button>
+              <a href={accountHref}
+                aria-label="الحساب"
+                className="hidden size-11 items-center justify-center rounded-full transition hover:bg-black/[0.045] sm:flex"
+              ><UserRound size={19} /></a>
+              <StorefrontCartLink storeSlug={storeSlug}
+                aria-label="السلة"
+                className="flex size-11 items-center justify-center rounded-full bg-[var(--store-ink)] text-[var(--store-ink-contrast)] transition hover:opacity-90"
+              >
+                <ShoppingBag size={18} />
+              </StorefrontCartLink>
+            </div>
+          </div>
+        </header>
+      </>
+    );
+  }
+
+  if (
+    themeId ===
+    "mobile-smart-market"
+  ) {
+    return (
+      <>
+        {announcement ? (
+          <div className="bg-[var(--store-accent)] py-2.5 text-center text-[12px] font-semibold text-[var(--store-accent-contrast)]">
+            {announcement}
+          </div>
+        ) : null}
+
+        <header className="sticky top-0 z-40 border-b border-black/[0.08] bg-white/95 backdrop-blur-xl">
+          <div className="store-container flex min-h-[86px] items-center gap-4 md:gap-6">
+            <button
+              type="button"
+              aria-label="القائمة"
+              className="flex size-10 items-center justify-center rounded-[11px] border border-black/[0.09] lg:hidden"
+            >
+              <Menu size={20} />
+            </button>
+
+            <a
+              href="#"
+              className="shrink-0 text-[25px] font-bold tracking-[-0.045em]"
+            >
+              <StoreBrand
+                storeName={storeName}
+                logoUrl={logoUrl}
+              />
+            </a>
+
+            <button
+              type="button"
+              className="hidden h-12 flex-1 items-center gap-3 rounded-[14px] border border-black/[0.08] bg-[var(--store-canvas)] px-4 text-right text-[13px] font-medium text-[var(--store-muted)] md:flex"
+            >
+              <Search size={18} />
+              <span>ابحث عن جوال أو موديل</span>
+            </button>
+
+            <div className="mr-auto flex items-center gap-1">
+              <button
+                type="button"
+                aria-label="البحث"
+                className="flex size-10 items-center justify-center rounded-[11px] md:hidden"
+              >
+                <Search size={19} />
+              </button>
+              <a href={accountHref}
+                aria-label="الحساب"
+                className="flex size-10 items-center justify-center rounded-[11px]"
+              ><UserRound size={19} /></a>
+              <StorefrontCartLink storeSlug={storeSlug}
+                aria-label="السلة"
+                className="flex size-10 items-center justify-center rounded-[11px] bg-[var(--store-ink)] text-[var(--store-ink-contrast)]"
+              >
+                <ShoppingBag size={18} />
+              </StorefrontCartLink>
+            </div>
+          </div>
+
+          <div className="hidden border-t border-black/[0.055] md:block">
+            <nav className="store-container flex h-12 items-center gap-8 text-[12px] font-semibold text-[var(--store-ink-soft)]">
+              <a href="#categories" className="text-[var(--store-accent)]">
+                تصفح الأقسام
+              </a>
+              <a href="#products">الجوالات</a>
+              <a href="#products">الأحدث</a>
+              <a href="#products">العروض</a>
+              <StorefrontDynamicNavigation storeSlug={storeSlug} />
+            </nav>
+          </div>
+        </header>
+      </>
+    );
+  }
+
   if (
     themeId ===
     "maison"
@@ -72,8 +349,7 @@ export function StorefrontHeader({
                   />
                 </button>
 
-                <button
-                  type="button"
+                <StorefrontCartLink storeSlug={storeSlug}
                   aria-label="السلة"
                   className="flex size-10 items-center justify-center"
                 >
@@ -81,7 +357,7 @@ export function StorefrontHeader({
                     size={18}
                     strokeWidth={1.4}
                   />
-                </button>
+                </StorefrontCartLink>
               </div>
             </div>
 
@@ -97,6 +373,7 @@ export function StorefrontHeader({
               <a href="#story">
                 عن الدار
               </a>
+              <StorefrontDynamicNavigation storeSlug={storeSlug} />
             </nav>
           </div>
         </header>
@@ -111,7 +388,7 @@ export function StorefrontHeader({
     return (
       <>
         {announcement ? (
-          <div className="bg-[var(--store-accent)] py-2.5 text-center text-[11px] font-semibold text-white">
+          <div className="bg-[var(--store-accent)] py-2.5 text-center text-[11px] font-semibold text-[var(--store-accent-contrast)]">
             {announcement}
           </div>
         ) : null}
@@ -159,28 +436,23 @@ export function StorefrontHeader({
               <a href="#story">
                 عن المتجر
               </a>
+              <StorefrontDynamicNavigation storeSlug={storeSlug} />
             </nav>
 
             <div className="mr-auto flex items-center gap-1">
-              <button
-                type="button"
+              <a href={accountHref}
                 aria-label="الحساب"
                 className="flex size-10 items-center justify-center"
-              >
-                <UserRound size={19} />
-              </button>
+              ><UserRound size={19} /></a>
 
-              <button
-                type="button"
+              <StorefrontCartLink storeSlug={storeSlug}
                 aria-label="السلة"
                 className="relative flex size-10 items-center justify-center"
               >
                 <ShoppingBag size={20} />
 
-                <span className="absolute -left-1 top-0 flex size-[18px] items-center justify-center rounded-full bg-[var(--store-accent)] text-[9px] font-bold text-white">
-                  2
-                </span>
-              </button>
+
+              </StorefrontCartLink>
             </div>
           </div>
         </header>
@@ -218,6 +490,7 @@ export function StorefrontHeader({
               <a href="#story">
                 الدعم
               </a>
+              <StorefrontDynamicNavigation storeSlug={storeSlug} />
             </nav>
 
             <div className="mr-auto flex items-center gap-2">
@@ -236,12 +509,11 @@ export function StorefrontHeader({
                 <UserRound size={18} />
               </button>
 
-              <button
-                type="button"
+              <StorefrontCartLink storeSlug={storeSlug}
                 className="flex size-10 items-center justify-center"
               >
                 <ShoppingBag size={18} />
-              </button>
+              </StorefrontCartLink>
             </div>
           </div>
         </header>
@@ -262,7 +534,7 @@ export function StorefrontHeader({
     return (
       <>
         {announcement ? (
-          <div className="bg-[var(--store-ink)] py-2 text-center text-[10px] text-white">
+          <div className="bg-[var(--store-ink)] py-2 text-center text-[10px] text-[var(--store-ink-contrast)]">
             {announcement}
           </div>
         ) : null}
@@ -309,6 +581,10 @@ export function StorefrontHeader({
               >
                 القصة
               </a>
+              <StorefrontDynamicNavigation
+                storeSlug={storeSlug}
+                linkClassName="rounded-full border border-black/10 px-5 py-2.5 text-[11px]"
+              />
             </nav>
 
             <div className="flex gap-1">
@@ -319,12 +595,11 @@ export function StorefrontHeader({
                 <Search size={18} />
               </button>
 
-              <button
-                type="button"
-                className="flex size-11 items-center justify-center rounded-full bg-[var(--store-ink)] text-white"
+              <StorefrontCartLink storeSlug={storeSlug}
+                className="flex size-11 items-center justify-center rounded-full bg-[var(--store-ink)] text-[var(--store-ink-contrast)]"
               >
                 <ShoppingBag size={18} />
-              </button>
+              </StorefrontCartLink>
             </div>
           </div>
         </header>
@@ -335,7 +610,7 @@ export function StorefrontHeader({
   return (
     <>
       {announcement ? (
-        <div className="bg-[var(--store-ink)] py-2 text-center text-[11px] text-white">
+        <div className="bg-[var(--store-ink)] py-2 text-center text-[11px] text-[var(--store-ink-contrast)]">
           {announcement}
         </div>
       ) : null}
@@ -372,6 +647,7 @@ export function StorefrontHeader({
               <a href="#story">
                 قصتنا
               </a>
+              <StorefrontDynamicNavigation storeSlug={storeSlug} />
             </nav>
           </div>
 
@@ -391,19 +667,67 @@ export function StorefrontHeader({
               <UserRound size={19} />
             </button>
 
-            <button
-              type="button"
+            <StorefrontCartLink storeSlug={storeSlug}
               className="relative flex size-10 items-center justify-center"
             >
               <ShoppingBag size={19} />
 
-              <span className="absolute left-0 top-0 flex size-[17px] items-center justify-center rounded-full bg-[var(--store-ink)] text-[9px] text-white">
-                2
-              </span>
-            </button>
+
+            </StorefrontCartLink>
           </div>
         </div>
       </header>
+    </>
+  );
+}
+
+function StorefrontDynamicNavigation({
+  storeSlug,
+  linkClassName = "",
+}: {
+  storeSlug: string;
+  linkClassName?: string;
+}) {
+  const navigationQuery = useQuery({
+    queryKey: [
+      "storefront-runtime",
+      storeSlug,
+      "navigation",
+      "Header",
+    ],
+    queryFn: () => getStorefrontNavigation(storeSlug, "Header"),
+    enabled: Boolean(storeSlug.trim()),
+    retry: 1,
+    staleTime: 60_000,
+  });
+
+  const items = (navigationQuery.data ?? [])
+    .filter((item) => !item.parentItemId)
+    .slice(0, 4);
+
+  return (
+    <>
+      {items.map((item) => {
+        const external = /^https?:\/\//i.test(item.href);
+
+        return (
+          <a
+            key={item.id}
+            href={item.href}
+            target={external ? "_blank" : undefined}
+            rel={external ? "noreferrer" : undefined}
+            className={`transition hover:text-[var(--store-accent)] ${linkClassName}`}
+          >
+            {item.label}
+          </a>
+        );
+      })}
+      <a
+        href={`/store/${encodeURIComponent(storeSlug)}/contact`}
+        className={`transition hover:text-[var(--store-accent)] ${linkClassName}`}
+      >
+        تواصل معنا
+      </a>
     </>
   );
 }

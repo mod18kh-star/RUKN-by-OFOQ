@@ -1,4 +1,5 @@
 import {
+  apiUrl,
   authorizedApiFetch,
 } from "../../auth/authSession";
 
@@ -21,6 +22,8 @@ export interface UpsertCategoryInput {
   isVisible?: boolean;
 }
 
+export type ContentPageKind = "Standard" | "Reviews" | "Statistics";
+
 export interface ContentPage {
   id: string;
   title: string;
@@ -31,6 +34,14 @@ export interface ContentPage {
   isPublished: boolean;
   publishedAtUtc: string | null;
   createdAtUtc: string;
+  pageKind: ContentPageKind;
+  heroImageUrl: string | null;
+  showCustomerCount: boolean;
+  showCompletedOrderCount: boolean;
+  showUnitsSold: boolean;
+  showAverageRating: boolean;
+  showReviewCount: boolean;
+  showCountryCount: boolean;
 }
 
 export interface UpsertContentPageInput {
@@ -40,6 +51,14 @@ export interface UpsertContentPageInput {
   seoTitle: string | null;
   seoDescription: string | null;
   publish: boolean;
+  pageKind: ContentPageKind;
+  heroImageUrl: string | null;
+  showCustomerCount: boolean;
+  showCompletedOrderCount: boolean;
+  showUnitsSold: boolean;
+  showAverageRating: boolean;
+  showReviewCount: boolean;
+  showCountryCount: boolean;
 }
 
 export class CatalogContentApiError extends Error {
@@ -278,6 +297,34 @@ export async function updateContentPage(
   return (await response.json()) as ContentPage;
 }
 
+
+export async function uploadContentPageAsset(
+  tenantId: string,
+  file: File,
+) {
+  const formData = new FormData();
+  formData.set("file", file);
+
+  const response = await authorizedApiFetch(
+    `${pagesPath(tenantId)}/asset`,
+    {
+      method: "POST",
+      body: formData,
+      headers: undefined,
+    },
+  );
+
+  if (!response.ok) {
+    return throwApiError(response);
+  }
+
+  const payload = (await response.json()) as {
+    assetUrl: string;
+  };
+
+  return apiUrl(payload.assetUrl);
+}
+
 export async function deleteContentPage(
   tenantId: string,
   pageId: string,
@@ -286,6 +333,114 @@ export async function deleteContentPage(
     await authorizedApiFetch(
       `${pagesPath(tenantId)}/${encodeURIComponent(
         pageId,
+      )}`,
+      {
+        method: "DELETE",
+      },
+    );
+
+  if (!response.ok) {
+    return throwApiError(response);
+  }
+}
+
+export interface NavigationItem {
+  id: string;
+  location: "Header" | "Footer";
+  type: "Page" | "Category" | "Product" | "External";
+  label: string;
+  targetId: string | null;
+  externalUrl: string | null;
+  parentItemId: string | null;
+  sortOrder: number;
+  isVisible: boolean;
+}
+
+export interface UpsertNavigationItemInput {
+  location: "Header" | "Footer";
+  type: "Page" | "Category" | "Product" | "External";
+  label: string;
+  targetId: string | null;
+  externalUrl: string | null;
+  parentItemId: string | null;
+  position: number | null;
+  isVisible: boolean;
+}
+
+function navigationPath(
+  tenantId: string,
+) {
+  return `/api/tenants/${encodeURIComponent(
+    tenantId,
+  )}/backoffice/navigation`;
+}
+
+export async function getNavigationItems(
+  tenantId: string,
+) {
+  const response =
+    await authorizedApiFetch(
+      navigationPath(tenantId),
+    );
+
+  if (!response.ok) {
+    return throwApiError(response);
+  }
+
+  return (await response.json()) as NavigationItem[];
+}
+
+export async function createNavigationItem(
+  tenantId: string,
+  input: UpsertNavigationItemInput,
+) {
+  const response =
+    await authorizedApiFetch(
+      navigationPath(tenantId),
+      {
+        method: "POST",
+        body: JSON.stringify(input),
+      },
+    );
+
+  if (!response.ok) {
+    return throwApiError(response);
+  }
+
+  return (await response.json()) as NavigationItem;
+}
+
+export async function updateNavigationItem(
+  tenantId: string,
+  navigationItemId: string,
+  input: UpsertNavigationItemInput,
+) {
+  const response =
+    await authorizedApiFetch(
+      `${navigationPath(tenantId)}/${encodeURIComponent(
+        navigationItemId,
+      )}`,
+      {
+        method: "PUT",
+        body: JSON.stringify(input),
+      },
+    );
+
+  if (!response.ok) {
+    return throwApiError(response);
+  }
+
+  return (await response.json()) as NavigationItem;
+}
+
+export async function deleteNavigationItem(
+  tenantId: string,
+  navigationItemId: string,
+) {
+  const response =
+    await authorizedApiFetch(
+      `${navigationPath(tenantId)}/${encodeURIComponent(
+        navigationItemId,
       )}`,
       {
         method: "DELETE",

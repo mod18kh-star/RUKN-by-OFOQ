@@ -1,4 +1,6 @@
 using System.IdentityModel.Tokens.Jwt;
+using Microsoft.EntityFrameworkCore;
+using OFOQ.Market.Infrastructure.Persistence;
 using OFOQ.Market.Api.Security.Authorization;
 using OFOQ.Market.Application.Commerce.Payments.Common;
 using OFOQ.Market.Application.Commerce.Payments.CreateIntent;
@@ -104,6 +106,9 @@ public static class PaymentEndpoints
                 ProcessWebhookAsync)
             .AllowAnonymous();
 
+        endpoints.MapMerchantManualPaymentEndpoints();
+        endpoints.MapManualOrderPaymentEndpoints();
+
         return endpoints;
     }
 
@@ -173,6 +178,7 @@ public static class PaymentEndpoints
         Guid orderId,
         CreatePaymentIntentRequest request,
         CreatePaymentIntentHandler handler,
+        IManualOrderPaymentSelectionReader manualPaymentSelection,
         HttpContext httpContext,
         CancellationToken cancellationToken)
     {
@@ -183,6 +189,13 @@ public static class PaymentEndpoints
         if (!customerUserId.HasValue)
         {
             return Results.Unauthorized();
+        }
+
+        // A manual transfer selection excludes electronic payment intents for this order.
+        if (orderId != Guid.Empty && await manualPaymentSelection
+            .HasManualPaymentAsync(orderId, cancellationToken))
+        {
+            return Conflict("manual_payment_selected", "This order uses a manual transfer.");
         }
 
         var idempotencyKey =
@@ -1135,5 +1148,28 @@ public static class PaymentEndpoints
             },
             statusCode:
                 StatusCodes.Status502BadGateway);
+    }
+}
+
+// The manual transfer guard is injectable so API tests can use the existing
+// in-memory repositories without opening the real PostgreSQL connection.
+// Never disable this guard in the production application.
+public interface IManualOrderPaymentSelectionReader
+{
+    Task<bool> HasManualPaymentAsync(Guid orderId, CancellationToken cancellationToken);
+}
+
+internal sealed class DatabaseManualOrderPaymentSelectionReader(MarketDbContext db)
+    : IManualOrderPaymentSelectionReader
+{
+    public Task<bool> HasManualPaymentAsync(Guid orderId, CancellationToken cancellationToken)
+    {
+        if (orderId == Guid.Empty)
+        {
+            return Task.FromResult(false);
+        }
+
+        return db.Set<ManualOrderPayment>()
+            .AnyAsync(payment => payment.OrderId == OrderId.From(orderId), cancellationToken);
     }
 }

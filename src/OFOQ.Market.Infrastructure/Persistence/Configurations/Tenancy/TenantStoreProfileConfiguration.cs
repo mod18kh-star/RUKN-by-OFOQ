@@ -69,6 +69,38 @@ public sealed class TenantStoreProfileConfiguration :
 
         builder.Property(
                 entity =>
+                    entity.SecondaryPhone)
+            .HasColumnName(
+                "secondary_phone")
+            .HasMaxLength(
+                TenantStoreProfile.MaxPhoneLength);
+
+        builder.Property(
+                entity =>
+                    entity.LandlinePhone)
+            .HasColumnName(
+                "landline_phone")
+            .HasMaxLength(
+                TenantStoreProfile.MaxPhoneLength);
+
+        builder.Property(
+                entity =>
+                    entity.PhysicalAddress)
+            .HasColumnName(
+                "physical_address")
+            .HasMaxLength(
+                TenantStoreProfile.MaxPhysicalAddressLength);
+
+        builder.Property(
+                entity =>
+                    entity.GoogleMapsUrl)
+            .HasColumnName(
+                "google_maps_url")
+            .HasMaxLength(
+                TenantStoreProfile.MaxGoogleMapsUrlLength);
+
+        builder.Property(
+                entity =>
                     entity.CommercialRegistrationNumber)
             .HasColumnName(
                 "commercial_registration_number")
@@ -82,6 +114,62 @@ public sealed class TenantStoreProfileConfiguration :
                 "commercial_registration_not_applicable")
             .HasDefaultValue(
                 false)
+            .IsRequired();
+
+        builder.Property(
+                entity =>
+                    entity.ShowWebsite)
+            .HasColumnName(
+                "show_website")
+            .HasDefaultValue(false)
+            .IsRequired();
+
+        builder.Property(
+                entity =>
+                    entity.ShowWhatsApp)
+            .HasColumnName(
+                "show_whatsapp")
+            .HasDefaultValue(false)
+            .IsRequired();
+
+        builder.Property(
+                entity =>
+                    entity.ShowCustomerServicePhone)
+            .HasColumnName(
+                "show_customer_service_phone")
+            .HasDefaultValue(false)
+            .IsRequired();
+
+        builder.Property(
+                entity =>
+                    entity.ShowSecondaryPhone)
+            .HasColumnName(
+                "show_secondary_phone")
+            .HasDefaultValue(false)
+            .IsRequired();
+
+        builder.Property(
+                entity =>
+                    entity.ShowLandlinePhone)
+            .HasColumnName(
+                "show_landline_phone")
+            .HasDefaultValue(false)
+            .IsRequired();
+
+        builder.Property(
+                entity =>
+                    entity.ShowPhysicalAddress)
+            .HasColumnName(
+                "show_physical_address")
+            .HasDefaultValue(false)
+            .IsRequired();
+
+        builder.Property(
+                entity =>
+                    entity.ShowCommercialRegistration)
+            .HasColumnName(
+                "show_commercial_registration")
+            .HasDefaultValue(false)
             .IsRequired();
 
         builder.Property(

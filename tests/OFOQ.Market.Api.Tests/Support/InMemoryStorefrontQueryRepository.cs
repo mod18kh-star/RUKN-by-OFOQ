@@ -127,7 +127,17 @@ internal sealed class InMemoryStorefrontQueryRepository :
                 true,
                 true,
                 TenantStorefrontPresentation.DefaultCategorySectionTitle,
-                TenantStorefrontPresentation.DefaultProductSectionTitle));
+                TenantStorefrontPresentation.DefaultProductSectionTitle),
+            new StorefrontContactPublicResult(
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                Array.Empty<StorefrontSocialLinkPublicResult>()));
     }
 
     public Task<IReadOnlyList<StorefrontCategoryResult>>
@@ -486,6 +496,79 @@ internal sealed class InMemoryStorefrontQueryRepository :
                     attributes));
     }
 
+    public Task<IReadOnlyList<CartProductDisplayResult>> GetCartProductsAsync(
+        TenantId tenantId,
+        IReadOnlyCollection<Guid> productIds,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        if (tenantId.IsEmpty || productIds.Count == 0)
+        {
+            return Task.FromResult<IReadOnlyList<CartProductDisplayResult>>(
+                Array.Empty<CartProductDisplayResult>());
+        }
+
+        var requestedIds = productIds
+            .Where(id => id != Guid.Empty)
+            .ToHashSet();
+
+        Product[] products;
+
+        lock (_productStore.SyncRoot)
+        {
+            products = _productStore.Items
+                .Where(product =>
+                    product.TenantId == tenantId &&
+                    requestedIds.Contains(product.Id.Value) &&
+                    !product.IsDeleted &&
+                    product.Status == ProductStatus.Published &&
+                    product.IsVisible)
+                .ToArray();
+        }
+
+        var results = products
+            .Select(product =>
+            {
+                var primaryImage = GetImages(
+                        tenantId,
+                        product.Id)
+                    .OrderByDescending(image => image.IsPrimary)
+                    .FirstOrDefault();
+
+                CartVariantDisplayResult[] variants;
+
+                lock (_variantStore.SyncRoot)
+                {
+                    variants = _variantStore.Items
+                        .Where(variant =>
+                            variant.TenantId == tenantId &&
+                            variant.ProductId == product.Id &&
+                            !variant.IsDeleted &&
+                            variant.IsEnabled)
+                        .Select(variant =>
+                            new CartVariantDisplayResult(
+                                variant.Id.Value,
+                                variant.Name))
+                        .ToArray();
+                }
+
+                return new CartProductDisplayResult(
+                    product.Id.Value,
+                    product.Name,
+                    product.Slug,
+                    product.Price.Currency.Value,
+                    product.Price.Amount,
+                    product.CompareAtPrice?.Amount,
+                    primaryImage?.Url,
+                    primaryImage?.AltText,
+                    variants);
+            })
+            .ToArray();
+
+        return Task.FromResult<IReadOnlyList<CartProductDisplayResult>>(
+            results);
+    }
     private bool HasAvailableVariant(
         TenantId tenantId,
         ProductId productId)

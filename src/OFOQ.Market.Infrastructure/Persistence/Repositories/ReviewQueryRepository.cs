@@ -24,6 +24,44 @@ internal sealed class ReviewQueryRepository:IReviewQueryRepository
    var reviews=await baseQuery.OrderByDescending(x=>x.CreatedAtUtc).Take(take).Select(x=>new PublicReviewResult(x.Id.Value,x.Rating,x.Body,x.IsVerifiedPurchase,x.MerchantReply,x.CreatedAtUtc)).ToArrayAsync(cancellationToken);
    return new(decimal.Round(avg,2),count,reviews);
  }
+ public async Task<PublicStoreReviewPageResult?> GetPublicStoreReviewsAsync(string storeSlug,int take,CancellationToken cancellationToken=default)
+ {
+   if(take<1||take>100)throw new ArgumentOutOfRangeException(nameof(take));
+   var slug=TenantSlug.Create(storeSlug);
+   var tenant=await _db.Tenants.IgnoreQueryFilters().AsNoTracking().SingleOrDefaultAsync(x=>x.Slug==slug&&!x.IsDeleted&&x.Status==TenantStatus.Active,cancellationToken);
+   if(tenant is null)return null;
+
+   var baseQuery=
+     from review in _db.ProductReviews.IgnoreQueryFilters().AsNoTracking()
+     join product in _db.Products.IgnoreQueryFilters().AsNoTracking()
+       on review.ProductId equals product.Id
+     where review.TenantId==tenant.Id
+       && review.Status==ProductReviewStatus.Published
+       && product.TenantId==tenant.Id
+       && !product.IsDeleted
+       && product.Status==ProductStatus.Published
+       && product.IsVisible
+     select new { review, product };
+
+   var count=await baseQuery.CountAsync(cancellationToken);
+   var avg=count==0?0m:decimal.Round(await baseQuery.AverageAsync(x=>(decimal)x.review.Rating,cancellationToken),2);
+   var reviews=await baseQuery
+     .OrderByDescending(x=>x.review.CreatedAtUtc)
+     .Take(take)
+     .Select(x=>new PublicStoreReviewResult(
+       x.review.Id.Value,
+       x.product.Id.Value,
+       x.product.Name,
+       x.product.Slug,
+       x.review.Rating,
+       x.review.Body,
+       x.review.IsVerifiedPurchase,
+       x.review.MerchantReply,
+       x.review.CreatedAtUtc))
+     .ToArrayAsync(cancellationToken);
+
+   return new(avg,count,reviews);
+ }
  public async Task<TrustMetricResult?> GetTrustMetricsAsync(string storeSlug,CancellationToken cancellationToken=default)
  {
    var slug=TenantSlug.Create(storeSlug); var tenant=await _db.Tenants.IgnoreQueryFilters().AsNoTracking().SingleOrDefaultAsync(x=>x.Slug==slug&&!x.IsDeleted&&x.Status==TenantStatus.Active,cancellationToken); if(tenant is null)return null;

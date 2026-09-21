@@ -118,7 +118,8 @@ public static class ProductEndpoints
                         request.LowStockThreshold,
                         request.ContinueSellingWhenOutOfStock,
                         actor.Value,
-                        request.PrimaryImageUrl),
+                        request.PrimaryImageUrl,
+                        request.VerticalCode),
                     cancellationToken);
 
             return Results.Created(

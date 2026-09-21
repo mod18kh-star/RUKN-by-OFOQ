@@ -326,6 +326,33 @@ export function PreviewHighlightBridge() {
       );
     }
 
+    // Selection is active only in the same-origin visual editor iframe.
+    // It does not change behaviour on the public storefront.
+    function handleBuilderSelection(event: MouseEvent) {
+      const clicked = event.target;
+      if (!(clicked instanceof Element) || window.parent === window) return;
+      const explicit = clicked.closest<HTMLElement>("[data-rukn-target]");
+      let target = explicit?.dataset.ruknTarget || null;
+      if (!target) {
+        // Only actual headings are mapped by position. Generic cards, labels,
+        // prices, buttons and body copy must NEVER be mistaken for a heading.
+        if (clicked.closest("#categories h2")) target = "categories";
+        else if (clicked.closest("#products h2")) target = "products";
+        else if (clicked.closest("#products a, #products article")) target = "productCardStyle";
+        else if (clicked.closest("#categories a")) target = "categoryLayout";
+        else if (clicked.closest("main h1")) target = "heroTitle";
+        else if (clicked.closest("header img")) target = "logo";
+        else if (clicked.closest("#categories > div > p")) target = "categoryEyebrow";
+        else if (clicked.closest("#products > div > p")) target = "productEyebrow";
+      }
+      if (!target) return;
+      event.preventDefault();
+      event.stopPropagation();
+      window.parent.postMessage({ type: "RUKN_VISUAL_SELECT", target }, window.location.origin);
+    }
+
+    document.addEventListener("click", handleBuilderSelection, true);
+
     window.addEventListener(
       "message",
       handleMessage,
@@ -338,6 +365,7 @@ export function PreviewHighlightBridge() {
       );
 
       clearHighlight();
+      document.removeEventListener("click", handleBuilderSelection, true);
     };
   }, []);
 

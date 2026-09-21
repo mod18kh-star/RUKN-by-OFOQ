@@ -1,6 +1,9 @@
 using System.IdentityModel.Tokens.Jwt;
 using OFOQ.Market.Application.Commerce.Checkout;
 using OFOQ.Market.Application.Common.Tenancy;
+using OFOQ.Market.Application.Common.Persistence;
+using OFOQ.Market.Domain.Catalog;
+using OFOQ.Market.Domain.Commerce.Fulfillment;
 using OFOQ.Market.Contracts.Commerce.Checkout;
 using OFOQ.Market.Domain.Identity;
 
@@ -26,7 +29,80 @@ public static class CheckoutEndpoints
             "/",
             CheckoutAsync);
 
+        group.MapPost("/quote", QuoteAsync);
+
         return endpoints;
+    }
+
+    public sealed record CheckoutQuoteRequest(Guid ShippingMethodId, string? CouponCode);
+
+    private sealed record CheckoutQuoteResponse(
+        string CouponCode,
+        string Currency,
+        decimal SubtotalAmount,
+        decimal ShippingAmount,
+        decimal DiscountAmount,
+        decimal TotalAmount);
+
+    // Preview only. Does not create an order or consume a coupon use.
+    // Existing checkout rechecks pricing, currency, inventory and limits atomically.
+    private static async Task<IResult> QuoteAsync(
+        CheckoutQuoteRequest request,
+        ICartRepository carts,
+        IProductRepository products,
+        IProductVariantRepository variants,
+        CheckoutPricingService pricing,
+        ITransactionExecutor transactions,
+        HttpContext http,
+        CancellationToken ct)
+    {
+        var userId = GetUserId(http);
+        if (!userId.HasValue) return Results.Unauthorized();
+        if (request is null || request.ShippingMethodId == Guid.Empty ||
+            string.IsNullOrWhiteSpace(request.CouponCode) || request.CouponCode.Length > 60 ||
+            !System.Text.RegularExpressions.Regex.IsMatch(request.CouponCode.Trim(), @"^[A-Za-z0-9][A-Za-z0-9_-]{1,59}$"))
+            return Results.BadRequest(new { code = "checkout_coupon_invalid", message = "Enter a valid coupon and shipping method." });
+
+        try
+        {
+            var quote = await transactions.ExecuteAsync(async transactionCt =>
+            {
+                var cart = await carts.GetActiveByCustomerUserIdAsync(userId.Value, transactionCt);
+                if (cart is null || cart.Items.Count == 0)
+                    throw new CheckoutPricingException("checkout_cart_empty", "Your cart is empty.");
+
+                var items = new List<CheckoutPricingItem>(cart.Items.Count);
+                CurrencyCode? currency = null;
+                foreach (var item in cart.Items)
+                {
+                    var product = await products.GetByIdAsync(item.ProductId, transactionCt);
+                    var variant = await variants.GetByIdAsync(item.ProductVariantId, transactionCt);
+                    if (product is null || product.Status != ProductStatus.Published || !product.IsVisible ||
+                        variant is null || !variant.IsEnabled || variant.ProductId != product.Id)
+                        throw new CheckoutPricingException("checkout_product_unavailable", "A product in the cart is unavailable.");
+                    var price = variant.PriceOverride ?? product.Price;
+                    if (currency.HasValue && currency.Value != price.Currency)
+                        throw new CheckoutPricingException("checkout_currency_changed", "Product currencies do not match.");
+                    currency = price.Currency;
+                    items.Add(new CheckoutPricingItem(product.Id, price.Amount * item.Quantity));
+                }
+                if (!currency.HasValue)
+                    throw new CheckoutPricingException("checkout_cart_empty", "Your cart is empty.");
+                var subtotal = decimal.Round(items.Sum(i => i.LineTotal), 2, MidpointRounding.AwayFromZero);
+                var calculation = await pricing.ResolveAsync(userId.Value, null,
+                    ShippingMethodId.From(request.ShippingMethodId), request.CouponCode,
+                    items, currency.Value, transactionCt);
+                var total = subtotal + calculation.ShippingAmount - calculation.DiscountAmount;
+                if (total <= 0m)
+                    throw new CheckoutPricingException("checkout_total_nonpositive", "This coupon reduces the total to zero. Manual payment cannot process a zero-value order.");
+                return new CheckoutQuoteResponse(calculation.CouponCode!, currency.Value.Value,
+                    subtotal, calculation.ShippingAmount, calculation.DiscountAmount, total);
+            }, ct);
+            return Results.Ok(quote);
+        }
+        catch (CheckoutPricingException e) { return Conflict(e.Code, e.Message); }
+        catch (TenantScopeViolationException) { return Results.Forbid(); }
+        catch (ArgumentException) { return Results.BadRequest(new { code = "checkout_coupon_invalid", message = "Invalid coupon or shipping method." }); }
     }
 
     private static async Task<IResult> CheckoutAsync(

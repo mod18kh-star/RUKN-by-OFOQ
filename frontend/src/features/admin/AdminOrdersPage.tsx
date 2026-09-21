@@ -30,6 +30,7 @@ import {
 } from "./dashboard/adminDashboardApi";
 
 import { readAdminStore } from "./store-setup/storeSetupStorage";
+import { ManualPaymentReviewPanel } from "./payments/ManualPaymentReviewPanel";
 
 type StatusTab =
   | "all"
@@ -111,8 +112,8 @@ function matchesTab(order: MerchantOrderSummary, tab: StatusTab) {
   }
 
   return (
-    ["pending", "confirmed", "processing", "paid"].includes(status) ||
-    ["unfulfilled", "processing"].includes(fulfillment)
+    ["confirmed", "processing", "paid"].includes(status) ||
+    fulfillment === "processing"
   );
 }
 
@@ -269,6 +270,8 @@ export function AdminOrdersPage() {
           </button>
         </div>
       </div>
+
+      {store?.tenantId && <ManualPaymentReviewPanel tenantId={store.tenantId} onChanged={() => void load()} />}
 
       {securityBlocked ? (
         <div className="mt-5 flex flex-col gap-4 rounded-[15px] border border-[#e5cda7] bg-[#fffaf1] p-5 md:flex-row md:items-center md:justify-between">

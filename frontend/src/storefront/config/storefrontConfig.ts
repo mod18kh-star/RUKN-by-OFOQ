@@ -19,6 +19,9 @@ export const DEFAULT_STOREFRONT_CONFIG:
   planTier:
     "business",
 
+  verticalCode:
+    null,
+
   storeName:
     "NOOR",
 

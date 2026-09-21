@@ -197,6 +197,9 @@ public sealed class MarketDbContext :
     public DbSet<CustomerAddress> CustomerAddresses =>
         Set<CustomerAddress>();
 
+    public DbSet<CustomerSavedAddress> CustomerSavedAddresses =>
+        Set<CustomerSavedAddress>();
+
     public DbSet<DiscountCoupon> DiscountCoupons =>
         Set<DiscountCoupon>();
 

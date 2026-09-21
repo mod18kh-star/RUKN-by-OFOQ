@@ -94,11 +94,16 @@ export function resolveCategoryContent(
     config.categorySection;
 
   let result =
-    [...categories].sort(
-      (left, right) =>
-        left.sortOrder -
-        right.sortOrder,
-    );
+    categories
+      .filter(
+        (category) =>
+          category.parentCategoryId === null,
+      )
+      .sort(
+        (left, right) =>
+          left.sortOrder -
+          right.sortOrder,
+      );
 
   if (
     section.sourceType ===

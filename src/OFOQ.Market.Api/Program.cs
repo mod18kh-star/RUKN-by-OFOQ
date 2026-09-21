@@ -123,6 +123,10 @@ builder.Services.AddApplication();
 builder.Services.AddInfrastructure(
     connectionString);
 
+// Preserve the real database-backed manual transfer exclusion in production.
+builder.Services.AddScoped<IManualOrderPaymentSelectionReader,
+    DatabaseManualOrderPaymentSelectionReader>();
+
 builder.Services.AddRecoveryCodeSecurity(
     recoveryCodeHmacKey);
 
@@ -561,6 +565,8 @@ app.MapGet(
             }));
 
 app.MapAuthEndpoints();
+app.MapCustomerIdentityEndpoints();
+app.MapCustomerSavedAddressEndpoints();
 
 app.MapTenantEndpoints();
 app.MapMyTenantEndpoints();
@@ -599,6 +605,7 @@ app.MapPlatformMerchantVerificationReviewFileEndpoints();
 app.MapCustomerAccountEndpoints();
 app.MapFulfillmentEndpoints();
 app.MapDiscountCouponEndpoints();
+app.MapCouponAnalyticsEndpoints();
 
 app.MapCartEndpoints();
 

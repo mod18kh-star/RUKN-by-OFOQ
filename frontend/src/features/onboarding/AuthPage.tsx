@@ -177,16 +177,8 @@ export function AuthPage() {
       null,
     );
 
-  const [mfaMode, setMfaMode] =
-    useState<
-      "totp" | "recovery"
-    >("totp");
-
   const [mfaValue, setMfaValue] =
     useState("");
-
-  const [rememberDevice, setRememberDevice] =
-    useState(true);
 
   async function finishAuthentication(
     token: string,
@@ -280,6 +272,8 @@ export function AuthPage() {
       result.email,
       result.userId,
     );
+
+    return;
   }
 
   async function submit(
@@ -396,29 +390,9 @@ export function AuthPage() {
     setError(null);
 
     try {
-      const endpoint =
-        mfaMode === "totp"
-          ? "/api/auth/mfa/totp"
-          : "/api/auth/mfa/recovery";
-
-      const body =
-        mfaMode === "totp"
-          ? {
-              challengeToken,
-              code:
-                mfaValue.trim(),
-              rememberDevice,
-            }
-          : {
-              challengeToken,
-              recoveryCode:
-                mfaValue.trim(),
-              rememberDevice,
-            };
-
       const response =
         await fetch(
-          `${apiBaseUrl()}${endpoint}`,
+          `${apiBaseUrl()}/api/auth/mfa/totp`,
           {
             method: "POST",
             credentials: "include",
@@ -426,10 +400,12 @@ export function AuthPage() {
               "Content-Type":
                 "application/json",
             },
-            body:
-              JSON.stringify(
-                body,
-              ),
+            body: JSON.stringify({
+              challengeToken,
+              code:
+                mfaValue.trim(),
+              rememberDevice: false,
+            }),
           },
         );
 
@@ -467,92 +443,86 @@ export function AuthPage() {
   if (challengeToken) {
     return (
       <AuthFrame>
-        <div className="mx-auto w-full max-w-[470px] border border-black/[0.08] bg-white p-7 md:p-10">
-          <div className="flex size-11 items-center justify-center rounded-full bg-[#eee8da] text-[#76562e]">
-            <LockKeyhole
-              size={19}
-            />
+        <div className="mx-auto w-full max-w-[500px] overflow-hidden rounded-[22px] border border-black/[0.07] bg-white shadow-[0_20px_60px_rgba(35,28,18,0.07)]">
+          <div className="border-b border-black/[0.06] bg-[#faf8f3] px-7 py-6 md:px-9">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex size-11 items-center justify-center rounded-full bg-[#18201d] text-white">
+                <LockKeyhole
+                  size={18}
+                />
+              </div>
+              <span className="rounded-full border border-[#a57a43]/20 bg-[#efe6d8] px-3 py-1.5 text-[10px] font-semibold text-[#7c5a30]">
+                حماية تسجيل الدخول
+              </span>
+            </div>
+
+            <h1 className="mt-6 text-[30px] font-semibold tracking-[-0.045em]">
+              أدخل رمز التحقق
+            </h1>
+
+            <p className="mt-3 text-[12px] leading-6 text-black/50">
+              افتح تطبيق Google Authenticator على جوالك، ثم اكتب الرمز الحالي المكوّن من 6 أرقام لحساب ركن.
+            </p>
           </div>
-
-          <p className="mt-7 text-[11px] font-semibold text-[#8d6737]">
-            حماية الحساب
-          </p>
-
-          <h1 className="mt-2 text-[30px] font-semibold tracking-[-0.045em]">
-            تأكيد تسجيل الدخول
-          </h1>
-
-          <p className="mt-3 text-[12px] leading-6 text-black/50">
-            أدخل رمز تطبيق المصادقة، أو استخدم رمز الاسترداد إذا لم يتوفر التطبيق.
-          </p>
 
           <form
             onSubmit={submitMfa}
-            className="mt-7"
+            className="p-7 md:p-9"
           >
-            <label className="text-[11px] font-semibold">
-              {mfaMode ===
-              "totp"
-                ? "رمز التحقق"
-                : "رمز الاسترداد"}
+            <label
+              htmlFor="mfa-code"
+              className="text-[11px] font-semibold text-black/70"
+            >
+              رمز Google Authenticator
             </label>
 
             <input
+              id="mfa-code"
+              dir="ltr"
+              inputMode="numeric"
+              autoFocus
+              maxLength={6}
               value={mfaValue}
               onChange={(event) =>
                 setMfaValue(
-                  event.target.value,
+                  event.target.value.replace(
+                    /\D/g,
+                    "",
+                  ),
                 )
               }
               autoComplete="one-time-code"
-              className="mt-2 h-12 w-full border border-black/10 bg-[#fbfaf7] px-4 text-[14px] outline-none transition focus:border-black/35"
+              placeholder="000000"
+              className="mt-2 h-14 w-full rounded-[12px] border border-black/10 bg-[#fbfaf7] px-4 text-center text-[22px] font-semibold tracking-[0.32em] outline-none transition placeholder:text-black/15 focus:border-[#7f6038]/50 focus:bg-white"
             />
 
-            <label className="mt-4 flex cursor-pointer items-center gap-2 text-[11px] text-black/55">
-              <input
-                type="checkbox"
-                checked={rememberDevice}
-                onChange={(event) =>
-                  setRememberDevice(
-                    event.target.checked,
-                  )
-                }
-                className="size-4 accent-[#17231f]"
-              />
-              تذكر هذا الجهاز لمدة 30 يومًا
-            </label>
+            <p className="mt-2 text-[10px] leading-5 text-black/35">
+              الرمز يتغير تلقائيًا داخل التطبيق. استخدم الرمز الظاهر حاليًا.
+            </p>
 
             <ErrorBox
               error={error}
             />
 
             <button
-              disabled={pending}
-              className="mt-5 flex h-12 w-full items-center justify-center bg-[#152a23] text-[12px] font-semibold text-white transition hover:bg-[#0e211b] disabled:opacity-50"
+              disabled={pending || mfaValue.length !== 6}
+              className="mt-5 flex h-12 w-full items-center justify-center rounded-[12px] bg-[#18201d] text-[11px] font-semibold text-white transition hover:bg-[#0f1714] disabled:cursor-not-allowed disabled:opacity-40"
             >
               {pending
-                ? "جار التحقق..."
-                : "متابعة"}
+                ? "جاري التحقق…"
+                : "تأكيد الدخول"}
             </button>
 
             <button
               type="button"
               onClick={() => {
+                setChallengeToken(null);
                 setMfaValue("");
                 setError(null);
-                setMfaMode(
-                  mfaMode ===
-                    "totp"
-                    ? "recovery"
-                    : "totp",
-                );
               }}
-              className="mt-4 w-full text-center text-[11px] font-semibold text-black/50"
+              className="mt-4 w-full text-center text-[10px] font-medium text-black/40 transition hover:text-black/65"
             >
-              {mfaMode ===
-              "totp"
-                ? "استخدام رمز الاسترداد"
-                : "استخدام تطبيق المصادقة"}
+              العودة إلى تسجيل الدخول
             </button>
           </form>
         </div>

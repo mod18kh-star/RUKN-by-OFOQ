@@ -38,6 +38,11 @@ import {
   VERTICAL_OPTIONS,
 } from "./store-setup/verticalCatalog";
 
+import {
+  StoreContactSettings,
+} from "./store-profile/StoreContactSettings";
+
+
 type RequestKind =
   | "plan"
   | "identity"
@@ -247,6 +252,8 @@ export function AdminSettingsPage() {
           </p>
         </Link>
       </div>
+
+      <StoreContactSettings tenantId={store.tenantId} />
 
       <section className="mt-6 overflow-hidden rounded-[18px] border border-black/[0.065] bg-white">
         <div className="flex items-center justify-between gap-4 border-b border-black/[0.06] px-5 py-4">

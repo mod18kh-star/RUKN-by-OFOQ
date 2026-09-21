@@ -25,4 +25,24 @@ public interface IStorefrontQueryRepository
         TenantId tenantId,
         string productSlug,
         CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<CartProductDisplayResult>> GetCartProductsAsync(
+        TenantId tenantId,
+        IReadOnlyCollection<Guid> productIds,
+        CancellationToken cancellationToken = default);
 }
+
+public sealed record CartVariantDisplayResult(
+    Guid VariantId,
+    string Name);
+
+public sealed record CartProductDisplayResult(
+    Guid ProductId,
+    string Name,
+    string Slug,
+    string Currency,
+    decimal CurrentPrice,
+    decimal? CompareAtPrice,
+    string? PrimaryImageUrl,
+    string? PrimaryImageAltText,
+    IReadOnlyList<CartVariantDisplayResult> Variants);

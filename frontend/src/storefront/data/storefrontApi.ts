@@ -17,9 +17,42 @@ export interface StorefrontPresentation {
 
   categorySectionTitle: string;
   productSectionTitle: string;
+  visualContentJson?: string;
 }
 
+export interface StorefrontSocialLink {
+  platformCode: string;
+  label: string | null;
+  url: string;
+  sortOrder: number;
+}
+
+export interface StorefrontContact {
+  websiteUrl: string | null;
+  whatsAppNumber: string | null;
+  customerServicePhone: string | null;
+  secondaryPhone: string | null;
+  landlinePhone: string | null;
+  physicalAddress: string | null;
+  googleMapsUrl: string | null;
+  commercialRegistrationNumber: string | null;
+  socialLinks: StorefrontSocialLink[];
+}
+
+export const EMPTY_STOREFRONT_CONTACT: StorefrontContact = {
+  websiteUrl: null,
+  whatsAppNumber: null,
+  customerServicePhone: null,
+  secondaryPhone: null,
+  landlinePhone: null,
+  physicalAddress: null,
+  googleMapsUrl: null,
+  commercialRegistrationNumber: null,
+  socialLinks: [],
+};
+
 export interface StorefrontInfo {
+  tenantId: string;
   name: string;
   slug: string;
 
@@ -31,6 +64,9 @@ export interface StorefrontInfo {
 
   presentation:
     StorefrontPresentation;
+
+  contact:
+    StorefrontContact;
 }
 
 export interface StorefrontCategory {
@@ -61,6 +97,12 @@ export interface StorefrontContentPage {
 
   publishedAtUtc:
     string | null;
+
+  pageKind:
+    "Standard" | "Reviews" | "Statistics";
+
+  heroImageUrl:
+    string | null;
 }
 
 export interface StorefrontProductSummary {
@@ -84,7 +126,7 @@ export interface StorefrontProductSummary {
     boolean;
 
   primaryImageUrl:
-    string;
+    string | null;
 
   primaryImageAltText:
     string | null;
@@ -254,6 +296,53 @@ export function getStorefrontContentPage(
   );
 }
 
+
+export interface StorefrontPageStatistics {
+  customerCount: number | null;
+  completedOrderCount: number | null;
+  unitsSold: number | null;
+  averageRating: number | null;
+  reviewCount: number | null;
+  countryCount: number | null;
+}
+
+export interface StorefrontReview {
+  id: string;
+  productId: string;
+  productName: string;
+  productSlug: string;
+  rating: number;
+  body: string | null;
+  isVerifiedPurchase: boolean;
+  merchantReply: string | null;
+  createdAtUtc: string;
+}
+
+export interface StorefrontReviewPage {
+  averageRating: number;
+  reviewCount: number;
+  reviews: StorefrontReview[];
+}
+
+export function getStorefrontPageStatistics(
+  storeSlug: string,
+  pageSlug: string,
+) {
+  return fetchJson<StorefrontPageStatistics>(
+    `${storePath(storeSlug)}/pages/${encodeURIComponent(pageSlug)}/statistics`,
+  );
+}
+
+export function getStorefrontStoreReviews(
+  storeSlug: string,
+  take = 24,
+) {
+  const params = new URLSearchParams({ take: String(take) });
+  return fetchJson<StorefrontReviewPage>(
+    `${storePath(storeSlug)}/reviews?${params.toString()}`,
+  );
+}
+
 export interface StorefrontProductImage {
   imageId: string;
   url: string;
@@ -307,5 +396,28 @@ export function getStorefrontProduct(
 ) {
   return fetchJson<StorefrontProductDetail>(
     `${storePath(storeSlug)}/products/${encodeURIComponent(productSlug)}`,
+  );
+}
+
+export interface StorefrontNavigationItem {
+  id: string;
+  location: string;
+  type: string;
+  label: string;
+  targetId: string | null;
+  externalUrl: string | null;
+  parentItemId: string | null;
+  sortOrder: number;
+  href: string;
+}
+
+export function getStorefrontNavigation(
+  storeSlug: string,
+  location: "Header" | "Footer" = "Header",
+) {
+  const params = new URLSearchParams({ location });
+
+  return fetchJson<StorefrontNavigationItem[]>(
+    `${storePath(storeSlug)}/navigation?${params.toString()}`,
   );
 }

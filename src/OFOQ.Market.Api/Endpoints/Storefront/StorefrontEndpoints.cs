@@ -250,7 +250,27 @@ public static class StorefrontEndpoints
                 result.Presentation.ShowCategoriesOnHome,
                 result.Presentation.ShowProductsOnHome,
                 result.Presentation.CategorySectionTitle,
-                result.Presentation.ProductSectionTitle));
+                result.Presentation.ProductSectionTitle,
+                result.Presentation.VisualContentJson),
+            new StorefrontContactResponse(
+                result.Contact.WebsiteUrl,
+                result.Contact.WhatsAppNumber,
+                result.Contact.CustomerServicePhone,
+                result.Contact.SecondaryPhone,
+                result.Contact.LandlinePhone,
+                result.Contact.PhysicalAddress,
+                result.Contact.GoogleMapsUrl,
+                result.Contact.CommercialRegistrationNumber,
+                result.Contact.SocialLinks
+                    .Select(
+                        item =>
+                            new StorefrontSocialLinkResponse(
+                                item.PlatformCode,
+                                item.Label,
+                                item.Url,
+                                item.SortOrder))
+                    .ToArray()),
+            result.TenantId.Value);
     }
 
     private static StorefrontProductSummaryResponse Map(

@@ -7,4 +7,10 @@ public sealed record CartItemResponse(
     decimal UnitPrice,
     string Currency,
     int Quantity,
-    decimal LineTotal);
+    decimal LineTotal,
+    string? ProductName = null,
+    string? ProductSlug = null,
+    string? VariantName = null,
+    string? PrimaryImageUrl = null,
+    string? PrimaryImageAltText = null,
+    decimal? CompareAtPrice = null);

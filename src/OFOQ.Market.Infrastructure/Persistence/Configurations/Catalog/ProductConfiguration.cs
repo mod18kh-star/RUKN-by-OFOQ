@@ -82,6 +82,17 @@ public sealed class ProductConfiguration :
 
         builder.Property(
                 product =>
+                    product.VerticalCode)
+            .HasColumnName(
+                "vertical_code")
+            .HasMaxLength(
+                64)
+            .HasDefaultValue(
+                "general")
+            .IsRequired();
+
+        builder.Property(
+                product =>
                     product.CategoryId)
             .HasColumnName(
                 "category_id")

@@ -62,13 +62,16 @@ public sealed class GetProductAttributesHandler
             return null;
         }
 
-        var verticalType =
-            await GetPrimaryVerticalAsync(
-                cancellationToken);
-
         var schema =
-            ProductAttributeSchemaCatalog.Get(
-                verticalType);
+            string.Equals(
+                product.VerticalCode,
+                "general",
+                StringComparison.OrdinalIgnoreCase)
+                ? ProductAttributeSchemaCatalog.Get(
+                    await GetPrimaryVerticalAsync(
+                        cancellationToken))
+                : ProductAttributeSchemaCatalog.GetByCode(
+                    product.VerticalCode);
 
         var values =
             await _attributeRepository.GetByProductIdAsync(

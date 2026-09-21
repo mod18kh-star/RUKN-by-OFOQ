@@ -85,7 +85,8 @@ public static class TenantStorefrontPresentationEndpoints
                         request.ShowProductsOnHome,
                         request.CategorySectionTitle,
                         request.ProductSectionTitle,
-                        actorUserId.Value),
+                        actorUserId.Value,
+                        request.VisualContentJson),
                     cancellationToken);
 
             return Results.Ok(
@@ -269,7 +270,8 @@ public static class TenantStorefrontPresentationEndpoints
             result.ShowCategoriesOnHome,
             result.ShowProductsOnHome,
             result.CategorySectionTitle,
-            result.ProductSectionTitle);
+            result.ProductSectionTitle,
+            result.VisualContentJson);
     }
 
     private static Guid? GetActorUserId(

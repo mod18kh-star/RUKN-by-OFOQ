@@ -725,9 +725,11 @@ public static class PlatformAdministrationEndpoints
         ChangePrimaryVerticalRequest request,
         HttpContext httpContext,
         MarketDbContext dbContext,
+        OFOQ.Market.Application.Common.Persistence.ITransactionExecutor transactionExecutor,
         CancellationToken cancellationToken)
     {
-        var actor = GetActorUserId(httpContext);
+        var actor =
+            GetActorUserId(httpContext);
 
         if (!actor.HasValue)
         {
@@ -746,7 +748,7 @@ public static class PlatformAdministrationEndpoints
             await FindTenantAsync(
                 tenantId,
                 dbContext,
-                tracking: true,
+                tracking: false,
                 cancellationToken);
 
         if (tenant is null)
@@ -754,7 +756,9 @@ public static class PlatformAdministrationEndpoints
             return StoreNotFound();
         }
 
-        var requestedCode = request.VerticalCode?.Trim() ?? string.Empty;
+        var requestedCode =
+            request.VerticalCode?.Trim() ??
+            string.Empty;
 
         var definition =
             CommerceVerticalCatalog.All
@@ -772,96 +776,134 @@ public static class PlatformAdministrationEndpoints
                 "A supported commerce vertical is required.");
         }
 
-        var verticals =
-            await dbContext
-                .Set<TenantCommerceVertical>()
-                .IgnoreQueryFilters()
-                .Where(item => item.TenantId == tenant.Id)
-                .ToListAsync(cancellationToken);
+        return await transactionExecutor.ExecuteAsync<IResult>(
+            async transactionCancellationToken =>
+            {
+                /*
+                 * The transaction executor owns the EF/Npgsql
+                 * execution strategy and transaction boundary.
+                 *
+                 * Everything participating in the vertical switch
+                 * is loaded inside the retriable unit.
+                 */
+                var verticals =
+                    await dbContext
+                        .Set<TenantCommerceVertical>()
+                        .IgnoreQueryFilters()
+                        .Where(
+                            item =>
+                                item.TenantId ==
+                                tenant.Id)
+                        .ToListAsync(
+                            transactionCancellationToken);
 
-        var currentPrimary =
-            verticals.SingleOrDefault(item => item.IsPrimary);
+                var currentPrimary =
+                    verticals.SingleOrDefault(
+                        item =>
+                            item.IsPrimary);
 
-        if (currentPrimary?.VerticalType == definition.VerticalType)
-        {
-            return Results.Ok(
-                new StoreVerticalResponse(
-                    tenant.Id.Value,
-                    definition.VerticalType.ToString(),
-                    definition.Code));
-        }
+                if (
+                    currentPrimary?.VerticalType ==
+                    definition.VerticalType)
+                {
+                    return Results.Ok(
+                        new StoreVerticalResponse(
+                            tenant.Id.Value,
+                            definition.VerticalType.ToString(),
+                            definition.Code));
+                }
 
-        var target =
-            verticals.SingleOrDefault(
-                item => item.VerticalType == definition.VerticalType);
+                var target =
+                    verticals.SingleOrDefault(
+                        item =>
+                            item.VerticalType ==
+                            definition.VerticalType);
 
-        var oldVertical =
-            currentPrimary is null
-                ? null
-                : CommerceVerticalCatalog.Get(
-                    currentPrimary.VerticalType);
+                var oldVertical =
+                    currentPrimary is null
+                        ? null
+                        : CommerceVerticalCatalog.Get(
+                            currentPrimary.VerticalType);
 
-        var now = DateTimeOffset.UtcNow;
+                var now =
+                    DateTimeOffset.UtcNow;
 
-        await using var transaction =
-            await dbContext.Database.BeginTransactionAsync(cancellationToken);
+                /*
+                 * Flush the old primary first because PostgreSQL
+                 * protects the one-primary-per-tenant invariant
+                 * with a partial unique index.
+                 */
+                if (currentPrimary is not null)
+                {
+                    currentPrimary.RemovePrimary(
+                        now,
+                        actor.Value.Value);
 
-        if (currentPrimary is not null)
-        {
-            currentPrimary.RemovePrimary(
-                now,
-                actor.Value.Value);
+                    await dbContext.SaveChangesAsync(
+                        transactionCancellationToken);
+                }
 
-            await dbContext.SaveChangesAsync(cancellationToken);
-        }
+                if (target is null)
+                {
+                    target =
+                        TenantCommerceVertical.Create(
+                            tenant.Id,
+                            definition.VerticalType,
+                            isPrimary: false,
+                            now,
+                            actor.Value.Value);
 
-        if (target is null)
-        {
-            target =
-                TenantCommerceVertical.Create(
-                    tenant.Id,
-                    definition.VerticalType,
-                    isPrimary: false,
+                    dbContext
+                        .Set<TenantCommerceVertical>()
+                        .Add(target);
+
+                    await dbContext.SaveChangesAsync(
+                        transactionCancellationToken);
+                }
+
+                /*
+                 * MakePrimary also enables historical disabled
+                 * verticals before promotion.
+                 */
+                target.MakePrimary(
                     now,
                     actor.Value.Value);
 
-            dbContext.Set<TenantCommerceVertical>().Add(target);
-            await dbContext.SaveChangesAsync(cancellationToken);
-        }
+                AddAudit(
+                    dbContext,
+                    httpContext,
+                    actor.Value,
+                    tenant.Id,
+                    "store.vertical.changed",
+                    reason,
+                    oldVertical is null
+                        ? null
+                        : new
+                        {
+                            vertical =
+                                oldVertical.VerticalType.ToString(),
+                            code =
+                                oldVertical.Code
+                        },
+                    new
+                    {
+                        vertical =
+                            definition.VerticalType.ToString(),
+                        code =
+                            definition.Code
+                    },
+                    now);
 
-        target.MakePrimary(
-            now,
-            actor.Value.Value);
+                await dbContext.SaveChangesAsync(
+                    transactionCancellationToken);
 
-        AddAudit(
-            dbContext,
-            httpContext,
-            actor.Value,
-            tenant.Id,
-            "store.vertical.changed",
-            reason,
-            oldVertical is null
-                ? null
-                : new
-                {
-                    vertical = oldVertical.VerticalType.ToString(),
-                    code = oldVertical.Code
-                },
-            new
-            {
-                vertical = definition.VerticalType.ToString(),
-                code = definition.Code
+                return Results.Ok(
+                    new StoreVerticalResponse(
+                        tenant.Id.Value,
+                        definition.VerticalType.ToString(),
+                        definition.Code));
             },
-            now);
-
-        await dbContext.SaveChangesAsync(cancellationToken);
-        await transaction.CommitAsync(cancellationToken);
-
-        return Results.Ok(
-            new StoreVerticalResponse(
-                tenant.Id.Value,
-                definition.VerticalType.ToString(),
-                definition.Code));
+            cancellationToken);
     }
 
     private static async Task<IResult> SetCapabilityOverrideAsync(

@@ -19,6 +19,12 @@ import {
 } from "./developmentSecurity";
 
 import {
+  beginPlatformTenantAdministration,
+  clearPlatformTenantAdministration,
+  getPlatformTenantAdministrationTenantId,
+} from "./platformTenantAdministration";
+
+import {
   hydrateCurrentTenant,
 } from "./postAuth";
 
@@ -59,6 +65,82 @@ export function ProtectedRoute({
           kind ===
           "tenant-backoffice"
         ) {
+          const query =
+            new URLSearchParams(
+              location.search,
+            );
+
+          const requestedPlatformTenant =
+            query.get(
+              "platformTenant",
+            );
+
+          /*
+           * Platform Administrator handoff.
+           */
+          if (
+            requestedPlatformTenant &&
+            user.platformRoles.includes(
+              "PlatformAdministrator",
+            )
+          ) {
+            beginPlatformTenantAdministration(
+              requestedPlatformTenant,
+            );
+          }
+
+          let platformTenantId =
+            getPlatformTenantAdministrationTenantId();
+
+          /*
+           * Normal merchant sessions must never inherit
+           * a stale Platform Administration context.
+           */
+          if (
+            platformTenantId &&
+            !user.platformRoles.includes(
+              "PlatformAdministrator",
+            )
+          ) {
+            clearPlatformTenantAdministration();
+            platformTenantId = null;
+          }
+
+          /*
+           * Platform Administration mode.
+           *
+           * Development MFA bootstrap rules remain specific
+           * to the Platform Administrator.
+           */
+          if (platformTenantId) {
+            if (
+              !developmentMfaBypassEnabled() &&
+              (
+                !user.mfaEnabled ||
+                !user.sessionMfaVerified
+              )
+            ) {
+              if (!cancelled) {
+                setState(
+                  "security",
+                );
+              }
+
+              return;
+            }
+
+            if (!cancelled) {
+              setState(
+                "ready",
+              );
+            }
+
+            return;
+          }
+
+          /*
+           * Normal merchant Back Office.
+           */
           if (
             !user.hasTenantMemberships
           ) {
@@ -98,12 +180,20 @@ export function ProtectedRoute({
             return;
           }
 
+          /*
+           * IMPORTANT:
+           *
+           * Merchant Tenant Back Office authorization on the API
+           * requires pwd + mfa. There is intentionally no local
+           * Development bypass here.
+           *
+           * Keeping this guard identical to the API prevents
+           * merchants from entering an unusable Back Office that
+           * immediately returns 403 from protected endpoints.
+           */
           if (
-            !developmentMfaBypassEnabled() &&
-            (
-              !user.mfaEnabled ||
-              !user.sessionMfaVerified
-            )
+            !user.mfaEnabled ||
+            !user.sessionMfaVerified
           ) {
             if (!cancelled) {
               setState(
@@ -118,6 +208,8 @@ export function ProtectedRoute({
         if (
           kind === "platform"
         ) {
+          clearPlatformTenantAdministration();
+
           if (
             !user.platformRoles.includes(
               "PlatformAdministrator",
@@ -148,13 +240,19 @@ export function ProtectedRoute({
         }
 
         if (!cancelled) {
-          setState("ready");
+          setState(
+            "ready",
+          );
         }
-      } catch {
+      }
+      catch {
+        clearPlatformTenantAdministration();
         clearLocalSession();
 
         if (!cancelled) {
-          setState("login");
+          setState(
+            "login",
+          );
         }
       }
     }
@@ -164,9 +262,14 @@ export function ProtectedRoute({
     return () => {
       cancelled = true;
     };
-  }, [kind]);
+  }, [
+    kind,
+    location.search,
+  ]);
 
-  if (state === "loading") {
+  if (
+    state === "loading"
+  ) {
     return (
       <div
         dir="rtl"
@@ -176,6 +279,7 @@ export function ProtectedRoute({
           <div className="mx-auto h-1.5 w-28 overflow-hidden rounded-full bg-black/[0.06]">
             <div className="h-full w-1/2 animate-pulse rounded-full bg-[#b58a4b]" />
           </div>
+
           <p className="mt-4 text-[10px] text-black/45">
             جاري التحقق من الجلسة…
           </p>
@@ -184,7 +288,9 @@ export function ProtectedRoute({
     );
   }
 
-  if (state === "login") {
+  if (
+    state === "login"
+  ) {
     const returnTo =
       encodeURIComponent(
         `${location.pathname}${location.search}`,
@@ -198,21 +304,27 @@ export function ProtectedRoute({
     );
   }
 
-  if (state === "security") {
+  if (
+    state === "security"
+  ) {
     const returnTo =
-      encodeURIComponent(
-        `${location.pathname}${location.search}`,
-      );
+      kind === "platform"
+        ? "/platform"
+        : "/admin";
 
     return (
       <Navigate
         replace
-        to={`/security/setup?returnTo=${returnTo}`}
+        to={`/security/setup?returnTo=${encodeURIComponent(
+          returnTo,
+        )}`}
       />
     );
   }
 
-  if (state === "onboarding") {
+  if (
+    state === "onboarding"
+  ) {
     return (
       <Navigate
         replace
@@ -221,7 +333,9 @@ export function ProtectedRoute({
     );
   }
 
-  if (state === "review") {
+  if (
+    state === "review"
+  ) {
     return (
       <Navigate
         replace
@@ -230,7 +344,9 @@ export function ProtectedRoute({
     );
   }
 
-  if (state === "suspended") {
+  if (
+    state === "suspended"
+  ) {
     return (
       <Navigate
         replace
@@ -239,7 +355,9 @@ export function ProtectedRoute({
     );
   }
 
-  if (state === "forbidden") {
+  if (
+    state === "forbidden"
+  ) {
     return (
       <Navigate
         replace

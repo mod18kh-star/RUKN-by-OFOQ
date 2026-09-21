@@ -44,6 +44,24 @@ public sealed class ProductAttributeTests
     }
 
     [Fact]
+    public void GetByCode_MobilePhones_ReturnsExpectedSchema()
+    {
+        var schema =
+            ProductAttributeSchemaCatalog.GetByCode(
+                "mobile-phones");
+
+        Assert.Equal(
+            CommerceVerticalType.MobilePhones,
+            schema.VerticalType);
+
+        Assert.Contains(
+            schema.Attributes,
+            attribute =>
+                attribute.Key ==
+                "brand");
+    }
+
+    [Fact]
     public void ValueNormalizer_NormalizesSupportedTypes()
     {
         var integer =

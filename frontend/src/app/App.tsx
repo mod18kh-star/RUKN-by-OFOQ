@@ -117,6 +117,12 @@ const AdminProductsPage =
     },
   );
 
+const AdminInventoryPage = lazy(
+  async () => {
+    const module = await import("../features/admin/AdminInventoryPage");
+    return { default: module.AdminInventoryPage };
+  },
+);
 const AdminCategoriesPage =
   lazy(
     async () => {
@@ -161,6 +167,21 @@ const AdminOrdersPage =
       };
     },
   );
+
+const AdminPaymentsPage = lazy(async () => {
+  const module = await import("../features/admin/payments/AdminPaymentsPage");
+  return { default: module.AdminPaymentsPage };
+});
+
+const AdminCouponsPage = lazy(async () => {
+  const module = await import("../features/admin/coupons/AdminCouponsPage");
+  return { default: module.AdminCouponsPage };
+});
+
+const AdminShippingPage = lazy(async () => {
+  const module = await import("../features/admin/shipping/AdminShippingPage");
+  return { default: module.AdminShippingPage };
+});
 
 const AdminSettingsPage =
   lazy(
@@ -247,6 +268,89 @@ const StorefrontProductPage =
       return {
         default:
           module.StorefrontProductPage,
+      };
+    },
+  );
+
+const StorefrontCategoryPage =
+  lazy(
+    async () => {
+      const module =
+        await import(
+          "../storefront/pages/StorefrontCategoryPage"
+        );
+
+      return {
+        default:
+          module.StorefrontCategoryPage,
+      };
+    },
+  );
+
+const StorefrontAccountPage = lazy(
+  async () => {
+    const module = await import(
+      "../storefront/pages/StorefrontAccountPage"
+    );
+
+    return {
+      default: module.StorefrontAccountPage,
+    };
+  },
+);
+
+const StorefrontCustomerAuthPage = lazy(
+  async () => {
+    const module = await import(
+      "../storefront/pages/StorefrontCustomerAuthPage"
+    );
+
+    return {
+      default: module.StorefrontCustomerAuthPage,
+    };
+  },
+);
+
+const StorefrontCartPage = lazy(
+  async () => {
+    const module = await import(
+      "../storefront/pages/StorefrontCartPage"
+    );
+
+    return {
+      default: module.StorefrontCartPage,
+    };
+  },
+);
+
+const StorefrontCheckoutPage = lazy(
+  async () => {
+    const module = await import(
+      "../storefront/pages/StorefrontCheckoutPage"
+    );
+
+    return {
+      default: module.StorefrontCheckoutPage,
+    };
+  },
+);
+
+const StorefrontManualPaymentPage = lazy(async () => {
+  const module = await import("../storefront/pages/StorefrontManualPaymentPage");
+  return { default: module.StorefrontManualPaymentPage };
+});
+
+const StorefrontContactPage =
+  lazy(
+    async () => {
+      const module =
+        await import(
+          "../storefront/pages/StorefrontContactPage"
+        );
+
+      return {
+        default:
+          module.StorefrontContactPage,
       };
     },
   );
@@ -454,6 +558,13 @@ export function App() {
         />
 
         <Route
+          path="/store/:storeSlug/categories/:categorySlug"
+          element={
+            <StorefrontCategoryPage />
+          }
+        />
+
+        <Route
           path="/store/:storeSlug/products/:productSlug"
           element={
             <StorefrontProductPage />
@@ -464,6 +575,42 @@ export function App() {
           path="/store/:storeSlug/pages/:pageSlug"
           element={
             <StorefrontContentPage />
+          }
+        />
+
+        <Route
+          path="/store/:storeSlug/account/login"
+          element={
+            <StorefrontCustomerAuthPage />
+          }
+        />
+
+        <Route
+          path="/store/:storeSlug/account"
+          element={
+            <StorefrontAccountPage />
+          }
+        />
+
+        <Route
+          path="/store/:storeSlug/cart"
+          element={
+            <StorefrontCartPage />
+          }
+        />
+        <Route
+          path="/store/:storeSlug/checkout"
+          element={<StorefrontCheckoutPage />}
+        />
+        <Route
+          path="/store/:storeSlug/orders/:orderId/payment"
+          element={<StorefrontManualPaymentPage />}
+        />
+
+        <Route
+          path="/store/:storeSlug/contact"
+          element={
+            <StorefrontContactPage />
           }
         />
 
@@ -540,6 +687,10 @@ export function App() {
           />
 
           <Route
+            path="inventory"
+            element={<AdminInventoryPage />}
+          />
+          <Route
             path="categories"
             element={
               <AdminCategoriesPage />
@@ -576,6 +727,10 @@ export function App() {
               <AdminStorefrontPresentationPage />
             }
           />
+
+          <Route path="coupons" element={<AdminCouponsPage />} />
+          <Route path="payments" element={<AdminPaymentsPage />} />
+          <Route path="shipping" element={<AdminShippingPage />} />
 
           <Route
             path="settings"

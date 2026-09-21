@@ -35,6 +35,10 @@ import type {
   StorefrontConfig,
 } from "../theme/theme.types";
 
+import {
+  formatStorefrontMoney,
+} from "../utils/money";
+
 export function StorefrontContentProvider({
   config,
   children,
@@ -214,7 +218,7 @@ export function StorefrontContentProvider({
             : "بدون تصنيف",
 
         price:
-          formatMoney(
+          formatStorefrontMoney(
             product.price,
             product.currency,
           ),
@@ -222,17 +226,15 @@ export function StorefrontContentProvider({
         compareAtPrice:
           product.compareAtPrice !==
           null
-            ? formatMoney(
+            ? formatStorefrontMoney(
                 product.compareAtPrice,
                 product.currency,
               )
             : undefined,
 
-        image:
-          product.primaryImageUrl,
+        image: product.primaryImageUrl ?? "",
 
-        primaryImage:
-          product.primaryImageUrl,
+        primaryImage: product.primaryImageUrl ?? "",
 
         badge:
           product.compareAtPrice !==
@@ -292,35 +294,4 @@ function clampPageSize(
       ),
     ),
   );
-}
-
-function formatMoney(
-  amount: number,
-  currency: string,
-) {
-  try {
-    return new Intl.NumberFormat(
-      "ar-SA",
-      {
-        style:
-          "currency",
-
-        currency,
-
-        maximumFractionDigits:
-          Number.isInteger(
-            amount,
-          )
-            ? 0
-            : 2,
-      },
-    ).format(
-      amount,
-    );
-  }
-  catch {
-    return `${amount.toLocaleString(
-      "ar-SA",
-    )} ${currency}`;
-  }
 }

@@ -1,3 +1,4 @@
+using OFOQ.Market.Application.Common.Persistence;
 using System.IdentityModel.Tokens.Jwt;
 using OFOQ.Market.Application.Commerce.Carts;
 using OFOQ.Market.Application.Commerce.Carts.AddItem;
@@ -51,6 +52,8 @@ public static class CartEndpoints
 
     private static async Task<IResult> GetCartAsync(
         GetCartHandler handler,
+        IStorefrontQueryRepository displayRepository,
+        ICurrentTenant currentTenant,
         HttpContext httpContext,
         CancellationToken cancellationToken)
     {
@@ -75,8 +78,68 @@ public static class CartEndpoints
                 return Results.NoContent();
             }
 
+                        var mapped = Map(result);
+
+            if (!currentTenant.IsAvailable ||
+                !currentTenant.TenantId.HasValue)
+            {
+                return Results.Forbid();
+            }
+
+            var productIds = result.Items
+                .Select(item => item.ProductId.Value)
+                .Distinct()
+                .ToArray();
+
+            var products = await displayRepository
+                .GetCartProductsAsync(
+                    currentTenant.TenantId.Value,
+                    productIds,
+                    cancellationToken);
+
+            var lookup = products.ToDictionary(
+                product => product.ProductId);
+
+            var enrichedItems = mapped.Items
+                .Select(item =>
+                {
+                    if (!lookup.TryGetValue(
+                            item.ProductId,
+                            out var product))
+                    {
+                        return item;
+                    }
+
+                    var variant = product.Variants
+                        .FirstOrDefault(candidate =>
+                            candidate.VariantId ==
+                            item.ProductVariantId);
+
+                    decimal? compareAtPrice =
+                        product.Currency == item.Currency &&
+                        product.CurrentPrice == item.UnitPrice &&
+                        product.CompareAtPrice.HasValue &&
+                        product.CompareAtPrice.Value > item.UnitPrice
+                            ? product.CompareAtPrice
+                            : null;
+
+                    return item with
+                    {
+                        ProductName = product.Name,
+                        ProductSlug = product.Slug,
+                        VariantName = variant?.Name,
+                        PrimaryImageUrl = product.PrimaryImageUrl,
+                        PrimaryImageAltText = product.PrimaryImageAltText,
+                        CompareAtPrice = compareAtPrice
+                    };
+                })
+                .ToArray();
+
             return Results.Ok(
-                Map(result));
+                mapped with
+                {
+                    Items = enrichedItems
+                });
         }
         catch (TenantScopeViolationException)
         {

@@ -1,5 +1,9 @@
 import {
   Boxes,
+  CreditCard,
+  TicketPercent,
+  Truck,
+  Warehouse,
   ClipboardList,
   FileText,
   FolderTree,
@@ -48,6 +52,11 @@ const navigation = [
     icon: Boxes,
   },
   {
+    label: "المخزون",
+    to: "/admin/inventory",
+    icon: Warehouse,
+  },
+  {
     label: "الأقسام",
     to: "/admin/categories",
     icon: FolderTree,
@@ -66,6 +75,21 @@ const navigation = [
     label: "الصفحات",
     to: "/admin/pages",
     icon: FileText,
+  },
+  {
+    label: "الكوبونات والخصومات",
+    to: "/admin/coupons",
+    icon: TicketPercent,
+  },
+  {
+    label: "الدفع",
+    to: "/admin/payments",
+    icon: CreditCard,
+  },
+  {
+    label: "التوصيل",
+    to: "/admin/shipping",
+    icon: Truck,
   },
   {
     label: "الإعدادات",

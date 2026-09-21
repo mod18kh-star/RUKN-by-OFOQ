@@ -256,6 +256,9 @@ public static class DependencyInjection
             CustomerAccountService>();
 
         services.AddScoped<
+            CustomerSavedAddressService>();
+
+        services.AddScoped<
             CouponAdministrationService>();
 
         services.AddScoped<

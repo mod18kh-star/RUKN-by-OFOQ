@@ -13,7 +13,25 @@ public sealed record StorefrontPresentationPublicResult(
     bool ShowCategoriesOnHome,
     bool ShowProductsOnHome,
     string CategorySectionTitle,
-    string ProductSectionTitle);
+    string ProductSectionTitle,
+    string VisualContentJson = "{}");
+
+public sealed record StorefrontSocialLinkPublicResult(
+    string PlatformCode,
+    string? Label,
+    string Url,
+    int SortOrder);
+
+public sealed record StorefrontContactPublicResult(
+    string? WebsiteUrl,
+    string? WhatsAppNumber,
+    string? CustomerServicePhone,
+    string? SecondaryPhone,
+    string? LandlinePhone,
+    string? PhysicalAddress,
+    string? GoogleMapsUrl,
+    string? CommercialRegistrationNumber,
+    IReadOnlyList<StorefrontSocialLinkPublicResult> SocialLinks);
 
 public sealed record StorefrontInfoResult(
     TenantId TenantId,
@@ -21,7 +39,8 @@ public sealed record StorefrontInfoResult(
     string Slug,
     string? Vertical,
     string? VerticalCode,
-    StorefrontPresentationPublicResult Presentation);
+    StorefrontPresentationPublicResult Presentation,
+    StorefrontContactPublicResult Contact);
 
 public sealed record StorefrontCategoryResult(
     Guid CategoryId,
@@ -41,7 +60,7 @@ public sealed record StorefrontProductSummaryResult(
     string Currency,
     decimal? CompareAtPrice,
     bool AvailableForSale,
-    string PrimaryImageUrl,
+    string? PrimaryImageUrl,
     string? PrimaryImageAltText);
 
 public sealed record StorefrontProductPageResult(
@@ -88,7 +107,7 @@ public sealed record StorefrontProductDetailResult(
     string Currency,
     decimal? CompareAtPrice,
     bool AvailableForSale,
-    string PrimaryImageUrl,
+    string? PrimaryImageUrl,
     string? PrimaryImageAltText,
     IReadOnlyList<StorefrontProductImageResult> Images,
     IReadOnlyList<StorefrontVariantResult> Variants,

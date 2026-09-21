@@ -11,4 +11,5 @@ public sealed record UpdateStorefrontPresentationRequest(
     bool ShowCategoriesOnHome,
     bool ShowProductsOnHome,
     string? CategorySectionTitle,
-    string? ProductSectionTitle);
+    string? ProductSectionTitle,
+    string? VisualContentJson = null);

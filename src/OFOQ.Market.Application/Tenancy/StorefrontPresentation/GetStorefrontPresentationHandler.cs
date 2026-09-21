@@ -87,6 +87,7 @@ public sealed class GetStorefrontPresentationHandler
             presentation.ShowCategoriesOnHome,
             presentation.ShowProductsOnHome,
             presentation.CategorySectionTitle,
-            presentation.ProductSectionTitle);
+            presentation.ProductSectionTitle,
+            presentation.VisualContentJson);
     }
 }

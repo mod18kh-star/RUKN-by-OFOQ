@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using OFOQ.Market.Api.Security.Tenancy;
 using OFOQ.Market.Application.Common.Tenancy;
 
@@ -77,6 +77,16 @@ public static class AuthorizationServiceCollectionExtensions
         services.AddScoped<
             IAuthorizationHandler,
             PlatformMerchantVerificationReviewAuthorizationHandler>();
+        services.AddScoped<
+            PlatformTenantAdministrationAccessEvaluator>();
+
+        services.AddScoped<
+            IAuthorizationHandler,
+            PlatformTenantBackOfficeAuthorizationHandler>();
+
+        services.AddScoped<
+            IAuthorizationHandler,
+            PlatformTenantCommerceAdministrationAuthorizationHandler>();
 
         return services;
     }

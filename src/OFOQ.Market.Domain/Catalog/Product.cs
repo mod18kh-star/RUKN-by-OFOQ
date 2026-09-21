@@ -28,7 +28,8 @@ public sealed class Product :
         Money price,
         Money? compareAtPrice,
         DateTimeOffset createdAtUtc,
-        Guid? createdByUserId)
+        Guid? createdByUserId,
+        string? verticalCode)
         : base(id)
     {
         TenantId = tenantId;
@@ -36,6 +37,7 @@ public sealed class Product :
         Slug = NormalizeSlug(slug);
         Description = NormalizeDescription(description);
         CategoryId = categoryId;
+        VerticalCode = NormalizeVerticalCode(verticalCode);
 
         ApplyPricing(
             price,
@@ -59,6 +61,9 @@ public sealed class Product :
     public string? Description { get; private set; }
 
     public CategoryId? CategoryId { get; private set; }
+
+    public string VerticalCode { get; private set; } =
+        "general";
 
     public Money Price =>
         Money.Create(
@@ -99,7 +104,8 @@ public sealed class Product :
         CategoryId? categoryId = null,
         string? description = null,
         Money? compareAtPrice = null,
-        Guid? createdByUserId = null)
+        Guid? createdByUserId = null,
+        string? verticalCode = null)
     {
         if (tenantId.IsEmpty)
         {
@@ -118,7 +124,8 @@ public sealed class Product :
             price,
             compareAtPrice,
             createdAtUtc,
-            createdByUserId);
+            createdByUserId,
+            verticalCode);
     }
 
     public void Rename(
@@ -185,6 +192,24 @@ public sealed class Product :
             return;
 
         CategoryId = categoryId;
+
+        MarkUpdated(
+            updatedAtUtc,
+            updatedByUserId);
+    }
+
+    public void ChangeVerticalCode(
+        string? verticalCode,
+        DateTimeOffset updatedAtUtc,
+        Guid? updatedByUserId = null)
+    {
+        var normalized =
+            NormalizeVerticalCode(verticalCode);
+
+        if (VerticalCode == normalized)
+            return;
+
+        VerticalCode = normalized;
 
         MarkUpdated(
             updatedAtUtc,
@@ -467,6 +492,39 @@ public sealed class Product :
                 throw new ArgumentException(
                     "Product slug may contain only letters, numbers and hyphens.",
                     nameof(slug));
+            }
+        }
+
+        return normalized;
+    }
+
+    private static string NormalizeVerticalCode(
+        string? verticalCode)
+    {
+        if (string.IsNullOrWhiteSpace(verticalCode))
+            return "general";
+
+        var normalized =
+            verticalCode
+                .Trim()
+                .ToLowerInvariant()
+                .Replace('_', '-');
+
+        if (normalized.Length > 64)
+        {
+            throw new ArgumentException(
+                "Product vertical code cannot exceed 64 characters.",
+                nameof(verticalCode));
+        }
+
+        foreach (var character in normalized)
+        {
+            if (!char.IsLetterOrDigit(character) &&
+                character != '-')
+            {
+                throw new ArgumentException(
+                    "Product vertical code may contain only letters, numbers and hyphens.",
+                    nameof(verticalCode));
             }
         }
 

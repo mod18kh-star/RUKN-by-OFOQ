@@ -7,9 +7,11 @@ import {
 
 import {
   Check,
+  ChevronLeft,
   Eye,
   EyeOff,
   FolderTree,
+  Home,
   Image as ImageIcon,
   Pencil,
   Plus,
@@ -96,6 +98,37 @@ function flattenCategories(
   return result;
 }
 
+function sortCategories(categories: AdminCategory[]) {
+  return [...categories].sort(
+    (a, b) =>
+      a.sortOrder - b.sortOrder ||
+      a.name.localeCompare(b.name, "ar"),
+  );
+}
+
+function categoryBreadcrumbs(
+  categories: AdminCategory[],
+  categoryId: string | null,
+) {
+  const result: AdminCategory[] = [];
+  let currentId = categoryId;
+  let guard = 0;
+
+  while (currentId && guard < 32) {
+    const category = categories.find(
+      (item) => item.categoryId === currentId,
+    );
+
+    if (!category) break;
+
+    result.unshift(category);
+    currentId = category.parentCategoryId;
+    guard += 1;
+  }
+
+  return result;
+}
+
 export function AdminCategoriesPage() {
   const tenantId = getCurrentTenantId();
   const [categories, setCategories] = useState<AdminCategory[]>([]);
@@ -106,6 +139,7 @@ export function AdminCategoriesPage() {
   const [editing, setEditing] = useState<AdminCategory | null>(null);
   const [form, setForm] = useState<CategoryForm>(emptyForm);
   const [slugTouched, setSlugTouched] = useState(false);
+  const [activeParentId, setActiveParentId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!tenantId) {
@@ -151,9 +185,42 @@ export function AdminCategoriesPage() {
     [categories],
   );
 
+  const currentCategories = useMemo(
+    () =>
+      sortCategories(
+        categories.filter(
+          (category) =>
+            category.parentCategoryId === activeParentId,
+        ),
+      ),
+    [activeParentId, categories],
+  );
+
+  const breadcrumbs = useMemo(
+    () => categoryBreadcrumbs(categories, activeParentId),
+    [activeParentId, categories],
+  );
+
+  const childCountByCategory = useMemo(() => {
+    const counts = new Map<string, number>();
+
+    for (const category of categories) {
+      if (!category.parentCategoryId) continue;
+      counts.set(
+        category.parentCategoryId,
+        (counts.get(category.parentCategoryId) ?? 0) + 1,
+      );
+    }
+
+    return counts;
+  }, [categories]);
+
   function openCreate() {
     setEditing(null);
-    setForm(emptyForm);
+    setForm({
+      ...emptyForm,
+      parentCategoryId: activeParentId ?? "",
+    });
     setSlugTouched(false);
     setError(null);
     setDialogOpen(true);
@@ -280,9 +347,34 @@ export function AdminCategoriesPage() {
 
       <div className="mt-7 rounded-[18px] border border-black/[0.07] bg-white">
         <div className="flex items-center justify-between border-b border-black/[0.07] px-5 py-4">
-          <div>
+          <div className="min-w-0">
             <p className="text-[12px] font-semibold">هيكل الأقسام</p>
-            <p className="mt-1 text-[9px] text-black/38">{categories.length} قسم</p>
+            <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[9px] text-black/42">
+              <button
+                type="button"
+                onClick={() => setActiveParentId(null)}
+                className="inline-flex items-center gap-1 hover:text-black"
+              >
+                <Home size={11} />
+                الأقسام الرئيسية
+              </button>
+
+              {breadcrumbs.map((category) => (
+                <span key={category.categoryId} className="inline-flex items-center gap-1.5">
+                  <ChevronLeft size={10} className="text-black/25" />
+                  <button
+                    type="button"
+                    onClick={() => setActiveParentId(category.categoryId)}
+                    className="max-w-[180px] truncate hover:text-black"
+                  >
+                    {category.name}
+                  </button>
+                </span>
+              ))}
+
+              <span className="mr-1 text-black/28">•</span>
+              <span>{currentCategories.length} داخل المستوى الحالي</span>
+            </div>
           </div>
           <button
             type="button"
@@ -304,25 +396,50 @@ export function AdminCategoriesPage() {
           <div className="flex min-h-[280px] items-center justify-center text-[11px] text-black/40">
             جاري تحميل الأقسام...
           </div>
-        ) : flattened.length === 0 ? (
+        ) : currentCategories.length === 0 ? (
           <div className="flex min-h-[320px] items-center justify-center p-6 text-center">
             <div>
               <div className="mx-auto flex size-14 items-center justify-center rounded-full bg-[#f0ece3]">
                 <FolderTree size={22} className="text-black/42" />
               </div>
-              <h2 className="mt-4 text-[18px] font-semibold">ابدأ بأول قسم</h2>
+              <h2 className="mt-4 text-[18px] font-semibold">
+                {activeParentId ? "لا توجد أقسام داخل هذا القسم" : "ابدأ بأول قسم"}
+              </h2>
               <p className="mt-2 text-[10px] leading-6 text-black/42">
-                مثال: أحذية ← رجالي ← رياضي. وبعدها تختار القسم عند إضافة كل منتج.
+                {activeParentId
+                  ? "أضف قسمًا فرعيًا هنا، أو ارجع للمستوى السابق من المسار بالأعلى."
+                  : "مثال: جوالات ← جوالات آبل. الأقسام الفرعية ستبقى داخل القسم الأب ولن تظهر خارجه."}
               </p>
+              {activeParentId ? (
+                <button
+                  type="button"
+                  onClick={openCreate}
+                  className="mt-5 inline-flex h-10 items-center gap-2 rounded-[9px] bg-[#080b14] px-4 text-[10px] font-semibold text-white"
+                >
+                  <Plus size={14} />
+                  إضافة قسم فرعي هنا
+                </button>
+              ) : null}
             </div>
           </div>
         ) : (
           <div className="divide-y divide-black/[0.055]">
-            {flattened.map(({ category, depth }) => (
+            {currentCategories.map((category) => {
+              const childCount = childCountByCategory.get(category.categoryId) ?? 0;
+
+              return (
               <div
                 key={category.categoryId}
-                className="flex items-center gap-4 px-5 py-4"
-                style={{ paddingRight: `${20 + depth * 28}px` }}
+                role="button"
+                tabIndex={0}
+                onClick={() => setActiveParentId(category.categoryId)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    setActiveParentId(category.categoryId);
+                  }
+                }}
+                className="flex cursor-pointer items-center gap-4 px-5 py-4 transition hover:bg-black/[0.018]"
               >
                 <div className="flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-[12px] border border-black/[0.07] bg-[#f5f3ed]">
                   {category.imageUrl ? (
@@ -342,27 +459,34 @@ export function AdminCategoriesPage() {
                     <span className={`rounded-full px-2 py-1 text-[8px] font-semibold ${category.isVisible ? "bg-emerald-50 text-emerald-700" : "bg-black/[0.05] text-black/40"}`}>
                       {category.isVisible ? "ظاهر" : "مخفي"}
                     </span>
-                    {depth > 0 ? (
-                      <span className="rounded-full bg-[#f3eadc] px-2 py-1 text-[8px] text-[#8c642f]">
-                        قسم فرعي
-                      </span>
-                    ) : null}
+                    <span className="rounded-full bg-[#f3eadc] px-2 py-1 text-[8px] text-[#8c642f]">
+                      {childCount > 0
+                        ? `${childCount} قسم فرعي`
+                        : "فتح القسم"}
+                    </span>
                   </div>
                   <p dir="ltr" className="mt-1 truncate text-left text-[9px] text-black/34">
                     /{category.slug}
                   </p>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => openEdit(category)}
-                  className="flex size-9 shrink-0 items-center justify-center rounded-[9px] border border-black/[0.08] hover:bg-black/[0.025]"
-                  aria-label={`تعديل ${category.name}`}
-                >
-                  <Pencil size={14} />
-                </button>
+                <div className="flex shrink-0 items-center gap-2">
+                  <ChevronLeft size={15} className="text-black/28" />
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      openEdit(category);
+                    }}
+                    className="flex size-9 shrink-0 items-center justify-center rounded-[9px] border border-black/[0.08] hover:bg-black/[0.025]"
+                    aria-label={`تعديل ${category.name}`}
+                  >
+                    <Pencil size={14} />
+                  </button>
+                </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

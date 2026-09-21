@@ -48,7 +48,7 @@ public static class FulfillmentEndpoints
     {
         var actor = Actor(http); if (!actor.HasValue) return Results.Unauthorized();
         if (!Enum.TryParse<ShippingMethodType>(request.Type, true, out var type) || !Enum.IsDefined(type)) return Validation("Unsupported shipping method type.");
-        try { return Results.Ok(Map(await service.CreateShippingMethodAsync(request.Code, request.Name, type, request.Price, request.Currency, request.MinimumOrderAmount, request.MaximumOrderAmount, request.PickupLocationId, request.SortOrder, actor.Value, ct))); }
+        try { return Results.Ok(Map(await service.CreateShippingMethodAsync(request.Code, request.Name, type, request.Price, request.Currency, request.MinimumOrderAmount, request.MaximumOrderAmount, request.PickupLocationId, request.SortOrder, actor.Value, ct, isEnabled: request.IsEnabled))); }
         catch (TenantScopeViolationException) { return Results.Forbid(); }
         catch (ArgumentException e) { return Validation(e.Message); }
     }

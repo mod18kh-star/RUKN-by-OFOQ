@@ -89,24 +89,39 @@ public sealed class SetProductAttributesHandler
             return null;
         }
 
-        var verticals =
-            await _verticalRepository.GetAllAsync(
-                cancellationToken);
+        ProductAttributeSchema schema;
 
-        var primary =
-            verticals.SingleOrDefault(
-                vertical =>
-                    vertical.IsEnabled &&
-                    vertical.IsPrimary);
-
-        if (primary is null)
+        if (string.Equals(
+                product.VerticalCode,
+                "general",
+                StringComparison.OrdinalIgnoreCase))
         {
-            throw new ProductAttributesVerticalNotConfiguredException();
-        }
+            // Legacy products created before Product.VerticalCode existed.
+            var verticals =
+                await _verticalRepository.GetAllAsync(
+                    cancellationToken);
 
-        var schema =
-            ProductAttributeSchemaCatalog.Get(
-                primary.VerticalType);
+            var primary =
+                verticals.SingleOrDefault(
+                    vertical =>
+                        vertical.IsEnabled &&
+                        vertical.IsPrimary);
+
+            if (primary is null)
+            {
+                throw new ProductAttributesVerticalNotConfiguredException();
+            }
+
+            schema =
+                ProductAttributeSchemaCatalog.Get(
+                    primary.VerticalType);
+        }
+        else
+        {
+            schema =
+                ProductAttributeSchemaCatalog.GetByCode(
+                    product.VerticalCode);
+        }
 
         var normalizedInputs =
             NormalizeInputs(
@@ -215,7 +230,7 @@ public sealed class SetProductAttributesHandler
             if (definition is null)
             {
                 throw new ArgumentException(
-                    $"Product attribute '{key}' is not supported by the primary commerce vertical.");
+                    $"Product attribute '{key}' is not supported by the product vertical.");
             }
 
             var normalized =

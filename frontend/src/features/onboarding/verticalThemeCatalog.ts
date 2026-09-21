@@ -73,6 +73,28 @@ const STYLES:
       heroLayout: "focus-one",
       swatches: ["#f3f6f6", "#185563", "#162021"],
     },
+    "mobile-flagship": {
+      id: "mobile-flagship",
+      name: "Flagship",
+      description:
+        "صور كبيرة وحضور فاخر للأجهزة الرائدة مع حركة هادئة وتفاصيل واضحة.",
+      themeId: "mobile-flagship",
+      fontId: "readex",
+      productCardStyle: "mobile-flagship",
+      heroLayout: "focus-one",
+      swatches: ["#f4f2ed", "#b58b4d", "#101114"],
+    },
+    "mobile-smart-market": {
+      id: "mobile-smart-market",
+      name: "Smart Market",
+      description:
+        "واجهة بيع مباشرة للجوالات مع بحث بارز وأقسام وبطاقات سهلة القراءة.",
+      themeId: "mobile-smart-market",
+      fontId: "cairo",
+      productCardStyle: "mobile-market",
+      heroLayout: "single",
+      swatches: ["#f4f7fb", "#245fd3", "#17202d"],
+    },
   };
 
 const DEFAULT_IDS = [
@@ -103,9 +125,8 @@ const BY_VERTICAL:
       "maison-luxe",
     ],
     MobilePhones: [
-      "technical-grid",
-      "commerce-clear",
-      "studio-soft",
+      "mobile-flagship",
+      "mobile-smart-market",
     ],
     Perfumes: [
       "maison-luxe",

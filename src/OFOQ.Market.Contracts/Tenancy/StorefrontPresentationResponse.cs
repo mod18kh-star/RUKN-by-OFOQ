@@ -12,4 +12,5 @@ public sealed record StorefrontPresentationResponse(
     bool ShowCategoriesOnHome,
     bool ShowProductsOnHome,
     string CategorySectionTitle,
-    string ProductSectionTitle);
+    string ProductSectionTitle,
+    string VisualContentJson = "{}");

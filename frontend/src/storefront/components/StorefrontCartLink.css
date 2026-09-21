@@ -1,0 +1,91 @@
+/* RUKN - Minimal storefront cart icon */
+
+.rukn-cart-header-link {
+    position: relative;
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+
+    padding: 0 !important;
+
+    background: transparent !important;
+    background-color: transparent !important;
+
+    color: inherit !important;
+
+    border: 0 !important;
+    border-radius: 12px !important;
+
+    box-shadow: none !important;
+    text-decoration: none !important;
+
+    transition: background-color 0.2s ease;
+}
+
+.rukn-cart-header-link:hover {
+    background: rgba(40, 40, 40, 0.045) !important;
+}
+
+.rukn-cart-header-link:focus-visible {
+    outline: 2px solid currentColor;
+    outline-offset: 2px;
+}
+
+.rukn-cart-header-link svg {
+    width: 20px;
+    height: 20px;
+
+    color: currentColor !important;
+    stroke: currentColor !important;
+    stroke-width: 1.7px;
+
+    fill: none !important;
+}
+
+.rukn-cart-header-link > span {
+    position: absolute !important;
+
+    top: -2px !important;
+    left: -3px !important;
+    right: auto !important;
+
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+
+    min-width: 17px !important;
+    height: 17px !important;
+    min-height: 17px !important;
+
+    padding: 0 4px !important;
+
+    border: 2px solid #faf7f2;
+    border-radius: 999px !important;
+
+    background: #193c30 !important;
+    color: #ffffff !important;
+
+    font-size: 10px !important;
+    font-weight: 600 !important;
+    line-height: 1 !important;
+
+    box-shadow: none !important;
+    pointer-events: none;
+}
+
+@media (max-width: 640px) {
+    .rukn-cart-header-link {
+        width: 36px;
+        height: 36px;
+        min-width: 36px;
+    }
+
+    .rukn-cart-header-link svg {
+        width: 19px;
+        height: 19px;
+    }
+}

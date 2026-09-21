@@ -66,7 +66,7 @@ export function PromoBannerSection({
                   href={
                     section.ctaHref
                   }
-                  className="mt-7 inline-flex items-center gap-2 bg-[var(--store-ink)] px-5 py-3 text-[11px] font-semibold text-white"
+                  className="mt-7 inline-flex items-center gap-2 bg-[var(--store-ink)] px-5 py-3 text-[11px] font-semibold text-[var(--store-ink-contrast)]"
                 >
                   {section.ctaLabel}
 

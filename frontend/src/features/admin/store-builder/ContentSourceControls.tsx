@@ -458,9 +458,7 @@ export function ContentSourceControls({
                         className="flex min-w-0 flex-1 items-center gap-3 text-right"
                       >
                         <img
-                          src={
-                            product.primaryImageUrl
-                          }
+                          src={product.primaryImageUrl ?? undefined}
                           alt=""
                           className="size-11 shrink-0 rounded-[6px] object-cover"
                         />

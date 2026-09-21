@@ -155,7 +155,9 @@ public sealed class CreateProductHandler
                 compareAtPrice:
                     compareAtPrice,
                 createdByUserId:
-                    command.ActorUserId.Value);
+                    command.ActorUserId.Value,
+                verticalCode:
+                    command.VerticalCode);
 
         /*
          * Even products without selectable options receive one

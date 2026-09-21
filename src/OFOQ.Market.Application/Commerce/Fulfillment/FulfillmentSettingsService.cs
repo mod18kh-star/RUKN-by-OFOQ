@@ -67,14 +67,19 @@ public sealed class FulfillmentSettingsService
         return all.Where(x => !onlyEnabled || x.IsEnabled).OrderBy(x => x.SortOrder).ThenBy(x => x.Name).Select(Map).ToArray();
     }
 
-    public async Task<ShippingMethodResult> CreateShippingMethodAsync(string code, string name, ShippingMethodType type, decimal price, string currency, decimal? min, decimal? max, Guid? pickupLocationId, int sortOrder, Guid actorUserId, CancellationToken ct = default)
+    public async Task<ShippingMethodResult> CreateShippingMethodAsync(string code, string name, ShippingMethodType type, decimal price, string currency, decimal? min, decimal? max, Guid? pickupLocationId, int sortOrder, Guid actorUserId, CancellationToken ct = default, bool isEnabled = true)
     {
         EnsureTenant();
         var normalized = code.Trim().ToLowerInvariant();
         if (await _shippingMethods.CodeExistsAsync(normalized, cancellationToken: ct)) throw new ArgumentException("Shipping method code already exists.");
         FulfillmentLocationId? locationId = pickupLocationId.HasValue ? FulfillmentLocationId.From(pickupLocationId.Value) : null;
         if (locationId.HasValue && await _locations.GetByIdAsync(locationId.Value, ct) is null) throw new ArgumentException("Pickup location was not found.");
-        var method = ShippingMethod.Create(_currentTenant.TenantId!.Value, code, name, type, price, CurrencyCode.Create(currency), min, max, locationId, sortOrder, _timeProvider.GetUtcNow(), actorUserId);
+        var now = _timeProvider.GetUtcNow();
+        var method = ShippingMethod.Create(_currentTenant.TenantId!.Value, code, name, type, price, CurrencyCode.Create(currency), min, max, locationId, sortOrder, now, actorUserId);
+        if (!isEnabled)
+        {
+            method.Update(code, name, type, price, CurrencyCode.Create(currency), min, max, locationId, sortOrder, false, now, actorUserId);
+        }
         await _shippingMethods.AddAsync(method, ct);
         await _unitOfWork.SaveChangesAsync(ct);
         return Map(method);

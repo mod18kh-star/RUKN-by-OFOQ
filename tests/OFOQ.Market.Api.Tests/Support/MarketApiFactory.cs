@@ -6,6 +6,7 @@ using OFOQ.Market.Application.Common.Files;
 using OFOQ.Market.Application.Common.Payments;
 using OFOQ.Market.Application.Common.Persistence;
 using OFOQ.Market.Application.Common.Security;
+using OFOQ.Market.Api.Endpoints.Commerce;
 
 namespace OFOQ.Market.Api.Tests.Support;
 
@@ -54,6 +55,14 @@ internal sealed class MarketApiFactory :
         builder.ConfigureServices(
             services =>
             {
+                // The application uses EF to detect a manual payment selected
+                // for an order. API tests replace that single query with a test
+                // double instead of attempting to log in to PostgreSQL.
+                services.RemoveAll<IManualOrderPaymentSelectionReader>();
+                services.AddSingleton<InMemoryManualOrderPaymentSelectionReader>();
+                services.AddSingleton<IManualOrderPaymentSelectionReader>(
+                    provider => provider.GetRequiredService<InMemoryManualOrderPaymentSelectionReader>());
+
                 // -------------------------------------------------
                 // Remove real persistence registrations
                 // -------------------------------------------------
@@ -649,5 +658,29 @@ internal sealed class MarketApiFactory :
                     IUnitOfWork,
                     FakeUnitOfWork>();
             });
+    }
+}
+
+
+internal sealed class InMemoryManualOrderPaymentSelectionReader
+    : IManualOrderPaymentSelectionReader
+{
+    private readonly HashSet<Guid> _manuallySelectedOrders = [];
+
+    public void SetManualPaymentSelected(Guid orderId)
+    {
+        lock (_manuallySelectedOrders)
+        {
+            _manuallySelectedOrders.Add(orderId);
+        }
+    }
+
+    public Task<bool> HasManualPaymentAsync(Guid orderId, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        lock (_manuallySelectedOrders)
+        {
+            return Task.FromResult(_manuallySelectedOrders.Contains(orderId));
+        }
     }
 }

@@ -119,6 +119,8 @@ public sealed class UpdateStorefrontPresentationHandler
                 command.ActorUserId);
         }
 
+        presentation.SetVisualContentJson(command.VisualContentJson);
+
         await _unitOfWork
             .SaveChangesAsync(
                 cancellationToken);

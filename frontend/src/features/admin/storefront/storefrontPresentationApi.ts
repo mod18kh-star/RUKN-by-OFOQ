@@ -16,6 +16,7 @@ export interface StorefrontPresentationSettings {
   showProductsOnHome: boolean;
   categorySectionTitle: string;
   productSectionTitle: string;
+  visualContentJson?: string;
 }
 
 export interface UpdateStorefrontPresentationInput {
@@ -30,6 +31,7 @@ export interface UpdateStorefrontPresentationInput {
   showProductsOnHome: boolean;
   categorySectionTitle: string;
   productSectionTitle: string;
+  visualContentJson?: string;
 }
 
 export class StorefrontPresentationApiError

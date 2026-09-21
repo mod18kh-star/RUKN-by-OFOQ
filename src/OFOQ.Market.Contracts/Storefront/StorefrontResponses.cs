@@ -11,14 +11,34 @@ public sealed record StorefrontPresentationResponse(
     bool ShowCategoriesOnHome,
     bool ShowProductsOnHome,
     string CategorySectionTitle,
-    string ProductSectionTitle);
+    string ProductSectionTitle,
+    string VisualContentJson = "{}");
+
+public sealed record StorefrontSocialLinkResponse(
+    string PlatformCode,
+    string? Label,
+    string Url,
+    int SortOrder);
+
+public sealed record StorefrontContactResponse(
+    string? WebsiteUrl,
+    string? WhatsAppNumber,
+    string? CustomerServicePhone,
+    string? SecondaryPhone,
+    string? LandlinePhone,
+    string? PhysicalAddress,
+    string? GoogleMapsUrl,
+    string? CommercialRegistrationNumber,
+    IReadOnlyList<StorefrontSocialLinkResponse> SocialLinks);
 
 public sealed record StorefrontInfoResponse(
     string Name,
     string Slug,
     string? Vertical,
     string? VerticalCode,
-    StorefrontPresentationResponse Presentation);
+    StorefrontPresentationResponse Presentation,
+    StorefrontContactResponse Contact,
+    Guid TenantId);
 
 public sealed record StorefrontCategoryResponse(
     Guid CategoryId,

@@ -46,6 +46,7 @@ export interface CreateProductInput {
   quantity: number;
   lowStockThreshold: number;
   continueSellingWhenOutOfStock: boolean;
+  verticalCode: string;
   primaryImageUrl: string | null;
   publishImmediately: boolean;
 }
@@ -203,6 +204,7 @@ export async function createProduct(
     lowStockThreshold: input.lowStockThreshold,
     continueSellingWhenOutOfStock:
       input.continueSellingWhenOutOfStock,
+    verticalCode: input.verticalCode,
     primaryImageUrl:
       input.primaryImageUrl,
   };
@@ -621,4 +623,36 @@ export async function createStructuredProductVariant(
   );
   if (!response.ok) return throwApiError(response);
   return (await response.json()) as StructuredProductVariant;
+}
+
+export interface CommerceVerticalProfile {
+  verticalType: string;
+  code: string;
+  enabled: boolean;
+  primary: boolean;
+}
+
+export interface CommerceCapabilityProfile {
+  capabilityType: string;
+  enabled: boolean;
+  overridden: boolean;
+}
+
+export interface CommerceProfile {
+  verticals: CommerceVerticalProfile[];
+  capabilities: CommerceCapabilityProfile[];
+}
+
+export async function getCommerceProfile(
+  tenantId: string,
+): Promise<CommerceProfile> {
+  const response = await authorizedApiFetch(
+    `/api/tenants/${encodeURIComponent(tenantId)}/backoffice/commerce/profile`,
+  );
+
+  if (!response.ok) {
+    return throwApiError(response);
+  }
+
+  return (await response.json()) as CommerceProfile;
 }

@@ -19,7 +19,8 @@ export function safeInternalPath(
   if (
     value &&
     value.startsWith("/") &&
-    !value.startsWith("//")
+    !value.startsWith("//") &&
+    !value.startsWith("/security/setup")
   ) {
     return value;
   }
@@ -56,11 +57,8 @@ export function defaultDestinationForUser(
   user: CurrentUser,
 ) {
   /*
-   * A real PlatformAdministrator is a distinct platform account
-   * context and defaults to /platform.
-   *
-   * Merchant approval does not grant this role, so normal merchant
-   * accounts continue to land in /admin after approval.
+   * Platform Administrator:
+   * Development may use its dedicated bootstrap bypass.
    */
   if (
     user.platformRoles.includes(
@@ -80,13 +78,17 @@ export function defaultDestinationForUser(
     return "/platform";
   }
 
-  if (user.hasTenantMemberships) {
+  /*
+   * Merchant Back Office:
+   * API authorization always requires pwd + mfa.
+   * Do not apply the Platform development bypass here.
+   */
+  if (
+    user.hasTenantMemberships
+  ) {
     if (
-      !developmentMfaBypassEnabled() &&
-      (
-        !user.mfaEnabled ||
-        !user.sessionMfaVerified
-      )
+      !user.mfaEnabled ||
+      !user.sessionMfaVerified
     ) {
       return "/security/setup?returnTo=%2Fadmin";
     }
@@ -103,27 +105,18 @@ export async function resolvePostAuthDestination(
   const user =
     await getCurrentUser();
 
-  if (
-    !user.hasTenantMemberships
-  ) {
-    clearAdminStore();
-  }
-
-  const tenant =
-    user.hasTenantMemberships
-      ? await hydrateCurrentTenant()
-      : null;
-
   const requested =
     safeInternalPath(
       requestedReturnTo,
     );
 
+  const isPlatformAdministrator =
+    user.platformRoles.includes(
+      "PlatformAdministrator",
+    );
+
   /*
-   * Explicit Platform navigation is a separate account context.
-   * A Platform Administrator who also owns a store can still
-   * enter /platform intentionally without the merchant Draft
-   * state hijacking that navigation.
+   * Platform Administration remains a separate context.
    */
   if (
     requested?.startsWith(
@@ -131,9 +124,7 @@ export async function resolvePostAuthDestination(
     )
   ) {
     if (
-      !user.platformRoles.includes(
-        "PlatformAdministrator",
-      ) ||
+      !isPlatformAdministrator ||
       (
         !developmentMfaBypassEnabled() &&
         (
@@ -150,6 +141,64 @@ export async function resolvePostAuthDestination(
     return requested;
   }
 
+  /*
+   * Platform admins default to /platform.
+   * Do not run merchant tenant hydration first.
+   */
+  if (
+    isPlatformAdministrator &&
+    !requested
+  ) {
+    return defaultDestinationForUser(
+      user,
+    );
+  }
+
+  /*
+   * IMPORTANT:
+   *
+   * Merchant security must be resolved BEFORE loading the tenant.
+   *
+   * First login:
+   * pwd -> security setup -> authenticator enrollment.
+   *
+   * Returning login:
+   * pwd -> MFA challenge -> admin.
+   */
+  if (
+    user.hasTenantMemberships &&
+    (
+      !user.mfaEnabled ||
+      !user.sessionMfaVerified
+    )
+  ) {
+    const returnTo =
+      requested?.startsWith("/admin")
+        ? requested
+        : "/admin";
+
+    return `/security/setup?returnTo=${encodeURIComponent(
+      returnTo,
+    )}`;
+  }
+
+  if (
+    !user.hasTenantMemberships
+  ) {
+    clearAdminStore();
+
+    return requested ??
+      defaultDestinationForUser(
+        user,
+      );
+  }
+
+  /*
+   * Only hydrate the merchant tenant AFTER the security gate passed.
+   */
+  const tenant =
+    await hydrateCurrentTenant();
+
   if (
     tenant?.status === "Draft"
   ) {
@@ -164,17 +213,10 @@ export async function resolvePostAuthDestination(
 
   if (requested) {
     if (
-      requested.startsWith("/admin") &&
-      (
-        !user.hasTenantMemberships ||
-        (
-          !developmentMfaBypassEnabled() &&
-          (
-            !user.mfaEnabled ||
-            !user.sessionMfaVerified
-          )
-        )
-      )
+      requested.startsWith(
+        "/admin",
+      ) &&
+      !user.hasTenantMemberships
     ) {
       return defaultDestinationForUser(
         user,

@@ -17,4 +17,5 @@ public sealed record CreateProductCommand(
     int LowStockThreshold,
     bool ContinueSellingWhenOutOfStock,
     UserId ActorUserId,
-    string? PrimaryImageUrl = null);
+    string? PrimaryImageUrl = null,
+    string? VerticalCode = null);

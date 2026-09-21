@@ -1,3 +1,6 @@
+import {
+  shouldUsePlatformTenantAdministration,
+} from "./platformTenantAdministration";
 export const ACCESS_TOKEN_KEY =
   "ofoq.access-token";
 
@@ -400,6 +403,17 @@ export async function authorizedApiFetch(
 
   const headers = new Headers(init.headers);
 
+  if (
+    shouldUsePlatformTenantAdministration(
+      path,
+    )
+  ) {
+    headers.set(
+      "X-OFOQ-Platform-Administration",
+      "1",
+    );
+  }
+
   headers.set(
     "Accept",
     "application/json",
@@ -442,6 +456,17 @@ export async function authorizedApiFetch(
 
       const retryHeaders =
         new Headers(init.headers);
+
+      if (
+        shouldUsePlatformTenantAdministration(
+          path,
+        )
+      ) {
+        retryHeaders.set(
+          "X-OFOQ-Platform-Administration",
+          "1",
+        );
+      }
 
       retryHeaders.set(
         "Accept",

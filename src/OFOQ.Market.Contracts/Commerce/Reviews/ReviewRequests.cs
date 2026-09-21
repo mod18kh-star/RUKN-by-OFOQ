@@ -6,4 +6,6 @@ public sealed record TrustMetricSettingsRequest(bool ShowCustomerCount,bool Show
 public sealed record TrustMetricSettingsResponse(bool ShowCustomerCount,bool ShowCompletedOrderCount,bool ShowAverageRating);
 public sealed record PublicProductReviewResponse(Guid Id,int Rating,string? Body,bool IsVerifiedPurchase,string? MerchantReply,DateTimeOffset CreatedAtUtc);
 public sealed record PublicProductReviewPageResponse(decimal AverageRating,int ReviewCount,IReadOnlyList<PublicProductReviewResponse> Reviews);
+public sealed record PublicStoreReviewResponse(Guid Id,Guid ProductId,string ProductName,string ProductSlug,int Rating,string? Body,bool IsVerifiedPurchase,string? MerchantReply,DateTimeOffset CreatedAtUtc);
+public sealed record PublicStoreReviewPageResponse(decimal AverageRating,int ReviewCount,IReadOnlyList<PublicStoreReviewResponse> Reviews);
 public sealed record PublicTrustMetricResponse(long? CustomerCount,long? CompletedOrderCount,decimal? AverageRating,int? ReviewCount);

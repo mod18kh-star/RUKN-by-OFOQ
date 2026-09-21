@@ -211,6 +211,10 @@ public static class DependencyInjection
             CustomerAddressRepository>();
 
         services.AddScoped<
+            ICustomerSavedAddressRepository,
+            CustomerSavedAddressRepository>();
+
+        services.AddScoped<
             IFulfillmentLocationRepository,
             FulfillmentLocationRepository>();
 

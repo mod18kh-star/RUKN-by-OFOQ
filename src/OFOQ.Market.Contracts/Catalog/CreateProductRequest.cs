@@ -13,4 +13,5 @@ public sealed record CreateProductRequest(
     int Quantity,
     int LowStockThreshold,
     bool ContinueSellingWhenOutOfStock,
-    string? PrimaryImageUrl = null);
+    string? PrimaryImageUrl = null,
+    string? VerticalCode = null);

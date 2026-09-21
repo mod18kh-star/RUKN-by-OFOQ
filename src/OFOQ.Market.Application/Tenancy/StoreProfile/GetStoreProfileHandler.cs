@@ -79,9 +79,19 @@ public sealed class GetStoreProfileHandler
             profile?.WebsiteUrl,
             profile?.WhatsAppNumber,
             profile?.CustomerServicePhone,
+            profile?.SecondaryPhone,
+            profile?.LandlinePhone,
+            profile?.PhysicalAddress,
+            profile?.GoogleMapsUrl,
             profile?.CommercialRegistrationNumber,
-            profile?.CommercialRegistrationNotApplicable ??
-                false,
+            profile?.CommercialRegistrationNotApplicable ?? false,
+            profile?.ShowWebsite ?? false,
+            profile?.ShowWhatsApp ?? false,
+            profile?.ShowCustomerServicePhone ?? false,
+            profile?.ShowSecondaryPhone ?? false,
+            profile?.ShowLandlinePhone ?? false,
+            profile?.ShowPhysicalAddress ?? false,
+            profile?.ShowCommercialRegistration ?? false,
             socialLinks
                 .OrderBy(
                     item =>
