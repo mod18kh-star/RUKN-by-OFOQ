@@ -10,5 +10,6 @@ public enum ProductContentBlockType
     Faq = 5,
     Pdf = 6,
     Warranty = 7,
-    CareInstructions = 8
+    CareInstructions = 8,
+    Highlight = 9
 }

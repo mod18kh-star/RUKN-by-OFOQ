@@ -24,6 +24,10 @@ import {
 } from "../auth/authSession";
 
 import {
+  markMfaBrowserSessionFromToken,
+} from "../auth/mfaSessionPolicy";
+
+import {
   resolvePostAuthDestination,
   safeInternalPath,
 } from "../auth/postAuth";
@@ -191,6 +195,14 @@ export function AuthPage() {
       expiresAtUtc,
       accountEmail,
       accountUserId,
+    );
+
+    /*
+     * Password-only logins are ignored by the helper.
+     * MFA/trusted MFA sessions mark this browser session.
+     */
+    markMfaBrowserSessionFromToken(
+      token,
     );
 
     const destination =

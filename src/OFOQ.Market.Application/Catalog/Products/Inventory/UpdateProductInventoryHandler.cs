@@ -21,12 +21,17 @@ public sealed class UpdateProductInventoryHandler
     private readonly TimeProvider
         _timeProvider;
 
+    private readonly ITransactionExecutor? _transactions;
+    private readonly IStockHoldLedger? _holds;
+
     public UpdateProductInventoryHandler(
         IProductRepository productRepository,
         IProductVariantRepository variantRepository,
         ICurrentTenant currentTenant,
         IUnitOfWork unitOfWork,
-        TimeProvider timeProvider)
+        TimeProvider timeProvider,
+        ITransactionExecutor? transactions = null,
+        IStockHoldLedger? holds = null)
     {
         _productRepository =
             productRepository;
@@ -42,6 +47,8 @@ public sealed class UpdateProductInventoryHandler
 
         _timeProvider =
             timeProvider;
+        _transactions = transactions;
+        _holds = holds;
     }
 
     public async Task<ProductResult?> HandleAsync(
@@ -53,6 +60,18 @@ public sealed class UpdateProductInventoryHandler
 
         EnsureTenant();
 
+        if (_holds?.Enabled == true)
+        {
+            if (_transactions is null) throw new InvalidOperationException("Stock reservations require transaction executor.");
+            return await _transactions.ExecuteAsync(
+                token => UpdateInsideTransactionAsync(command, token), cancellationToken);
+        }
+        return await UpdateInsideTransactionAsync(command, cancellationToken);
+    }
+
+    private async Task<ProductResult?> UpdateInsideTransactionAsync(
+        UpdateProductInventoryCommand command, CancellationToken cancellationToken)
+    {
         var product =
             await _productRepository
                 .GetByIdAsync(
@@ -83,6 +102,10 @@ public sealed class UpdateProductInventoryHandler
 
         var now =
             _timeProvider.GetUtcNow();
+
+        if (_holds?.Enabled == true)
+            await _holds.GuardInventoryAdjustmentAsync(defaultVariant.Id, command.Quantity,
+                command.TrackInventory, command.ContinueSellingWhenOutOfStock, now, cancellationToken);
 
         defaultVariant.ConfigureInventory(
             command.TrackInventory,

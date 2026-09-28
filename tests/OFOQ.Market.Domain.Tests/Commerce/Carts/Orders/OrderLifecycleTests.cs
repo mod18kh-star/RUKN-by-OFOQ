@@ -241,6 +241,38 @@ public sealed class OrderLifecycleTests
             order.Status);
     }
 
+    [Fact]
+    public void PickupOrder_CanBeCollectedWithoutFakeShippingDetails()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var order = CreateOrder(now);
+        order.ApplyCheckoutContext(0m, 0m, null, "Store collection", "Pickup",
+            null, null, null, null, null, null, null, null, null, null, now);
+        order.MarkPaid(now.AddMinutes(1));
+        order.Confirm(now.AddMinutes(2));
+        order.StartProcessing(now.AddMinutes(3));
+        order.MarkReadyToShip(now.AddMinutes(4));
+
+        Assert.Throws<InvalidOperationException>(() =>
+            order.MarkShipped("Not a real carrier", "Fake tracking", now.AddMinutes(5)));
+        order.MarkCollected(now.AddMinutes(5));
+        Assert.Equal(OrderStatus.Fulfilled, order.Status);
+        Assert.Equal(OrderFulfillmentStatus.Delivered, order.FulfillmentStatus);
+        Assert.NotNull(order.DeliveredAtUtc);
+    }
+
+    [Fact]
+    public void DeliveryOrder_CannotBeMarkedAsCollected()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var order = CreateOrder(now);
+        order.MarkPaid(now.AddMinutes(1));
+        order.Confirm(now.AddMinutes(2));
+        order.StartProcessing(now.AddMinutes(3));
+        order.MarkReadyToShip(now.AddMinutes(4));
+        Assert.Throws<InvalidOperationException>(() => order.MarkCollected(now.AddMinutes(5)));
+    }
+
     private static Order CreateOrder(
         DateTimeOffset createdAtUtc)
     {

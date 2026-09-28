@@ -35,6 +35,9 @@ internal sealed class MerchantOrderQueryRepository :
             _dbContext
                 .Orders
                 .AsNoTracking()
+                // Checkout creates Pending orders before proof of payment.
+                // They belong to the customer's checkout, not the merchant's work queue.
+                .Where(order => order.Status != OrderStatus.Pending)
                 .Include("_items");
 
         if (status.HasValue)

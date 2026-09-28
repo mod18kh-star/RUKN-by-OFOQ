@@ -5,4 +5,5 @@ public sealed record CartResponse(
     string? Currency,
     int TotalQuantity,
     decimal TotalAmount,
-    IReadOnlyList<CartItemResponse> Items);
+    IReadOnlyList<CartItemResponse> Items,
+    string? ReservationMessage = null);

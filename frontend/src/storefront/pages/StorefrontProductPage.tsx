@@ -8,9 +8,7 @@ import {
 
 import {
   ArrowRight,
-  Check,
   PackageCheck,
-  ShieldCheck,
   ShoppingBag,
 } from "lucide-react";
 
@@ -32,6 +30,8 @@ import {
 import {
   StorefrontHeader,
 } from "../components/StorefrontHeader";
+
+import { StorefrontProductReviews } from "./StorefrontProductReviews";
 
 import {
   StorefrontFooter,
@@ -196,7 +196,9 @@ export function StorefrontProductPage() {
   const [cartError, setCartError] =
     useState<string | null>(null);
 
-  async function handleAddToCart() {
+  async function handleAddToCart(
+    goToCheckout = false,
+  ) {
     if (cartBusy || !product || !selected) {
       return;
     }
@@ -229,7 +231,7 @@ export function StorefrontProductPage() {
     setCartMessage(null);
 
     try {
-      await addCustomerCartItem(
+      const updatedCart = await addCustomerCartItem(
         storeSlug,
         {
           productId: product.productId,
@@ -239,7 +241,7 @@ export function StorefrontProductPage() {
       );
 
       setCartMessage(
-        "تمت إضافة المنتج إلى سلتك بنجاح.",
+        updatedCart.reservationMessage || "تمت إضافة المنتج إلى سلتك بنجاح.",
       );
 
       window.dispatchEvent(
@@ -247,6 +249,16 @@ export function StorefrontProductPage() {
           detail: { storeSlug },
         }),
       );
+
+      if (goToCheckout) {
+        navigate(
+          `/store/${encodeURIComponent(
+            storeSlug,
+          )}/checkout`,
+        );
+
+        return;
+      }
     } catch (caught) {
       const status =
         caught instanceof Error &&
@@ -553,13 +565,6 @@ export function StorefrontProductPage() {
                         ].join(" ")}
                       >
                         {variant.name}
-                        {variant.trackInventory &&
-                        variant.quantity !==
-                          null ? (
-                          <span className="store-money mr-2 text-[9px] opacity-60" dir="ltr">
-                            ({variant.quantity})
-                          </span>
-                        ) : null}
                       </button>
                     ),
                   )}
@@ -623,19 +628,60 @@ export function StorefrontProductPage() {
               </button>
               <button
                 type="button"
-                disabled
+                onClick={() =>
+                  void handleAddToCart(true)
+                }
+                disabled={
+                  !product.availableForSale ||
+                  !selected?.availableForSale ||
+                  cartBusy
+                }
                 className={[
-                  "h-13 border border-black/15 bg-white px-5 text-[12px] font-semibold disabled:opacity-60",
+                  "h-13 border border-black/15 bg-white px-5 text-[12px] font-semibold transition hover:border-black/30 disabled:cursor-not-allowed disabled:opacity-50",
                   isFlagship
                     ? "rounded-full"
                     : "rounded-[12px]",
                 ].join(" ")}
               >
-                اشتري الآن
+                {cartBusy
+                  ? "جاري التحضير..."
+                  : !selected
+                    ? "اختر خيارات المنتج"
+                    : !selected.availableForSale
+                      ? "غير متوفر حاليًا"
+                      : "اشتري الآن"}
               </button>
             </div>
 
-                        {cartMessage ? (
+                        {product.highlights?.length ? (
+              <div className="mt-6 grid gap-2 sm:grid-cols-3">
+                {product.highlights.map(
+                  (highlight) => (
+                    <div
+                      key={`${highlight.sortOrder}-${highlight.title}`}
+                      className={[
+                        "border border-black/[0.08] bg-white px-4 py-4",
+                        isFlagship
+                          ? "rounded-[18px]"
+                          : "rounded-[12px]",
+                      ].join(" ")}
+                    >
+                      <p className="text-[10px] font-semibold text-[var(--store-ink)]">
+                        {highlight.title}
+                      </p>
+
+                      {highlight.body ? (
+                        <p className="mt-1.5 text-[9px] leading-5 text-[var(--store-muted)]">
+                          {highlight.body}
+                        </p>
+                      ) : null}
+                    </div>
+                  ),
+                )}
+              </div>
+            ) : null}
+
+            {cartMessage ? (
               <p
                 role="status"
                 className="mt-3 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm font-medium text-green-800"
@@ -652,41 +698,6 @@ export function StorefrontProductPage() {
                 {cartError}
               </p>
             ) : null}
-
-            <p className="mt-2 text-[11px] leading-6 text-[var(--store-muted)]">
-              يمكنك إضافة المنتجات المتاحة إلى سلتك. سيتم تفعيل صفحة السلة وإتمام الطلب في الخطوات التالية.
-            </p>
-
-            <div
-              className={[
-                "mt-7 grid grid-cols-3 gap-2 text-center text-[9px] text-[var(--store-ink-soft)]",
-              ].join(" ")}
-            >
-              <ProductTrustItem
-                icon={PackageCheck}
-                label="المخزون"
-                rounded={
-                  isFlagship ||
-                  isSmartMarket
-                }
-              />
-              <ProductTrustItem
-                icon={ShieldCheck}
-                label="المواصفات"
-                rounded={
-                  isFlagship ||
-                  isSmartMarket
-                }
-              />
-              <ProductTrustItem
-                icon={Check}
-                label="الخيارات"
-                rounded={
-                  isFlagship ||
-                  isSmartMarket
-                }
-              />
-            </div>
           </section>
         </div>
 
@@ -741,6 +752,7 @@ export function StorefrontProductPage() {
             </div>
           </section>
         ) : null}
+        <StorefrontProductReviews storeSlug={storeSlug} productSlug={productSlug} />
       </main>
 
       <StorefrontFooter
@@ -751,33 +763,6 @@ export function StorefrontProductPage() {
         contact={storeQuery.data?.contact ?? EMPTY_STOREFRONT_CONTACT}
         description={parseVisualContent(storeQuery.data?.presentation.visualContentJson).footerDescription}
       />
-    </div>
-  );
-}
-
-function ProductTrustItem({
-  icon: Icon,
-  label,
-  rounded,
-}: {
-  icon: typeof Check;
-  label: string;
-  rounded: boolean;
-}) {
-  return (
-    <div
-      className={[
-        "border border-black/[0.07] bg-white p-3",
-        rounded
-          ? "rounded-[12px]"
-          : "",
-      ].join(" ")}
-    >
-      <Icon
-        className="mx-auto mb-2"
-        size={17}
-      />
-      {label}
     </div>
   );
 }

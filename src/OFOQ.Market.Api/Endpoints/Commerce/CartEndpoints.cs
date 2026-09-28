@@ -141,6 +141,14 @@ public static class CartEndpoints
                     Items = enrichedItems
                 });
         }
+        catch (CartLockedForCheckoutException)
+        {
+            return Results.Conflict(new
+            {
+                code = "cart_checkout_in_progress",
+                message = "لديك طلب قيد الدفع. تابع دفعه أو اختر تعديل المشتريات قبل تغيير السلة."
+            });
+        }
         catch (TenantScopeViolationException)
         {
             return Results.Forbid();
@@ -155,6 +163,7 @@ public static class CartEndpoints
     private static async Task<IResult> AddItemAsync(
         AddToCartRequest request,
         AddToCartHandler handler,
+        IStockHoldLedger stockHolds,
         HttpContext httpContext,
         CancellationToken cancellationToken)
     {
@@ -214,8 +223,12 @@ public static class CartEndpoints
                         request.Quantity),
                     cancellationToken);
 
-            return Results.Ok(
-                Map(result));
+            return Results.Ok(Map(result) with
+            {
+                ReservationMessage = stockHolds.Enabled
+                    ? "تم حجز المنتج في سلتك لمدة 15 دقيقة لإتمام الطلب. إذا لم تُكمل الطلب خلالها، فقد يصبح المنتج متاحًا لعملاء آخرين."
+                    : null
+            });
         }
         catch (CartProductNotAvailableException exception)
         {
@@ -236,6 +249,14 @@ public static class CartEndpoints
         {
             return StructuredVariantRequired(
                 exception.Message);
+        }
+        catch (CartLockedForCheckoutException)
+        {
+            return Results.Conflict(new
+            {
+                code = "cart_checkout_in_progress",
+                message = "لديك طلب قيد الدفع. تابع دفعه أو اختر تعديل المشتريات قبل تغيير السلة."
+            });
         }
         catch (TenantScopeViolationException)
         {
@@ -328,6 +349,14 @@ public static class CartEndpoints
             return StructuredVariantRequired(
                 exception.Message);
         }
+        catch (CartLockedForCheckoutException)
+        {
+            return Results.Conflict(new
+            {
+                code = "cart_checkout_in_progress",
+                message = "لديك طلب قيد الدفع. تابع دفعه أو اختر تعديل المشتريات قبل تغيير السلة."
+            });
+        }
         catch (TenantScopeViolationException)
         {
             return Results.Forbid();
@@ -391,6 +420,14 @@ public static class CartEndpoints
             return CartItemNotFound(
                 exception.Message);
         }
+        catch (CartLockedForCheckoutException)
+        {
+            return Results.Conflict(new
+            {
+                code = "cart_checkout_in_progress",
+                message = "لديك طلب قيد الدفع. تابع دفعه أو اختر تعديل المشتريات قبل تغيير السلة."
+            });
+        }
         catch (TenantScopeViolationException)
         {
             return Results.Forbid();
@@ -436,6 +473,14 @@ public static class CartEndpoints
 
             return Results.Ok(
                 Map(result));
+        }
+        catch (CartLockedForCheckoutException)
+        {
+            return Results.Conflict(new
+            {
+                code = "cart_checkout_in_progress",
+                message = "لديك طلب قيد الدفع. تابع دفعه أو اختر تعديل المشتريات قبل تغيير السلة."
+            });
         }
         catch (TenantScopeViolationException)
         {

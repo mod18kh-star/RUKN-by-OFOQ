@@ -483,6 +483,32 @@ internal sealed class StorefrontQueryRepository :
                 product.Id,
                 cancellationToken);
 
+        var highlights =
+            await _dbContext
+                .ProductContentBlocks
+                .IgnoreQueryFilters()
+                .AsNoTracking()
+                .Where(
+                    block =>
+                        block.TenantId == tenantId &&
+                        block.ProductId == product.Id &&
+                        block.Type == ProductContentBlockType.Highlight &&
+                        block.IsVisible &&
+                        block.Title != null &&
+                        block.Title != "")
+                .OrderBy(
+                    block =>
+                        block.SortOrder)
+                .Take(6)
+                .Select(
+                    block =>
+                        new StorefrontProductHighlightResult(
+                            block.Title!,
+                            block.Body,
+                            block.SortOrder))
+                .ToArrayAsync(
+                    cancellationToken);
+
         var variantResults =
             variants
                 .Select(
@@ -540,7 +566,8 @@ internal sealed class StorefrontQueryRepository :
             primaryImage?.AltText,
             imageResults,
             variantResults,
-            attributes);
+            attributes,
+            highlights);
     }
 
     private async Task<

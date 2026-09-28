@@ -28,6 +28,7 @@ export interface CustomerCart {
   totalQuantity: number;
   totalAmount: number;
   items: CustomerCartItem[];
+  reservationMessage?: string | null;
 }
 
 export interface AddCustomerCartItem {

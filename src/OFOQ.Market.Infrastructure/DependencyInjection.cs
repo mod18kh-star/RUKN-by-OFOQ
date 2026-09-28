@@ -249,6 +249,8 @@ public static class DependencyInjection
             ICheckoutLockRepository,
             CheckoutLockRepository>();
 
+        services.AddScoped<IStockHoldLedger, StockHoldLedger>();
+
         services.AddScoped<
             IOrderStateLockRepository,
             OrderStateLockRepository>();

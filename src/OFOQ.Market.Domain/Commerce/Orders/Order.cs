@@ -307,6 +307,10 @@ public sealed partial class Order :
         DateTimeOffset updatedAtUtc,
         Guid? updatedByUserId = null)
     {
+        if (string.Equals(ShippingMethodType, "Pickup", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException("In-store pickup orders cannot be shipped.");
+        }
         EnsureOrderStatus(
             OrderStatus.Processing);
 
@@ -397,6 +401,24 @@ public sealed partial class Order :
             OrderTimelineEntryType.Delivered,
             updatedAtUtc,
             updatedByUserId);
+    }
+
+    /// <summary>Complete an in-store pickup after staff verifies collection by the customer.</summary>
+    public void MarkCollected(
+        DateTimeOffset updatedAtUtc,
+        Guid? updatedByUserId = null)
+    {
+        EnsureOrderStatus(OrderStatus.Processing);
+        EnsureFulfillmentStatus(OrderFulfillmentStatus.ReadyToShip);
+        if (!string.Equals(ShippingMethodType, "Pickup", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException("Only in-store pickup orders can be collected directly.");
+        }
+        Status = OrderStatus.Fulfilled;
+        FulfillmentStatus = OrderFulfillmentStatus.Delivered;
+        DeliveredAtUtc = updatedAtUtc;
+        MarkUpdated(updatedAtUtc, updatedByUserId);
+        RecordTimeline(OrderTimelineEntryType.Delivered, updatedAtUtc, updatedByUserId, "Collected by customer");
     }
 
     public void MarkFulfilled(

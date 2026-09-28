@@ -177,7 +177,9 @@ public sealed class ProductContentBlock :
                 mediaUrl);
 
         if (normalizedBody is null &&
-            normalizedMediaUrl is null)
+            normalizedMediaUrl is null &&
+            (type != ProductContentBlockType.Highlight ||
+             normalizedTitle is null))
         {
             throw new ArgumentException(
                 "A product content block requires text content or a media URL.");

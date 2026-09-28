@@ -14,6 +14,8 @@ using OFOQ.Market.Application.Identity.Mfa.Login.VerifyRecovery;
 using OFOQ.Market.Application.Identity.Mfa.Login.VerifyTotp;
 using OFOQ.Market.Application.Identity.Mfa.RecoveryCodes.Regenerate;
 using OFOQ.Market.Application.Identity.Mfa.StartEnrollment;
+using OFOQ.Market.Application.Identity.Mfa.Reauthentication;
+using OFOQ.Market.Application.Identity.Mfa.Settings;
 using OFOQ.Market.Application.Identity.RegisterUser;
 using OFOQ.Market.Application.Identity.Sessions;
 using OFOQ.Market.Application.Identity.TrustedDevices;
@@ -82,6 +84,20 @@ public static class AuthEndpoints
         group.MapPost(
                 "/mfa/recovery",
                 VerifyMfaRecoveryCodeAsync)
+            .RequireRateLimiting(
+                "auth-mfa");
+
+        group.MapPost(
+                "/mfa/reauth/totp",
+                VerifyMfaReauthenticationTotpAsync)
+            .RequireAuthorization()
+            .RequireRateLimiting(
+                "auth-mfa");
+
+        group.MapPut(
+                "/mfa/reopen-policy",
+                UpdateMfaReopenPolicyAsync)
+            .RequireAuthorization()
             .RequireRateLimiting(
                 "auth-mfa");
 
@@ -842,6 +858,155 @@ public static class AuthEndpoints
         }
     }
 
+    private static async Task<IResult> VerifyMfaReauthenticationTotpAsync(
+        VerifyMfaReauthenticationRequest request,
+        ClaimsPrincipal principal,
+        VerifyMfaReauthenticationHandler handler,
+        AuthenticationSessionService sessionService,
+        HttpContext httpContext,
+        CancellationToken cancellationToken)
+    {
+        SetNoStoreHeaders(
+            httpContext);
+
+        if (!TryGetAuthenticatedUserId(
+                principal,
+                out var userId) ||
+            !TryGetSessionId(
+                principal,
+                out var sessionId))
+        {
+            return Results.Unauthorized();
+        }
+
+        try
+        {
+            var verification =
+                await handler.HandleAsync(
+                    userId,
+                    request.Code,
+                    cancellationToken);
+
+            var session =
+                await sessionService.ReauthenticateAsync(
+                    userId,
+                    sessionId,
+                    GetClientIpAddress(httpContext),
+                    GetUserAgent(httpContext),
+                    cancellationToken);
+
+            SetRefreshTokenCookie(
+                httpContext,
+                session.RefreshToken,
+                session.RefreshTokenExpiresAtUtc);
+
+            return Results.Ok(
+                new VerifyMfaTotpResponse(
+                    verification.UserId.Value,
+                    verification.Email,
+                    session.AccessToken,
+                    session.AccessTokenExpiresAtUtc));
+        }
+        catch (InvalidMfaLoginChallengeException)
+        {
+            return Results.Json(
+                new
+                {
+                    code =
+                        "invalid_mfa_verification",
+
+                    message =
+                        "The MFA verification could not be completed."
+                },
+                statusCode:
+                    StatusCodes.Status401Unauthorized);
+        }
+        catch (InvalidAuthenticationSessionException)
+        {
+            ClearRefreshTokenCookie(
+                httpContext);
+
+            return Results.Json(
+                new
+                {
+                    code =
+                        "invalid_refresh_session",
+
+                    message =
+                        "The session is invalid or expired."
+                },
+                statusCode:
+                    StatusCodes.Status401Unauthorized);
+        }
+    }
+
+    private static async Task<IResult> UpdateMfaReopenPolicyAsync(
+        UpdateMfaReopenPolicyRequest request,
+        ClaimsPrincipal principal,
+        UpdateMfaReopenPolicyHandler handler,
+        HttpContext httpContext,
+        CancellationToken cancellationToken)
+    {
+        SetNoStoreHeaders(
+            httpContext);
+
+        if (!TryGetAuthenticatedUserId(
+                principal,
+                out var userId))
+        {
+            return Results.Unauthorized();
+        }
+
+        if (!HasAuthenticationMethod(
+                principal,
+                MultiFactorAuthenticationMethod))
+        {
+            return Results.Forbid();
+        }
+
+        if (!Enum.TryParse<MfaReopenPolicy>(
+                request.Policy,
+                true,
+                out var policy) ||
+            !Enum.IsDefined(policy))
+        {
+            return Results.BadRequest(
+                new
+                {
+                    code =
+                        "invalid_mfa_reopen_policy",
+
+                    message =
+                        "Unsupported MFA reopen policy."
+                });
+        }
+
+        try
+        {
+            var updated =
+                await handler.HandleAsync(
+                    userId,
+                    policy,
+                    cancellationToken);
+
+            return Results.Ok(
+                new UpdateMfaReopenPolicyResponse(
+                    updated.ToString()));
+        }
+        catch (InvalidOperationException)
+        {
+            return Results.Conflict(
+                new
+                {
+                    code =
+                        "mfa_not_enabled",
+
+                    message =
+                        "MFA must be enabled before changing this policy."
+                });
+        }
+    }
+
     private static async Task<IResult> StartMfaEnrollmentAsync(
         ClaimsPrincipal principal,
         StartMfaEnrollmentHandler handler,
@@ -1374,6 +1539,7 @@ public static class AuthEndpoints
     private static async Task<IResult> GetCurrentUserAsync(
         ClaimsPrincipal principal,
         GetCurrentUserContextHandler handler,
+        OFOQ.Market.Application.Common.Persistence.IUserSessionRepository sessionRepository,
         HttpContext httpContext,
         CancellationToken cancellationToken)
     {
@@ -1394,6 +1560,34 @@ public static class AuthEndpoints
                     new GetCurrentUserContextQuery(
                         userId),
                     cancellationToken);
+
+            DateTimeOffset? sessionMfaVerifiedAtUtc =
+                null;
+
+            DateTimeOffset? sessionMfaHardCapExpiresAtUtc =
+                null;
+
+            if (TryGetSessionId(
+                    principal,
+                    out var currentSessionId))
+            {
+                var currentSession =
+                    await sessionRepository.GetByIdAsync(
+                        currentSessionId,
+                        cancellationToken);
+
+                if (currentSession is not null &&
+                    currentSession.UserId == userId)
+                {
+                    sessionMfaVerifiedAtUtc =
+                        currentSession.LastMfaVerifiedAtUtc;
+
+                    sessionMfaHardCapExpiresAtUtc =
+                        currentSession.LastMfaVerifiedAtUtc?
+                            .Add(
+                                UserSession.MultiFactorMaximumAge);
+                }
+            }
 
             var authenticationMethods =
                 principal
@@ -1437,7 +1631,10 @@ public static class AuthEndpoints
                             ? sessionId.Value
                             : null,
                     result.FullName,
-                    result.PhoneNumber));
+                    result.PhoneNumber,
+                    result.MfaReopenPolicy.ToString(),
+                    sessionMfaVerifiedAtUtc,
+                    sessionMfaHardCapExpiresAtUtc));
         }
         catch (CurrentUserUnavailableException)
         {

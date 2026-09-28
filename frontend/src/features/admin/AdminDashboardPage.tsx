@@ -269,6 +269,7 @@ export function AdminDashboardPage() {
         </div>
       </div>
 
+      {!loading && readiness < 100 ? (
       <section className="mt-7 overflow-hidden rounded-[18px] border border-black/[0.07] bg-[#101512] text-white shadow-[0_18px_50px_rgba(14,19,16,0.08)]">
         <div className="grid gap-8 p-6 md:grid-cols-[1fr_320px] md:p-7">
           <div>
@@ -327,9 +328,9 @@ export function AdminDashboardPage() {
               }
             />
             <CompactStat
-              label="بانتظار الإجراء"
+              label="مدفوع بانتظار التأكيد"
               value={
-                summary?.pendingOrders ??
+                summary?.paidOrdersAwaitingConfirmation ??
                 0
               }
             />
@@ -350,6 +351,7 @@ export function AdminDashboardPage() {
           </div>
         </div>
       </section>
+      ) : null}
 
       {error ? (
         <div className="mt-4 flex items-start gap-3 rounded-[13px] border border-red-200 bg-red-50 px-4 py-3 text-[10px] leading-5 text-red-700">
@@ -373,6 +375,7 @@ export function AdminDashboardPage() {
       ) : null}
 
       <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <a href="/admin/orders" data-rukn-dashboard-link="الطلبات المفتوحة" className="block cursor-pointer rounded-[17px] transition hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#315F5B]">
         <MetricCard
           icon={ShoppingBag}
           label="الطلبات المفتوحة"
@@ -386,7 +389,9 @@ export function AdminDashboardPage() {
           }
           detail="طلبات تحتاج متابعة تشغيلية"
         />
+        </a>
 
+        <a href="/admin/orders?view=paid" data-rukn-dashboard-link="مدفوع بانتظار التأكيد" className="block cursor-pointer rounded-[17px] transition hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#315F5B]">
         <MetricCard
           icon={Clock3}
           label="مدفوع بانتظار التأكيد"
@@ -401,7 +406,9 @@ export function AdminDashboardPage() {
           }
           detail="من بيانات الدفع والطلب الفعلية"
         />
+        </a>
 
+        <a href="/admin/inventory?filter=low-stock" data-rukn-dashboard-link="تنبيهات المخزون" className="block cursor-pointer rounded-[17px] transition hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#315F5B]">
         <MetricCard
           icon={PackageCheck}
           label="تنبيهات المخزون"
@@ -415,7 +422,9 @@ export function AdminDashboardPage() {
           }
           detail="متغيرات وصلت لحد المخزون المنخفض"
         />
+        </a>
 
+        <a href="#abandoned-carts" data-rukn-dashboard-link="السلات المتروكة" className="block cursor-pointer rounded-[17px] transition hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#315F5B]">
         <MetricCard
           icon={Store}
           label="السلات المتروكة"
@@ -433,6 +442,7 @@ export function AdminDashboardPage() {
               : "محسوبة من نشاط السلات الحقيقي"
           }
         />
+        </a>
       </div>
 
       <div className="mt-5 grid gap-5 xl:grid-cols-[1.35fr_.65fr]">
@@ -568,7 +578,7 @@ export function AdminDashboardPage() {
       </div>
 
       <div className="mt-5 grid gap-5 lg:grid-cols-2">
-        <section className="overflow-hidden rounded-[17px] border border-black/[0.065] bg-white">
+        <section id="abandoned-carts" className="overflow-hidden rounded-[17px] border border-black/[0.065] bg-white">
           <SectionHeader
             title="السلات المتروكة"
             subtitle="نشاط حقيقي لم يتحول إلى طلب"

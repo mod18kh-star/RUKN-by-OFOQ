@@ -67,6 +67,8 @@ using OFOQ.Market.Application.Identity.Mfa.RecoveryCodes.Consume;
 using OFOQ.Market.Application.Identity.Mfa.RecoveryCodes.Generate;
 using OFOQ.Market.Application.Identity.Mfa.RecoveryCodes.Regenerate;
 using OFOQ.Market.Application.Identity.Mfa.StartEnrollment;
+using OFOQ.Market.Application.Identity.Mfa.Reauthentication;
+using OFOQ.Market.Application.Identity.Mfa.Settings;
 using OFOQ.Market.Application.Identity.RegisterUser;
 using OFOQ.Market.Application.Identity.Sessions;
 using OFOQ.Market.Application.Identity.TrustedDevices;
@@ -396,6 +398,12 @@ public static class DependencyInjection
 
         services.AddScoped<
             AuthenticationSessionService>();
+
+        services.AddScoped<
+            VerifyMfaReauthenticationHandler>();
+
+        services.AddScoped<
+            UpdateMfaReopenPolicyHandler>();
 
         services.AddScoped<
             GoogleSignInHandler>();

@@ -32,6 +32,8 @@ import {
   type CurrentUser,
 } from "../../features/auth/authSession";
 
+import { StorefrontPageBrand } from "../components/StorefrontPageBrand";
+
 interface ProfileResponse {
   userId: string;
   email: string;
@@ -256,9 +258,10 @@ export function StorefrontAccountPage() {
             العودة للصفحة السابقة
           </Link>
 
-          <span className="text-xs font-semibold tracking-widest text-[#849187]">
-            RUKN
-          </span>
+          <StorefrontPageBrand
+            storeSlug={storeSlug}
+            className="text-xs font-semibold tracking-wide text-[#849187]"
+          />
         </div>
 
         <div className="overflow-hidden rounded-2xl border border-black/[0.07] bg-white shadow-sm">

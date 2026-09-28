@@ -8,6 +8,7 @@ using OFOQ.Market.Application.Catalog.Products.GetProducts;
 using OFOQ.Market.Application.Catalog.Products.Inventory;
 using OFOQ.Market.Application.Catalog.Products.UpdateProduct;
 using OFOQ.Market.Application.Common.Tenancy;
+using OFOQ.Market.Application.Common.Persistence;
 using OFOQ.Market.Contracts.Catalog;
 using OFOQ.Market.Domain.Catalog;
 using OFOQ.Market.Domain.Identity;
@@ -293,6 +294,11 @@ public static class ProductEndpoints
             return Conflict(
                 "product_default_variant_not_found",
                 exception.Message);
+        }
+        catch (StockHoldUnavailableException)
+        {
+            return Conflict("active_stock_reservations",
+                "لا يمكن تقليل المخزون أو تغيير تتبعه لوجود منتجات محجوزة للعملاء.");
         }
         catch (TenantScopeViolationException)
         {

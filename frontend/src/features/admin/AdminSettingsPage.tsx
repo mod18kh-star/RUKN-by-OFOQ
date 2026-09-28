@@ -42,6 +42,14 @@ import {
   StoreContactSettings,
 } from "./store-profile/StoreContactSettings";
 
+import {
+  authRequest,
+  getCurrentUser,
+} from "../auth/authSession";
+
+import {
+  type MfaReopenPolicy,
+} from "../auth/mfaSessionPolicy";
 
 type RequestKind =
   | "plan"
@@ -83,6 +91,52 @@ export function AdminSettingsPage() {
   );
   const [email, setEmail] = useState("");
 
+  const [mfaPolicy, setMfaPolicy] =
+    useState<MfaReopenPolicy>(
+      "EveryBrowserSession",
+    );
+
+  const [securityLoading, setSecurityLoading] =
+    useState(true);
+
+  const [securityBusy, setSecurityBusy] =
+    useState(false);
+
+  const [securityMessage, setSecurityMessage] =
+    useState<string | null>(
+      null,
+    );
+
+  const [securityError, setSecurityError] =
+    useState<string | null>(
+      null,
+    );
+
+  const loadSecurity = useCallback(async () => {
+    try {
+      const user =
+        await getCurrentUser();
+
+      setMfaPolicy(
+        user.mfaReopenPolicy,
+      );
+
+      setSecurityError(
+        null,
+      );
+    } catch (exception) {
+      setSecurityError(
+        exception instanceof Error
+          ? exception.message
+          : "تعذر تحميل إعدادات الأمان.",
+      );
+    } finally {
+      setSecurityLoading(
+        false,
+      );
+    }
+  }, []);
+
   const load = useCallback(async () => {
     if (!store?.tenantId) {
       setLoading(false);
@@ -109,10 +163,64 @@ export function AdminSettingsPage() {
   useEffect(() => {
     const timer = window.setTimeout(() => {
       void load();
+      void loadSecurity();
     }, 0);
 
     return () => window.clearTimeout(timer);
-  }, [load]);
+  }, [
+    load,
+    loadSecurity,
+  ]);
+
+  async function updateMfaPolicy(
+    nextPolicy: MfaReopenPolicy,
+  ) {
+    setSecurityBusy(
+      true,
+    );
+
+    setSecurityMessage(
+      null,
+    );
+
+    setSecurityError(
+      null,
+    );
+
+    try {
+      const result =
+        await authRequest<{
+          policy: MfaReopenPolicy;
+        }>(
+          "/api/auth/mfa/reopen-policy",
+          {
+            method: "PUT",
+            body: JSON.stringify({
+              policy:
+                nextPolicy,
+            }),
+          },
+        );
+
+      setMfaPolicy(
+        result.policy,
+      );
+
+      setSecurityMessage(
+        "تم حفظ سياسة إعادة التحقق.",
+      );
+    } catch (exception) {
+      setSecurityError(
+        exception instanceof Error
+          ? exception.message
+          : "تعذر حفظ إعداد الأمان.",
+      );
+    } finally {
+      setSecurityBusy(
+        false,
+      );
+    }
+  }
 
   const pendingCount = useMemo(
     () =>
@@ -237,20 +345,73 @@ export function AdminSettingsPage() {
           onClick={() => setKind("email")}
         />
 
-        <Link
-          to="/security/setup?returnTo=%2Fadmin%2Fsettings"
-          className="group rounded-[16px] border border-black/[0.07] bg-white p-5 transition hover:border-black/15"
-        >
+        <div className="rounded-[16px] border border-black/[0.07] bg-white p-5">
           <div className="flex size-9 items-center justify-center rounded-[10px] bg-[#f2ede4] text-[#78592f]">
             <KeyRound size={16} />
           </div>
+
           <h3 className="mt-4 text-[11px] font-semibold">
             أمان الحساب
           </h3>
+
           <p className="mt-2 text-[9px] leading-5 text-black/40">
-            إدارة التحقق بخطوتين والوصول الآمن إلى لوحة المتجر.
+            اختر متى يطلب ركن رمز التحقق عند فتح لوحة المتجر من جلسة متصفح جديدة.
           </p>
-        </Link>
+
+          <select
+            value={mfaPolicy}
+            disabled={
+              securityLoading ||
+              securityBusy
+            }
+            onChange={(event) =>
+              void updateMfaPolicy(
+                event.target.value as MfaReopenPolicy,
+              )
+            }
+            className="mt-4 h-10 w-full rounded-[10px] border border-black/[0.09] bg-[#fbfaf7] px-3 text-[10px] outline-none disabled:opacity-50"
+          >
+            <option value="EveryBrowserSession">
+              كل جلسة متصفح جديدة
+            </option>
+
+            <option value="Minutes15">
+              بعد 15 دقيقة
+            </option>
+
+            <option value="Minutes30">
+              بعد 30 دقيقة
+            </option>
+
+            <option value="Minutes60">
+              بعد 60 دقيقة
+            </option>
+          </select>
+
+          <p className="mt-3 text-[8px] leading-5 text-black/35">
+            طالما اللوحة مفتوحة لن يطلب الرمز بسبب مدة 15/30/60 دقيقة. يوجد حد أمان ثابت قدره 6 ساعات من آخر تحقق MFA.
+          </p>
+
+          {securityMessage ? (
+            <p className="mt-3 text-[9px] text-emerald-700">
+              {securityMessage}
+            </p>
+          ) : null}
+
+          {securityError ? (
+            <p className="mt-3 text-[9px] text-red-700">
+              {securityError}
+            </p>
+          ) : null}
+
+          <Link
+            to="/security/setup?returnTo=%2Fadmin%2Fsettings&reauth=1"
+            className="mt-4 inline-flex items-center gap-1 text-[9px] font-semibold text-[#78592f]"
+          >
+            تأكيد الرمز الآن
+            <ArrowLeft size={11} />
+          </Link>
+        </div>
       </div>
 
       <StoreContactSettings tenantId={store.tenantId} />

@@ -48,6 +48,8 @@ public sealed class CheckoutHandler
     private readonly ITransactionalEmailQueue?
         _emailQueue;
 
+    private readonly IStockHoldLedger? _holds;
+
     public CheckoutHandler(
         ICartRepository cartRepository,
         ICheckoutLockRepository checkoutLockRepository,
@@ -60,7 +62,8 @@ public sealed class CheckoutHandler
         IUnitOfWork unitOfWork,
         TimeProvider timeProvider,
         CheckoutPricingService? checkoutPricingService = null,
-        ITransactionalEmailQueue? emailQueue = null)
+        ITransactionalEmailQueue? emailQueue = null,
+        IStockHoldLedger? holds = null)
     {
         _cartRepository =
             cartRepository;
@@ -97,11 +100,25 @@ public sealed class CheckoutHandler
 
         _emailQueue =
             emailQueue;
+        _holds = holds;
     }
 
-    public async Task<CheckoutResult> HandleAsync(
+    // Used exclusively by the atomic manual-receipt submission endpoint. The caller
+    // owns the EF/Npgsql transaction and its execution-strategy retry.
+    public Task<CheckoutResult> HandleWithinExistingTransactionAsync(
         CheckoutCommand command,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default) =>
+        HandleCoreAsync(command, cancellationToken, withinExistingTransaction: true);
+
+    public Task<CheckoutResult> HandleAsync(
+        CheckoutCommand command,
+        CancellationToken cancellationToken = default) =>
+        HandleCoreAsync(command, cancellationToken, withinExistingTransaction: false);
+
+    private async Task<CheckoutResult> HandleCoreAsync(
+        CheckoutCommand command,
+        CancellationToken cancellationToken,
+        bool withinExistingTransaction)
     {
         ArgumentNullException.ThrowIfNull(
             command);
@@ -143,7 +160,11 @@ public sealed class CheckoutHandler
                         command.CustomerUserId,
                         cancellationToken);
 
-            if (activeCart is not null)
+            // With deferred stock capture the same cart stays visible until payment.
+            // Only replay when it is still the source cart of this pending order.
+            if (activeCart is not null &&
+                (activeCart.Id != completedOrder.SourceCartId ||
+                 completedOrder.Status != OrderStatus.Pending))
             {
                 throw new CheckoutIdempotencyConflictException();
             }
@@ -153,10 +174,8 @@ public sealed class CheckoutHandler
                 isIdempotentReplay: true);
         }
 
-        return await _transactionExecutor
-            .ExecuteAsync(
-                async transactionCancellationToken =>
-                {
+        async Task<CheckoutResult> ExecuteCheckoutAsync(CancellationToken transactionCancellationToken)
+        {
                     var cart =
                         await _checkoutLockRepository
                             .GetActiveCartForUpdateAsync(
@@ -207,6 +226,20 @@ public sealed class CheckoutHandler
                         return MapOrder(
                             existingOrder,
                             isIdempotentReplay: true);
+                    }
+
+                    if (_holds?.Enabled == true)
+                    {
+                        // Reusing the current checkout, even with a freshly generated
+                        // request key, must not create a second order for one cart.
+                        var sourceOrder = await _orderRepository.GetBySourceCartIdAsync(
+                            cart.Id, transactionCancellationToken);
+                        if (sourceOrder is not null)
+                        {
+                            if (sourceOrder.Status != OrderStatus.Pending)
+                                throw new CheckoutIdempotencyConflictException();
+                            return MapOrder(sourceOrder, isIdempotentReplay: true);
+                        }
                     }
 
                     if (cart.Items.Count == 0)
@@ -383,31 +416,18 @@ public sealed class CheckoutHandler
                         now,
                         command.CustomerUserId.Value);
 
-                    foreach (var item in
-                             cart.Items)
+                    if (_holds?.Enabled != true)
                     {
-                        var variant =
-                            variantsById[
-                                item.ProductVariantId];
-
-                        var quantityBefore =
-                            variant.Inventory.Quantity;
-
-                        variant.DecreaseStock(
-                            item.Quantity,
-                            now,
-                            command.CustomerUserId.Value);
-
-                        var quantityAfter =
-                            variant.Inventory.Quantity;
-
-                        order.RecordCheckoutInventoryDeduction(
-                            item.ProductId,
-                            variant.Id,
-                            quantityBefore,
-                            quantityAfter,
-                            now,
-                            command.CustomerUserId.Value);
+                        // Legacy behavior remains available until the new migration
+                        // and manual-payment acceptance suite have been verified.
+                        foreach (var item in cart.Items)
+                        {
+                            var variant = variantsById[item.ProductVariantId];
+                            var before = variant.Inventory.Quantity;
+                            variant.DecreaseStock(item.Quantity, now, command.CustomerUserId.Value);
+                            order.RecordCheckoutInventoryDeduction(item.ProductId, variant.Id,
+                                before, variant.Inventory.Quantity, now, command.CustomerUserId.Value);
+                        }
                     }
 
                     await _orderRepository
@@ -425,9 +445,27 @@ public sealed class CheckoutHandler
                             transactionCancellationToken);
                     }
 
-                    cart.MarkConverted(
-                        now,
-                        command.CustomerUserId.Value);
+                    if (_holds?.Enabled == true)
+                    {
+                        // The order and redemption are saved in this same transaction
+                        // before adding the ledger marker's foreign key.
+                        await _unitOfWork.SaveChangesAsync(transactionCancellationToken);
+                        try
+                        {
+                            await _holds.ConvertCartToOrderAsync(cart, order, now,
+                                transactionCancellationToken);
+                        }
+                        catch (StockHoldUnavailableException)
+                        {
+                            throw new CheckoutInsufficientStockException();
+                        }
+                    }
+
+                    // Legacy checkout deducts stock now and converts the cart.
+                    // Deferred checkout keeps it visible but freezes all mutations
+                    // until a payment decision or an explicit safe edit request.
+                    if (_holds?.Enabled != true)
+                        cart.MarkConverted(now, command.CustomerUserId.Value);
 
                     if (_emailQueue is not null)
                     {
@@ -447,8 +485,11 @@ public sealed class CheckoutHandler
                     return MapOrder(
                         order,
                         isIdempotentReplay: false);
-                },
-                cancellationToken);
+        }
+
+        return withinExistingTransaction
+            ? await ExecuteCheckoutAsync(cancellationToken)
+            : await _transactionExecutor.ExecuteAsync(ExecuteCheckoutAsync, cancellationToken);
     }
 
     private async Task EnsureStructuredVariantIsValidAsync(

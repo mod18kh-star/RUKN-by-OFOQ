@@ -12,6 +12,34 @@ namespace OFOQ.Market.Application.Tests.Commerce.Checkout;
 public sealed class CheckoutHandlerTests
 {
     [Fact]
+    public async Task HandleAsync_DeferredPayment_KeepsOneActiveCartAndReusesPendingOrder()
+    {
+        var setup = CreateSetup(
+            productPrice: 25m,
+            cartSnapshotPrice: 25m,
+            stockQuantity: 8,
+            requestedQuantity: 2,
+            deferredCheckout: true);
+
+        var first = await setup.Handler.HandleAsync(
+            new CheckoutCommand(setup.CustomerUserId, "first-key"));
+        var second = await setup.Handler.HandleAsync(
+            new CheckoutCommand(setup.CustomerUserId, "second-key"));
+        var retry = await setup.Handler.HandleAsync(
+            new CheckoutCommand(setup.CustomerUserId, "first-key"));
+
+        Assert.Equal(first.OrderId, second.OrderId);
+        Assert.Equal(first.OrderId, retry.OrderId);
+        Assert.False(first.IsIdempotentReplay);
+        Assert.True(second.IsIdempotentReplay);
+        Assert.True(retry.IsIdempotentReplay);
+        Assert.Equal(CartStatus.Active, setup.Cart.Status);
+        Assert.Single(setup.Cart.Items);
+        Assert.Equal(8, setup.Variant.Inventory.Quantity);
+        Assert.Single(setup.OrderRepository.Items);
+    }
+
+    [Fact]
     public async Task HandleAsync_Success_RepricesCreatesPendingOrderDecreasesStockAndConvertsCart()
     {
         var setup =
@@ -296,7 +324,8 @@ public sealed class CheckoutHandlerTests
         int stockQuantity,
         int requestedQuantity,
         bool trackInventory = true,
-        bool continueSellingWhenOutOfStock = false)
+        bool continueSellingWhenOutOfStock = false,
+        bool deferredCheckout = false)
     {
         var now =
             new DateTimeOffset(
@@ -399,7 +428,8 @@ public sealed class CheckoutHandlerTests
                 new InlineTransactionExecutor(),
                 unitOfWork,
                 new FixedTimeProvider(
-                    now.AddMinutes(2)));
+                    now.AddMinutes(2)),
+                holds: deferredCheckout ? new FakeStockHoldLedger() : null);
 
         return new CheckoutTestSetup(
             handler,
@@ -483,6 +513,28 @@ public sealed class CheckoutHandlerTests
             return Task.FromResult(
                 1);
         }
+    }
+
+    private sealed class FakeStockHoldLedger : IStockHoldLedger
+    {
+        public bool Enabled => true;
+        public Task ReserveCartLineAsync(CartId cartId, ProductVariantId variantId,
+            int quantity, DateTimeOffset now, CancellationToken ct) => Task.CompletedTask;
+        public Task ReleaseCartLineAsync(CartId cartId, ProductVariantId variantId,
+            CancellationToken ct) => Task.CompletedTask;
+        public Task ReleaseCartAsync(CartId cartId, CancellationToken ct) => Task.CompletedTask;
+        public Task ConvertCartToOrderAsync(Cart cart, Order order, DateTimeOffset now,
+            CancellationToken ct) => Task.CompletedTask;
+        public Task<bool> IsDeferredOrderAsync(OrderId orderId,
+            CancellationToken ct) => Task.FromResult(true);
+        public Task HoldOrderForReviewAsync(Order order, DateTimeOffset now,
+            CancellationToken ct) => Task.CompletedTask;
+        public Task CaptureOrderAsync(Order order, DateTimeOffset now,
+            Guid? actor, CancellationToken ct) => Task.CompletedTask;
+        public Task ReleaseOrderAsync(OrderId orderId, CancellationToken ct) => Task.CompletedTask;
+        public Task GuardInventoryAdjustmentAsync(ProductVariantId variantId,
+            int proposedPhysicalQuantity, bool trackInventory, bool continueSelling,
+            DateTimeOffset now, CancellationToken ct) => Task.CompletedTask;
     }
 
     private sealed class FakeCartRepository :

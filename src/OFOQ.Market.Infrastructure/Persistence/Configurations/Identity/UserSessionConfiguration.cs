@@ -61,6 +61,9 @@ internal sealed class UserSessionConfiguration :
                 session => session.CreatedAtUtc)
             .HasColumnName("created_at_utc")
             .IsRequired();
+        builder.Property(
+                session => session.LastMfaVerifiedAtUtc)
+            .HasColumnName("last_mfa_verified_at_utc");
 
         builder.Property(
                 session => session.LastSeenAtUtc)

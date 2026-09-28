@@ -57,6 +57,8 @@ public static class OrderEndpoints
             "/{orderId:guid}/deliver",
             DeliverAsync);
 
+        group.MapPost("/{orderId:guid}/collect", CollectAsync);
+
         group.MapPost(
             "/{orderId:guid}/cancel",
             CancelAsync);
@@ -244,6 +246,16 @@ public static class OrderEndpoints
             handler,
             httpContext,
             cancellationToken);
+    }
+
+    private static Task<IResult> CollectAsync(
+        Guid orderId,
+        ChangeOrderLifecycleHandler handler,
+        HttpContext httpContext,
+        CancellationToken cancellationToken)
+    {
+        return ChangeLifecycleAsync(orderId, OrderLifecycleAction.Collect,
+            null, null, handler, httpContext, cancellationToken);
     }
 
     private static Task<IResult> ShipAsync(

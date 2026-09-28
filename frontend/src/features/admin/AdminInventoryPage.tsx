@@ -180,14 +180,23 @@ export function AdminInventoryPage() {
     }
   }
 
-  const rows = products.flatMap((product) =>
+  const inventoryFilter = new URLSearchParams(window.location.search).get("filter");
+
+  const allRows = products.flatMap((product) =>
     product.variants.map((variant) => ({
       productName: product.name,
       variant,
     }))
   );
 
-  const totalUnits = rows.reduce(
+  const rows = inventoryFilter === "low-stock"
+    ? allRows.filter(({ variant }) =>
+        variant.trackInventory &&
+        variant.quantity <= variant.lowStockThreshold
+      )
+    : allRows;
+
+  const totalUnits = allRows.reduce(
     (sum, row) =>
       sum + (row.variant.trackInventory ? row.variant.quantity : 0),
     0

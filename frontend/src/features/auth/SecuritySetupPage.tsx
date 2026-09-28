@@ -33,6 +33,10 @@ import {
 } from "./developmentSecurity";
 
 import {
+  markMfaBrowserSessionFromToken,
+} from "./mfaSessionPolicy";
+
+import {
   safeInternalPath,
 } from "./postAuth";
 
@@ -44,6 +48,13 @@ interface StartEnrollmentResponse {
 interface ConfirmEnrollmentResponse {
   accessToken: string;
   accessTokenExpiresAtUtc: string;
+}
+
+interface VerifyReauthenticationResponse {
+  userId: string;
+  email: string;
+  accessToken: string;
+  expiresAtUtc: string;
 }
 
 const googleAuthenticatorAndroidUrl =
@@ -69,6 +80,11 @@ export function SecuritySetupPage() {
       ),
     ) ?? "/admin";
 
+  const forceReauthentication =
+    searchParams.get(
+      "reauth",
+    ) === "1";
+
   const [loading, setLoading] =
     useState(true);
 
@@ -82,6 +98,9 @@ export function SecuritySetupPage() {
     useState<StartEnrollmentResponse | null>(
       null,
     );
+
+  const [reauthentication, setReauthentication] =
+    useState(false);
 
   const [mfaQr, setMfaQr] = useState<{
     uri: string;
@@ -136,29 +155,30 @@ export function SecuritySetupPage() {
           return;
         }
 
-        if (
-          user.mfaEnabled &&
-          user.sessionMfaVerified
-        ) {
-          if (!cancelled) {
-            setAlreadyReady(true);
-            setLoading(false);
+        if (user.mfaEnabled) {
+          if (
+            user.sessionMfaVerified &&
+            !forceReauthentication
+          ) {
+            if (!cancelled) {
+              setAlreadyReady(true);
+              setLoading(false);
+            }
+
+            return;
           }
 
-          return;
-        }
-
-        if (user.mfaEnabled) {
           /*
-           * This account is already enrolled in Google Authenticator.
-           * Never show enrollment again.
+           * Existing MFA enrollment:
+           * verify only the current TOTP code.
            *
-           * Send the user back through the normal login flow so
-           * password verification can produce an MFA challenge,
-           * then AuthPage asks only for the current 6-digit code.
+           * No password is requested while the backend
+           * refresh session remains valid.
            */
           if (!cancelled) {
-            setLoginRequired(true);
+            setReauthentication(
+              true,
+            );
             setLoading(false);
           }
 
@@ -206,7 +226,7 @@ export function SecuritySetupPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [forceReauthentication]);
 
   // RUKN_MFA_LOCAL_QR_V1: render the TOTP provisioning URI entirely in the browser.
   // Never send this secret-bearing URI to a third-party QR endpoint or to analytics.
@@ -259,6 +279,66 @@ export function SecuritySetupPage() {
     );
   }
 
+  async function confirmReauthentication(
+    event:
+      FormEvent<HTMLFormElement>,
+  ) {
+    event.preventDefault();
+
+    if (
+      !reauthentication ||
+      code.trim().length !== 6
+    ) {
+      setError(
+        "أدخل رمز التحقق المكوّن من 6 أرقام.",
+      );
+      return;
+    }
+
+    setBusy(true);
+    setError(null);
+
+    try {
+      const result =
+        await authRequest<VerifyReauthenticationResponse>(
+          "/api/auth/mfa/reauth/totp",
+          {
+            method: "POST",
+            body: JSON.stringify({
+              code:
+                code.trim(),
+            }),
+          },
+        );
+
+      saveAccessSession(
+        result.accessToken,
+        result.expiresAtUtc,
+        result.email,
+        result.userId,
+      );
+
+      markMfaBrowserSessionFromToken(
+        result.accessToken,
+      );
+
+      navigate(
+        returnTo,
+        {
+          replace: true,
+        },
+      );
+    } catch (caught) {
+      setError(
+        caught instanceof Error
+          ? caught.message
+          : "تعذر تأكيد رمز التحقق.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function confirm(
     event:
       FormEvent<HTMLFormElement>,
@@ -292,6 +372,11 @@ export function SecuritySetupPage() {
         result.accessToken,
         result.accessTokenExpiresAtUtc,
       );
+
+      markMfaBrowserSessionFromToken(
+        result.accessToken,
+      );
+
       navigate(
         returnTo,
         {
@@ -341,13 +426,19 @@ export function SecuritySetupPage() {
           <div>
             <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-[#a57a43]/20 bg-[#efe6d8] px-3 py-1.5 text-[11px] font-semibold text-[#7c5a30]">
               <ShieldCheck size={14} />
-              خطوة أمان لمرة واحدة
+              {reauthentication
+                ? "تأكيد أمان الجلسة"
+                : "خطوة أمان لمرة واحدة"}
             </div>
             <h1 className="text-[30px] font-semibold tracking-[-0.045em] sm:text-[36px]">
-              أمّن دخولك إلى ركن
+              {reauthentication
+                ? "أكّد دخولك إلى لوحة المتجر"
+                : "أمّن دخولك إلى ركن"}
             </h1>
             <p className="mt-3 max-w-[620px] text-[13px] leading-7 text-black/55">
-              نستخدم Google Authenticator لحماية إدارة المتجر. الإعداد الأول يستغرق أقل من دقيقة، وبعدها ستدخل رمزًا من 6 أرقام مع كلمة المرور عند كل تسجيل دخول.
+              {reauthentication
+                ? "أدخل الرمز الحالي من Google Authenticator. لا تحتاج إلى كلمة المرور ما دامت جلسة الدخول الأساسية صالحة."
+                : "نستخدم Google Authenticator لحماية إدارة المتجر. بعد الربط ستحتاج إلى رمز التحقق حسب سياسة الأمان التي تختارها."}
             </p>
           </div>
 
@@ -361,6 +452,64 @@ export function SecuritySetupPage() {
             <div className="px-6 py-20 text-center text-[12px] text-black/45">
               جاري تجهيز حماية الحساب…
             </div>
+          ) : reauthentication ? (
+            <form
+              onSubmit={confirmReauthentication}
+              className="mx-auto max-w-[560px] p-7 sm:p-9"
+            >
+              <div className="flex size-11 items-center justify-center rounded-full bg-[#f1ece2] text-[#846236]">
+                <KeyRound size={18} />
+              </div>
+
+              <h2 className="mt-5 text-[20px] font-semibold">
+                أكّد جلسة لوحة المتجر
+              </h2>
+
+              <p className="mt-2 text-[12px] leading-6 text-black/50">
+                افتح Google Authenticator واكتب الرمز الحالي. لن نطلب كلمة المرور ما دامت جلسة تسجيل الدخول الأساسية صالحة.
+              </p>
+
+              <input
+                dir="ltr"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                autoFocus
+                value={code}
+                onChange={(event) =>
+                  setCode(
+                    event.target.value.replace(
+                      /\D/g,
+                      "",
+                    ),
+                  )
+                }
+                maxLength={6}
+                placeholder="000000"
+                className="mt-6 h-14 w-full rounded-[12px] border border-black/10 bg-[#fbfaf7] px-4 text-center text-[22px] font-semibold tracking-[0.32em] outline-none"
+              />
+
+              {error ? (
+                <div className="mt-4 rounded-[11px] border border-red-200 bg-red-50 px-4 py-3 text-[11px] text-red-700">
+                  {error}
+                </div>
+              ) : null}
+
+              <button
+                disabled={
+                  busy ||
+                  code.length !== 6
+                }
+                className="mt-5 h-12 w-full rounded-[12px] bg-[#18201d] text-[11px] font-semibold text-white disabled:opacity-40"
+              >
+                {busy
+                  ? "جاري التحقق…"
+                  : "تأكيد الجلسة"}
+              </button>
+
+              <p className="mt-4 text-center text-[10px] leading-5 text-black/35">
+                بعد 6 ساعات من آخر تحقق MFA سيطلب ركن رمزًا جديدًا حتى لو بقيت اللوحة مفتوحة.
+              </p>
+            </form>
           ) : enrollment ? (
             <div className="grid lg:grid-cols-[1.08fr_.92fr]">
               <div className="border-b border-black/[0.07] p-6 sm:p-8 lg:border-b-0 lg:border-l">

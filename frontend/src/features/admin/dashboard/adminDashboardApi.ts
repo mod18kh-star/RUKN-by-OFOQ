@@ -1,3 +1,5 @@
+import { authorizedApiFetch } from "../../auth/authSession";
+
 export interface MerchantAnalyticsCurrency {
   currency: string;
   paidOrders: number;
@@ -60,6 +62,17 @@ export interface MerchantOrderTimelineEntry {
 }
 
 export interface MerchantOrderDetail extends MerchantOrderSummary {
+  appliedCouponCode: string | null;
+  shippingMethodName: string | null;
+  shippingMethodType: string | null;
+  shippingRecipientName: string | null;
+  shippingRecipientPhone: string | null;
+  shippingCountryCode: string | null;
+  shippingRegion: string | null;
+  shippingCity: string | null;
+  shippingPostalCode: string | null;
+  shippingAddressLine1: string | null;
+  shippingAddressLine2: string | null;
   cancellationReason: string | null;
   shippedAtUtc: string | null;
   deliveredAtUtc: string | null;
@@ -87,20 +100,6 @@ export class AdminOperationApiError extends Error {
 const apiBaseUrl = (
   import.meta.env.VITE_API_BASE_URL ?? ""
 ).replace(/\/+$/, "");
-
-function getHeaders() {
-  const token =
-    window.localStorage.getItem("ofoq.access-token") ?? "";
-
-  return {
-    "Content-Type": "application/json",
-    ...(token
-      ? {
-          Authorization: `Bearer ${token}`,
-        }
-      : {}),
-  };
-}
 
 async function throwApiError(response: Response): Promise<never> {
   let code: string | null = null;
@@ -152,12 +151,10 @@ export async function getMerchantAnalytics(
     topProducts: "5",
   });
 
-  const response = await fetch(
+  const response = await authorizedApiFetch(
     `${tenantBackofficeUrl(tenantId)}/analytics/summary?${params.toString()}`,
     {
       method: "GET",
-      credentials: "include",
-      headers: getHeaders(),
     },
   );
 
@@ -176,12 +173,10 @@ export async function getMerchantOrders(
     take: String(take),
   });
 
-  const response = await fetch(
+  const response = await authorizedApiFetch(
     `${tenantBackofficeUrl(tenantId)}/orders/?${params.toString()}`,
     {
       method: "GET",
-      credentials: "include",
-      headers: getHeaders(),
     },
   );
 
@@ -196,12 +191,10 @@ export async function getMerchantOrderById(
   tenantId: string,
   orderId: string,
 ): Promise<MerchantOrderDetail> {
-  const response = await fetch(
+  const response = await authorizedApiFetch(
     `${tenantBackofficeUrl(tenantId)}/orders/${encodeURIComponent(orderId)}`,
     {
       method: "GET",
-      credentials: "include",
-      headers: getHeaders(),
     },
   );
 
@@ -276,14 +269,12 @@ export async function getMerchantDashboardSummary(
     take: String(take),
   });
 
-  const response = await fetch(
+  const response = await authorizedApiFetch(
     `${tenantBackofficeUrl(
       tenantId,
     )}/dashboard/summary?${params.toString()}`,
     {
       method: "GET",
-      credentials: "include",
-      headers: getHeaders(),
     },
   );
 
@@ -292,4 +283,21 @@ export async function getMerchantDashboardSummary(
   }
 
   return (await response.json()) as MerchantOperationsDashboard;
+}
+
+/** Changes an operational order state; the API validates all transitions. */
+export async function changeMerchantOrderState(
+  tenantId: string,
+  orderId: string,
+  action: "confirm" | "processing" | "ready-to-ship" | "ship" | "in-transit" | "deliver" | "collect",
+  shipping?: { shippingCarrier: string; trackingNumber: string },
+): Promise<void> {
+  const response = await authorizedApiFetch(
+    `${tenantBackofficeUrl(tenantId)}/orders/${encodeURIComponent(orderId)}/${action}`,
+    {
+      method: "POST",
+      ...(shipping ? { body: JSON.stringify(shipping) } : {}),
+    },
+  );
+  if (!response.ok) return throwApiError(response);
 }

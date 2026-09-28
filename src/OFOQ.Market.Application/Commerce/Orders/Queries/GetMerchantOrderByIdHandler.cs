@@ -60,7 +60,10 @@ public sealed class GetMerchantOrderByIdHandler
                     query.OrderId,
                     cancellationToken);
 
-        if (order is null)
+        // Pending checkout orders can be seen by the customer, but are not
+        // operational orders for the merchant. Manual receipt review has its
+        // own restricted endpoint and becomes visible after proof upload.
+        if (order is null || order.Status == OFOQ.Market.Domain.Commerce.Orders.OrderStatus.Pending)
         {
             return null;
         }

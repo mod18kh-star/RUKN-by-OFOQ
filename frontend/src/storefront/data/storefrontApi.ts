@@ -371,6 +371,12 @@ export interface StorefrontProductAttribute {
   value: string;
 }
 
+export interface StorefrontProductHighlight {
+  title: string;
+  body: string | null;
+  sortOrder: number;
+}
+
 export interface StorefrontProductDetail {
   productId: string;
   name: string;
@@ -388,6 +394,7 @@ export interface StorefrontProductDetail {
   images: StorefrontProductImage[];
   variants: StorefrontVariant[];
   attributes: StorefrontProductAttribute[];
+  highlights: StorefrontProductHighlight[];
 }
 
 export function getStorefrontProduct(
@@ -419,5 +426,25 @@ export function getStorefrontNavigation(
 
   return fetchJson<StorefrontNavigationItem[]>(
     `${storePath(storeSlug)}/navigation?${params.toString()}`,
+  );
+}
+
+export interface PublicProductReview {
+  id: string;
+  rating: number;
+  body: string | null;
+  isVerifiedPurchase: boolean;
+  merchantReply: string | null;
+  createdAtUtc: string;
+}
+export interface PublicProductReviewPage {
+  averageRating: number;
+  reviewCount: number;
+  reviews: PublicProductReview[];
+}
+export function getStorefrontProductReviews(storeSlug: string, productSlug: string, take = 20) {
+  const params = new URLSearchParams({ take: String(take) });
+  return fetchJson<PublicProductReviewPage>(
+    `${storePath(storeSlug)}/products/${encodeURIComponent(productSlug)}/reviews?${params.toString()}`,
   );
 }

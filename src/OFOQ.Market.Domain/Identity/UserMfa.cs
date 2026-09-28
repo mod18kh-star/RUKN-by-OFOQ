@@ -36,6 +36,9 @@ public sealed class UserMfa :
 
     public long? LastAcceptedTimeStep { get; private set; }
 
+    public MfaReopenPolicy ReopenPolicy { get; private set; } =
+        MfaReopenPolicy.EveryBrowserSession;
+
     public DateTimeOffset CreatedAtUtc { get; private set; }
 
     public Guid? CreatedByUserId { get; private set; }
@@ -153,6 +156,30 @@ public sealed class UserMfa :
 
         LastAcceptedTimeStep =
             timeStep;
+
+        MarkUpdated(
+            updatedAtUtc,
+            updatedByUserId);
+    }
+
+    public void UpdateReopenPolicy(
+        MfaReopenPolicy policy,
+        DateTimeOffset updatedAtUtc,
+        Guid? updatedByUserId = null)
+    {
+        if (!Enum.IsDefined(policy))
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(policy));
+        }
+
+        if (ReopenPolicy == policy)
+        {
+            return;
+        }
+
+        ReopenPolicy =
+            policy;
 
         MarkUpdated(
             updatedAtUtc,

@@ -12,5 +12,7 @@ public enum OrderLifecycleAction
 
     MarkInTransit = 4,
 
-    Deliver = 5
+    Deliver = 5,
+
+    Collect = 6
 }

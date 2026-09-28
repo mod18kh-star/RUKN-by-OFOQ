@@ -27,17 +27,14 @@ public sealed class MerchantOperationsDashboardQueryRepository :
                 .AsNoTracking()
                 .CountAsync(
                     order =>
+                        order.Status != OrderStatus.Pending &&
                         order.Status != OrderStatus.Cancelled &&
                         order.Status != OrderStatus.Fulfilled,
                     cancellationToken);
 
-        var pendingOrders =
-            await _dbContext.Orders
-                .AsNoTracking()
-                .CountAsync(
-                    order =>
-                        order.Status == OrderStatus.Pending,
-                    cancellationToken);
+        // Backoffice must not treat unchecked-out / unpaid orders as actionable.
+        // Payment proof review is served by its separate restricted endpoint.
+        const int pendingOrders = 0;
 
         var paidAwaitingConfirmation =
             await _dbContext.Orders
@@ -50,6 +47,7 @@ public sealed class MerchantOperationsDashboardQueryRepository :
         var recentOrderEntities =
             await _dbContext.Orders
                 .AsNoTracking()
+                .Where(order => order.Status != OrderStatus.Pending)
                 .Include("_items")
                 .OrderByDescending(
                     order =>

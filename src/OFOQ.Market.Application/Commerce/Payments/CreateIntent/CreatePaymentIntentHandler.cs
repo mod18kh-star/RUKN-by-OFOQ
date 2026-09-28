@@ -17,6 +17,7 @@ public sealed class CreatePaymentIntentHandler
     private readonly ITransactionExecutor _transactionExecutor;
     private readonly IUnitOfWork _unitOfWork;
     private readonly TimeProvider _timeProvider;
+    private readonly IStockHoldLedger? _holds;
 
     public CreatePaymentIntentHandler(
         IPaymentRepository paymentRepository,
@@ -27,7 +28,8 @@ public sealed class CreatePaymentIntentHandler
         ICurrentTenant currentTenant,
         ITransactionExecutor transactionExecutor,
         IUnitOfWork unitOfWork,
-        TimeProvider timeProvider)
+        TimeProvider timeProvider,
+        IStockHoldLedger? holds = null)
     {
         _paymentRepository = paymentRepository;
         _paymentIntentRepository = paymentIntentRepository;
@@ -38,6 +40,7 @@ public sealed class CreatePaymentIntentHandler
         _transactionExecutor = transactionExecutor;
         _unitOfWork = unitOfWork;
         _timeProvider = timeProvider;
+        _holds = holds;
     }
 
     public async Task<PaymentIntentResult> HandleAsync(
@@ -75,6 +78,11 @@ public sealed class CreatePaymentIntentHandler
                     command.CustomerUserId);
 
                 var payableOrder = order!;
+                // Deferred stock orders require a separate provider-settlement/refund
+                // reconciliation protocol. Fail closed BEFORE initiating a charge.
+                if (_holds?.Enabled == true &&
+                    await _holds.IsDeferredOrderAsync(payableOrder.Id, transactionCancellationToken))
+                    throw new DeferredStockHoldOnlinePaymentUnsupportedException();
 
                 var replayInsideTransaction = await TryResolveReplayAsync(
                     command,
@@ -213,4 +221,10 @@ public sealed class CreatePaymentIntentHandler
                 "A tenant context is required.");
         }
     }
+}
+
+public sealed class DeferredStockHoldOnlinePaymentUnsupportedException : InvalidOperationException
+{
+    public DeferredStockHoldOnlinePaymentUnsupportedException()
+        : base("الدفع الإلكتروني غير متاح لهذا الطلب حاليًا. استخدم التحويل اليدوي.") { }
 }

@@ -11,6 +11,7 @@ import {
   LogOut,
   Menu,
   Settings2,
+  Star,
   Store,
   X,
 } from "lucide-react";
@@ -65,6 +66,11 @@ const navigation = [
     label: "الطلبات",
     to: "/admin/orders",
     icon: ClipboardList,
+  },
+  {
+    label: "تقييمات العملاء",
+    to: "/admin/reviews",
+    icon: Star,
   },
   {
     label: "واجهة المتجر",

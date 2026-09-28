@@ -11,4 +11,6 @@ public sealed record GetCurrentUserContextResult(
     IReadOnlyList<PlatformRole> PlatformRoles,
     bool HasTenantMemberships,
     string? FullName = null,
-    string? PhoneNumber = null);
+    string? PhoneNumber = null,
+    MfaReopenPolicy MfaReopenPolicy =
+        MfaReopenPolicy.EveryBrowserSession);

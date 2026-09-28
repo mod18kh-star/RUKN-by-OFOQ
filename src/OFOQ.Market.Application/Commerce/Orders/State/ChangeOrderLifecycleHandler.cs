@@ -161,6 +161,10 @@ public sealed class ChangeOrderLifecycleHandler
                     command.ActorUserId.Value);
                 break;
 
+            case OrderLifecycleAction.Collect:
+                order.MarkCollected(now, command.ActorUserId.Value);
+                break;
+
             default:
                 throw new ArgumentOutOfRangeException(
                     nameof(command.Action));
@@ -209,7 +213,13 @@ public sealed class ChangeOrderLifecycleHandler
                 order.Status ==
                     OrderStatus.Fulfilled &&
                 order.FulfillmentStatus ==
-                    OrderFulfillmentStatus.Delivered,
+                    OrderFulfillmentStatus.Delivered &&
+                !string.Equals(order.ShippingMethodType, "Pickup", StringComparison.OrdinalIgnoreCase),
+
+            OrderLifecycleAction.Collect =>
+                order.Status == OrderStatus.Fulfilled &&
+                order.FulfillmentStatus == OrderFulfillmentStatus.Delivered &&
+                string.Equals(order.ShippingMethodType, "Pickup", StringComparison.OrdinalIgnoreCase),
 
             _ =>
                 false

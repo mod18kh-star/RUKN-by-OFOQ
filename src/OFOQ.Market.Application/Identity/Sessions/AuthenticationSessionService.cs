@@ -153,6 +153,60 @@ public sealed class AuthenticationSessionService
             cancellationToken);
     }
 
+    public async Task<AuthenticationSessionResult> ReauthenticateAsync(
+        UserId userId,
+        UserSessionId currentSessionId,
+        string? ipAddress,
+        string? userAgent,
+        CancellationToken cancellationToken = default)
+    {
+        if (currentSessionId.IsEmpty)
+        {
+            throw new InvalidAuthenticationSessionException();
+        }
+
+        var now =
+            _timeProvider.GetUtcNow();
+
+        var user =
+            await _userRepository.GetByIdAsync(
+                userId,
+                cancellationToken);
+
+        EnsureUserAvailable(
+            user);
+
+        var current =
+            await _sessionRepository.GetByIdAsync(
+                currentSessionId,
+                cancellationToken);
+
+        if (current is null ||
+            current.UserId != userId ||
+            !current.IsUsable(now))
+        {
+            throw new InvalidAuthenticationSessionException();
+        }
+
+        var refresh =
+            _refreshTokenService.Create(
+                current.Id);
+
+        current.UpgradeToMultiFactor(
+            refresh.TokenHash,
+            now,
+            NormalizeIp(ipAddress),
+            NormalizeUserAgent(userAgent));
+
+        await _unitOfWork.SaveChangesAsync(
+            cancellationToken);
+
+        return CreateResult(
+            user!,
+            current,
+            refresh.Token,
+            now);
+    }
     public async Task<AuthenticationSessionResult> RefreshAsync(
         string rawRefreshToken,
         string? ipAddress,
@@ -394,8 +448,7 @@ public sealed class AuthenticationSessionService
         DateTimeOffset now)
     {
         var tokenLevel =
-            session.AuthenticationLevel ==
-                UserSessionAuthenticationLevel.MultiFactor
+            session.HasFreshMultiFactor(now)
                 ? AccessTokenAuthenticationLevel.MultiFactor
                 : AccessTokenAuthenticationLevel.PasswordOnly;
 

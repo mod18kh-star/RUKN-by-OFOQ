@@ -20,6 +20,13 @@ public sealed class UserSession :
         UserId = userId;
         RefreshTokenHash = NormalizeRefreshTokenHash(refreshTokenHash);
         AuthenticationLevel = authenticationLevel;
+
+        LastMfaVerifiedAtUtc =
+            authenticationLevel ==
+                UserSessionAuthenticationLevel.MultiFactor
+                    ? createdAtUtc
+                    : null;
+
         AuthenticationMethod = authenticationMethod;
         ExpiresAtUtc = expiresAtUtc;
         CreatedAtUtc = createdAtUtc;
@@ -55,6 +62,8 @@ public sealed class UserSession :
 
     public DateTimeOffset CreatedAtUtc { get; private set; }
 
+    public DateTimeOffset? LastMfaVerifiedAtUtc { get; private set; }
+
     public DateTimeOffset LastSeenAtUtc { get; private set; }
 
     public DateTimeOffset LastRotatedAtUtc { get; private set; }
@@ -68,6 +77,9 @@ public sealed class UserSession :
     public string? LastIpAddress { get; private set; }
 
     public string? UserAgent { get; private set; }
+
+    public static readonly TimeSpan MultiFactorMaximumAge =
+        TimeSpan.FromHours(6);
 
     public bool IsRevoked =>
         RevokedAtUtc.HasValue;
@@ -158,6 +170,19 @@ public sealed class UserSession :
             nowUtc < ExpiresAtUtc;
     }
 
+    public bool HasFreshMultiFactor(
+        DateTimeOffset nowUtc)
+    {
+        return
+            IsUsable(nowUtc) &&
+            AuthenticationLevel ==
+                UserSessionAuthenticationLevel.MultiFactor &&
+            LastMfaVerifiedAtUtc.HasValue &&
+            nowUtc <
+                LastMfaVerifiedAtUtc.Value.Add(
+                    MultiFactorMaximumAge);
+    }
+
     public bool HasRefreshTokenHash(
         string refreshTokenHash)
     {
@@ -202,6 +227,9 @@ public sealed class UserSession :
 
         AuthenticationLevel =
             UserSessionAuthenticationLevel.MultiFactor;
+
+        LastMfaVerifiedAtUtc =
+            nowUtc;
 
         RotateRefreshToken(
             refreshTokenHash,

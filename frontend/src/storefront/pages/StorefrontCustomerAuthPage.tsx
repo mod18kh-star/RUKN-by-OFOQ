@@ -24,6 +24,8 @@ import {
   saveAccessSession,
 } from "../../features/auth/authSession";
 
+import { StorefrontPageBrand } from "../components/StorefrontPageBrand";
+
 interface LoginResult {
   userId: string;
   email: string;
@@ -303,9 +305,10 @@ export function StorefrontCustomerAuthPage() {
             العودة للصفحة السابقة
           </Link>
 
-          <span className="text-sm font-semibold tracking-widest">
-            RUKN
-          </span>
+          <StorefrontPageBrand
+            storeSlug={storeSlug}
+            className="text-sm font-semibold tracking-wide"
+          />
         </div>
 
         <div className="overflow-hidden rounded-2xl border border-black/[0.06] bg-white shadow-sm">

@@ -313,11 +313,11 @@ builder.Services
                                                 StringComparison.Ordinal));
 
                             if (tokenHasMfa &&
-                                session.AuthenticationLevel !=
-                                    UserSessionAuthenticationLevel.MultiFactor)
+                                !session.HasFreshMultiFactor(
+                                    timeProvider.GetUtcNow()))
                             {
                                 context.Fail(
-                                    "Authentication session level mismatch.");
+                                    "Multi-factor authentication must be renewed.");
                             }
                         }
                 };

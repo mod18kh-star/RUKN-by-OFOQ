@@ -89,7 +89,7 @@ export function ManualPaymentReviewPanel({ tenantId, onChanged }: { tenantId: st
     try {
       await reviewManualPayment(tenantId, order.orderId, approve, approve ? null : reason.trim());
       setRejectId(""); setReason("");
-      setNotice(approve ? "تم تأكيد الدفع، وانتقل الطلب إلى قيد التجهيز." : "تم رفض الإثبات مع الاحتفاظ بالطلب وإتاحة إرسال إيصال جديد.");
+      setNotice(approve ? "تم تأكيد الدفع. الطلب مؤكد الآن ويمكن بدء تجهيزه من إدارة الطلبات." : "تم رفض الإثبات مع الاحتفاظ بالطلب وإتاحة إرسال إيصال جديد.");
       await load(); onChanged?.();
     } catch (caught) { setError(caught instanceof Error ? caught.message : "تعذرت مراجعة الإيصال."); }
     finally { setBusy(""); }
@@ -102,7 +102,7 @@ export function ManualPaymentReviewPanel({ tenantId, onChanged }: { tenantId: st
       <button type="button" disabled={!!busy} onClick={() => void load()} className="flex items-center gap-2 rounded-xl border px-4 py-2 text-sm"><RefreshCw size={15}/> تحديث</button>
     </div>
     <div className="flex flex-wrap gap-2">{([
-      ["PendingReview", "بانتظار تأكيد الدفع"], ["Approved", "المؤكدة / قيد التجهيز"], ["Rejected", "الإثباتات المرفوضة"],
+      ["PendingReview", "بانتظار تأكيد الدفع"], ["Approved", "المدفوعات المؤكدة"], ["Rejected", "الإثباتات المرفوضة"],
     ] as const).map(([value, label]) => <button key={value} type="button" onClick={() => setTab(value)}
       className={`rounded-xl px-4 py-2 text-sm ${tab === value ? "bg-[#315F5B] text-white" : "border bg-white text-[#315F5B]"}`}>
       {label} ({rows.filter(r => r.status === value).length})</button>)}</div>

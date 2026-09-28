@@ -93,6 +93,11 @@ public sealed record StorefrontProductImageResponse(
     int SortOrder,
     bool IsPrimary);
 
+public sealed record StorefrontProductHighlightResponse(
+    string Title,
+    string? Body,
+    int SortOrder);
+
 public sealed record StorefrontProductDetailResponse(
     Guid ProductId,
     string Name,
@@ -109,4 +114,5 @@ public sealed record StorefrontProductDetailResponse(
     string? PrimaryImageAltText,
     IReadOnlyList<StorefrontProductImageResponse> Images,
     IReadOnlyList<StorefrontVariantResponse> Variants,
-    IReadOnlyList<StorefrontProductAttributeResponse> Attributes);
+    IReadOnlyList<StorefrontProductAttributeResponse> Attributes,
+    IReadOnlyList<StorefrontProductHighlightResponse> Highlights);

@@ -1,6 +1,7 @@
 using OFOQ.Market.Application.Common.Persistence;
 using OFOQ.Market.Application.Common.Tenancy;
 using OFOQ.Market.Domain.Catalog;
+using OFOQ.Market.Domain.Commerce.Carts;
 using OFOQ.Market.Domain.Commerce.Orders;
 
 namespace OFOQ.Market.Application.Commerce.Orders.Cancel;
@@ -22,12 +23,17 @@ public sealed class CancelOrderHandler
     private readonly TimeProvider
         _timeProvider;
 
+    private readonly IStockHoldLedger? _holds;
+    private readonly ICartRepository? _carts;
+
     public CancelOrderHandler(
         IOrderStateLockRepository stateLockRepository,
         ICurrentTenant currentTenant,
         ITransactionExecutor transactionExecutor,
         IUnitOfWork unitOfWork,
-        TimeProvider timeProvider)
+        TimeProvider timeProvider,
+        IStockHoldLedger? holds = null,
+        ICartRepository? carts = null)
     {
         _stateLockRepository =
             stateLockRepository;
@@ -43,6 +49,8 @@ public sealed class CancelOrderHandler
 
         _timeProvider =
             timeProvider;
+        _holds = holds;
+        _carts = carts;
     }
 
     public async Task<CancelOrderResult?> HandleAsync(
@@ -171,6 +179,19 @@ public sealed class CancelOrderHandler
                         quantityAfter,
                         now,
                         command.ActorUserId.Value);
+                }
+
+                if (_holds?.Enabled == true)
+                    await _holds.ReleaseOrderAsync(order.Id, transactionCancellationToken);
+
+                // A deferred checkout leaves its source cart active until payment.
+                // A terminal cancellation must not leave a permanently locked active cart.
+                if (_carts is not null)
+                {
+                    var sourceCart = await _carts.GetByIdAsync(order.SourceCartId,
+                        transactionCancellationToken);
+                    if (sourceCart?.Status == CartStatus.Active)
+                        sourceCart.MarkConverted(_timeProvider.GetUtcNow(), command.ActorUserId.Value);
                 }
 
                 await _unitOfWork

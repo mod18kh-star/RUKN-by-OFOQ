@@ -168,6 +168,11 @@ const AdminOrdersPage =
     },
   );
 
+const AdminProductReviewsPage = lazy(async () => {
+  const module = await import("../features/admin/reviews/AdminProductReviewsPage");
+  return { default: module.AdminProductReviewsPage };
+});
+
 const AdminPaymentsPage = lazy(async () => {
   const module = await import("../features/admin/payments/AdminPaymentsPage");
   return { default: module.AdminPaymentsPage };
@@ -729,6 +734,7 @@ export function App() {
           />
 
           <Route path="coupons" element={<AdminCouponsPage />} />
+          <Route path="reviews" element={<AdminProductReviewsPage />} />
           <Route path="payments" element={<AdminPaymentsPage />} />
           <Route path="shipping" element={<AdminShippingPage />} />
 

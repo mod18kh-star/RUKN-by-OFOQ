@@ -1,6 +1,13 @@
 import {
   shouldUsePlatformTenantAdministration,
 } from "./platformTenantAdministration";
+
+import {
+  accessTokenHasMfa,
+  clearMfaBrowserSessionMarkers,
+  notifyMfaReauthenticationRequired,
+  type MfaReopenPolicy,
+} from "./mfaSessionPolicy";
 export const ACCESS_TOKEN_KEY =
   "ofoq.access-token";
 
@@ -35,6 +42,9 @@ export interface CurrentUser {
   sessionId: string | null;
   fullName: string | null;
   phoneNumber: string | null;
+  mfaReopenPolicy: MfaReopenPolicy;
+  sessionMfaVerifiedAtUtc: string | null;
+  sessionMfaHardCapExpiresAtUtc: string | null;
 }
 
 export interface MyTenant {
@@ -66,7 +76,31 @@ export function authApiConfigured() {
 }
 
 export function apiUrl(path: string) {
-  return `${API_BASE}${path}`;
+  const value =
+    path.trim();
+
+  if (!API_BASE) {
+    return value;
+  }
+
+  /*
+   * authorizedApiFetch accepts both relative API paths and
+   * absolute URLs created by older admin API modules.
+   *
+   * Never prefix VITE_API_BASE_URL twice.
+   */
+  if (
+    value === API_BASE ||
+    value.startsWith(`${API_BASE}/`)
+  ) {
+    return value;
+  }
+
+  return `${API_BASE}${
+    value.startsWith("/")
+      ? value
+      : `/${value}`
+  }`;
 }
 
 export function getAccessToken() {
@@ -125,13 +159,36 @@ function readJwtUserId(
 
 export function getExpectedUserId() {
   try {
-    return (
+    const storedUserId = (
       window.localStorage.getItem(
         AUTH_USER_ID_KEY,
       ) ?? ""
     )
       .trim()
-      .toLowerCase() || null;
+      .toLowerCase();
+
+    if (storedUserId) {
+      return storedUserId;
+    }
+
+    const token =
+      window.localStorage.getItem(
+        ACCESS_TOKEN_KEY,
+      );
+
+    const tokenUserId =
+      token
+        ? readJwtUserId(token)
+        : null;
+
+    if (tokenUserId) {
+      window.localStorage.setItem(
+        AUTH_USER_ID_KEY,
+        tokenUserId,
+      );
+    }
+
+    return tokenUserId;
   } catch {
     return null;
   }
@@ -238,6 +295,8 @@ export function clearLocalSession() {
   } catch {
     // Storage can be unavailable in restrictive browser contexts.
   }
+
+  clearMfaBrowserSessionMarkers();
 }
 
 async function readErrorMessage(
@@ -451,8 +510,27 @@ export async function authorizedApiFetch(
     retry
   ) {
     try {
+      const previousToken =
+        token;
+
       const nextToken =
         await refreshAccessToken();
+
+      /*
+       * A refresh that changes MFA -> PasswordOnly means
+       * the server-side six-hour MFA hard cap was reached.
+       */
+      if (
+        previousToken &&
+        accessTokenHasMfa(
+          previousToken,
+        ) &&
+        !accessTokenHasMfa(
+          nextToken,
+        )
+      ) {
+        notifyMfaReauthenticationRequired();
+      }
 
       const retryHeaders =
         new Headers(init.headers);
@@ -530,7 +608,26 @@ export async function getCurrentUser() {
     );
   }
 
-  return (await response.json()) as CurrentUser;
+  const currentUser =
+    (await response.json()) as CurrentUser;
+
+  try {
+    window.localStorage.setItem(
+      AUTH_USER_ID_KEY,
+      currentUser.userId.trim().toLowerCase(),
+    );
+
+    if (currentUser.email?.trim()) {
+      window.localStorage.setItem(
+        AUTH_EMAIL_KEY,
+        currentUser.email.trim(),
+      );
+    }
+  } catch {
+    // Browser storage may be unavailable.
+  }
+
+  return currentUser;
 }
 
 export async function getMyTenants() {

@@ -3962,6 +3962,12 @@ namespace OFOQ.Market.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(4096)")
                         .HasColumnName("protected_secret");
 
+                    b.Property<string>("ReopenPolicy")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("reopen_policy");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(32)
@@ -4071,6 +4077,10 @@ namespace OFOQ.Market.Infrastructure.Persistence.Migrations
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)")
                         .HasColumnName("last_ip_address");
+
+                    b.Property<DateTimeOffset?>("LastMfaVerifiedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_mfa_verified_at_utc");
 
                     b.Property<DateTimeOffset>("LastRotatedAtUtc")
                         .HasColumnType("timestamp with time zone")

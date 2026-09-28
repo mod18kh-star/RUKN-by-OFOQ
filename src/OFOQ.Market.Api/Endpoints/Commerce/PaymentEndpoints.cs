@@ -246,6 +246,10 @@ public static class PaymentEndpoints
                 "electronic_payments_suspended",
                 exception.Message);
         }
+        catch (DeferredStockHoldOnlinePaymentUnsupportedException exception)
+        {
+            return Conflict("stock_hold_manual_payment_only", exception.Message);
+        }
         catch (PaymentAlreadySucceededException exception)
         {
             return Conflict(

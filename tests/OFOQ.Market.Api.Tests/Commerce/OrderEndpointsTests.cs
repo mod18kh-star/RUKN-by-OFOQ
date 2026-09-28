@@ -125,6 +125,22 @@ public sealed class OrderEndpointsTests
     }
 
     [Fact]
+    public async Task CheckoutPendingOrder_IsNotInMerchantOperationsOrDetails()
+    {
+        await using var factory = new MarketApiFactory();
+        using var client = factory.CreateClient();
+        var setup = await CreateOwnerSetupAsync(factory, client);
+        var pending = SeedOrder(factory, setup, paid: false);
+        var listResponse = await client.GetAsync(OrdersUrl(setup.Tenant.Id));
+        Assert.Equal(HttpStatusCode.OK, listResponse.StatusCode);
+        var visible = await listResponse.Content.ReadFromJsonAsync<MerchantOrderSummaryResponse[]>();
+        Assert.NotNull(visible);
+        Assert.DoesNotContain(visible, order => order.OrderId == pending.Order.Id.Value);
+        var detailResponse = await client.GetAsync(OrderUrl(setup.Tenant.Id, pending.Order.Id.Value));
+        Assert.Equal(HttpStatusCode.NotFound, detailResponse.StatusCode);
+    }
+
+    [Fact]
     public async Task GetOrderById_ReturnsItemsAndTimeline()
     {
         await using var factory =

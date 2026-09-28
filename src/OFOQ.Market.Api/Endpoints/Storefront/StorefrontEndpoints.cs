@@ -222,6 +222,14 @@ public static class StorefrontEndpoints
                                     attribute.Label,
                                     attribute.ValueType,
                                     attribute.Value))
+                        .ToArray(),
+                    result.Highlights
+                        .Select(
+                            highlight =>
+                                new StorefrontProductHighlightResponse(
+                                    highlight.Title,
+                                    highlight.Body,
+                                    highlight.SortOrder))
                         .ToArray()));
         }
         catch (ArgumentException exception)

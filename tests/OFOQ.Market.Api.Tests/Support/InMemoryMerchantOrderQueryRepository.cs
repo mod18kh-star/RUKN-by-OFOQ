@@ -50,8 +50,8 @@ internal sealed class InMemoryMerchantOrderQueryRepository :
                             item.Order)
                     .Where(
                         order =>
-                            order.TenantId ==
-                            tenantId);
+                            order.TenantId == tenantId &&
+                            order.Status != OrderStatus.Pending);
 
             if (status.HasValue)
             {

@@ -34,6 +34,9 @@ public sealed class UpdateCartItemQuantityHandler
     private readonly TimeProvider
         _timeProvider;
 
+    private readonly IStockHoldLedger? _holds;
+    private readonly IOrderRepository? _orderRepository;
+
     public UpdateCartItemQuantityHandler(
         ICheckoutLockRepository checkoutLockRepository,
         ITransactionExecutor transactionExecutor,
@@ -43,7 +46,9 @@ public sealed class UpdateCartItemQuantityHandler
         IProductVariantOptionValueRepository variantOptionValueRepository,
         ICurrentTenant currentTenant,
         IUnitOfWork unitOfWork,
-        TimeProvider timeProvider)
+        TimeProvider timeProvider,
+        IStockHoldLedger? holds = null,
+        IOrderRepository? orderRepository = null)
     {
         _checkoutLockRepository =
             checkoutLockRepository;
@@ -71,6 +76,8 @@ public sealed class UpdateCartItemQuantityHandler
 
         _timeProvider =
             timeProvider;
+        _holds = holds;
+        _orderRepository = orderRepository;
     }
 
     public async Task<CartResult> HandleAsync(
@@ -116,6 +123,9 @@ public sealed class UpdateCartItemQuantityHandler
                                 command.CustomerUserId,
                                 transactionCancellationToken)
                         ?? throw new CartNotFoundException();
+
+                    await PendingCheckoutCartGuard.EnsureEditableAsync(
+                        cart, _orderRepository, transactionCancellationToken);
 
                     var item =
                         cart.Items.FirstOrDefault(
@@ -183,6 +193,19 @@ public sealed class UpdateCartItemQuantityHandler
 
                     var now =
                         _timeProvider.GetUtcNow();
+
+                    if (_holds?.Enabled == true)
+                    {
+                        try
+                        {
+                            await _holds.ReserveCartLineAsync(cart.Id, item.ProductVariantId,
+                                command.Quantity, now, transactionCancellationToken);
+                        }
+                        catch (StockHoldUnavailableException)
+                        {
+                            throw new CartInsufficientStockException();
+                        }
+                    }
 
                     cart.ChangeItemQuantity(
                         command.CartItemId,

@@ -10,6 +10,7 @@ import {
   getProductAttributes,
   setProductAttributes,
   setProductImages,
+  setProductContentBlocks,
   uploadProductAsset,
   type CommerceVerticalProfile,
   type CreateProductInput,
@@ -40,6 +41,13 @@ type VariantRow = {
 };
 
 
+// NEW_PRODUCT_HIGHLIGHTS_V2
+type NewProductHighlight = {
+  id: string;
+  title: string;
+  body: string;
+  isVisible: boolean;
+};
 const inputClass = "h-12 w-full rounded-[10px] border border-black/[0.11] bg-white px-4 text-[13px] outline-none transition placeholder:text-black/25 focus:border-[#a77a43]/70";
 const labelClass = "mb-2 block text-[11px] font-semibold text-black/62";
 
@@ -128,6 +136,8 @@ export function CreateProductDialog({ open, busy, categories, onClose, onCreate 
   const [dimensions, setDimensions] = useState<Dimension[]>(() => dimensionsForVertical(productVerticalCode));
   const [rows, setRows] = useState<VariantRow[]>([]);
   const [specValues, setSpecValues] = useState<Record<string, string>>({});
+  const [highlights, setHighlights] =
+    useState<NewProductHighlight[]>([]);
   const specs =
     (productVerticalDefinition?.fields ?? []).filter(
       (field) =>
@@ -228,14 +238,129 @@ export function CreateProductDialog({ open, busy, categories, onClose, onCreate 
   if (!open) return null;
   function update(key: keyof FormState, value: string | boolean) { setForm((current) => ({ ...current, [key]: value })); }
   function changeName(value: string) { setForm((current) => ({ ...current, name: value, slug: slugTouched ? current.slug : createSlug(value) })); }
-  function close() { if (busy) return; setVerticalsLoading(true); setForm(initialState()); setSlugTouched(false); setError(null); setPrimaryFile(null); setSecondaryFile(null); setHasVariants(false); setProductVerticalCode(""); setEnabledProductVerticals([]); setDimensions(dimensionsForVertical("")); setRows([]); setSpecValues({}); onClose(); }
+  function close() { if (busy) return; setVerticalsLoading(true); setForm(initialState()); setSlugTouched(false); setError(null); setPrimaryFile(null); setSecondaryFile(null); setHasVariants(false); setProductVerticalCode(""); setEnabledProductVerticals([]); setDimensions(dimensionsForVertical("")); setRows([]); setSpecValues({}); setHighlights([]); onClose(); }
   function addDimension() { if (dimensions.length >= 3) return; setDimensions((current) => [...current, { id: uid(), name: "خاصية جديدة" }]); }
   function addRow() { const values = Object.fromEntries(dimensions.map((d) => [d.id, ""])); setRows((current) => [...current, { id: uid(), values, sku: generateProductSku(), quantity: "0", priceOverride: "", lowStockThreshold: "5" }]); }
   function updateRow(id: string, patch: Partial<VariantRow>) { setRows((current) => current.map((row) => row.id === id ? { ...row, ...patch } : row)); }
 
+  function addHighlight() {
+    if (highlights.length >= 6) {
+      return;
+    }
+
+    setHighlights(
+      (current) => [
+        ...current,
+        {
+          id: uid(),
+          title: "",
+          body: "",
+          isVisible: true,
+        },
+      ],
+    );
+  }
+
+  function updateHighlight(
+    id: string,
+    patch: Partial<NewProductHighlight>,
+  ) {
+    setHighlights(
+      (current) =>
+        current.map(
+          (item) =>
+            item.id === id
+              ? {
+                  ...item,
+                  ...patch,
+                }
+              : item,
+        ),
+    );
+  }
+
+  function removeHighlight(
+    id: string,
+  ) {
+    setHighlights(
+      (current) =>
+        current.filter(
+          (item) =>
+            item.id !== id,
+        ),
+    );
+  }
+
+  function moveHighlight(
+    index: number,
+    direction: -1 | 1,
+  ) {
+    const nextIndex =
+      index + direction;
+
+    if (
+      nextIndex < 0 ||
+      nextIndex >= highlights.length
+    ) {
+      return;
+    }
+
+    setHighlights(
+      (current) => {
+        const next =
+          [...current];
+
+        const [item] =
+          next.splice(
+            index,
+            1,
+          );
+
+        next.splice(
+          nextIndex,
+          0,
+          item,
+        );
+
+        return next;
+      },
+    );
+  }
   async function submit() {
     if (!valid || busy || !tenantId) return;
     setError(null);
+    const normalizedHighlights =
+      highlights
+        .map(
+          (item) => ({
+            ...item,
+            title:
+              item.title.trim(),
+            body:
+              item.body.trim(),
+          }),
+        )
+        .filter(
+          (item) =>
+            item.title ||
+            item.body,
+        );
+
+    const invalidHighlight =
+      normalizedHighlights.find(
+        (item) =>
+          !item.title ||
+          item.title.length > 80 ||
+          item.body.length > 220,
+      );
+
+    if (invalidHighlight) {
+      setError(
+        "كل ميزة تحتاج عنوانًا، بحد أقصى 80 حرفًا، والوصف بحد أقصى 220 حرفًا.",
+      );
+
+      return;
+    }
     try {
       let primaryUrl = form.primaryImageUrl.trim();
       let secondaryUrl = form.secondaryImageUrl.trim();
@@ -259,6 +384,34 @@ export function CreateProductDialog({ open, busy, categories, onClose, onCreate 
         verticalCode: productVerticalCode, primaryImageUrl: primaryUrl || null, publishImmediately: form.publishImmediately,
       });
 
+      // SAVE_NEW_PRODUCT_HIGHLIGHTS
+      if (
+        normalizedHighlights.length >
+        0
+      ) {
+        await setProductContentBlocks(
+          tenantId,
+          created.productId,
+          normalizedHighlights.map(
+            (item) => ({
+              type:
+                "Highlight",
+
+              title:
+                item.title,
+
+              body:
+                item.body || null,
+
+              mediaUrl:
+                null,
+
+              isVisible:
+                item.isVisible,
+            }),
+          ),
+        );
+      }
       const imageInputs: Array<{
         url: string;
         altText: string;
@@ -419,6 +572,190 @@ export function CreateProductDialog({ open, busy, categories, onClose, onCreate 
           </div></section>
 
           <div className="my-7 border-t border-black/[0.07]"/>
+          <section className="rounded-[14px] border border-black/[0.07] bg-[#fafaf8] p-5">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="text-[12px] font-semibold">
+                  مميزات المنتج — اختيارية
+                </p>
+
+                <p className="mt-1 text-[9px] leading-5 text-black/40">
+                  أضف أي معلومات قصيرة تريد عرضها للعميل مثل الضمان أو الاستبدال أو التوصيل.
+                  إذا تركتها فارغة فلن يظهر أي قسم إضافي في صفحة المنتج.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={addHighlight}
+                disabled={
+                  highlights.length >= 6
+                }
+                className="rounded-[9px] border border-black/10 bg-white px-4 py-2 text-[10px] font-semibold disabled:opacity-40"
+              >
+                <span className="inline-flex items-center gap-1.5">
+                  <Plus size={13} />
+                  إضافة ميزة
+                </span>
+              </button>
+            </div>
+
+            {highlights.length === 0 ? (
+              <div className="mt-4 rounded-[12px] border border-dashed border-black/10 bg-white px-4 py-5 text-center text-[10px] text-black/40">
+                لا توجد مميزات مضافة.
+              </div>
+            ) : (
+              <div className="mt-4 space-y-3">
+                {highlights.map(
+                  (
+                    item,
+                    index,
+                  ) => (
+                    <div
+                      key={item.id}
+                      className="rounded-[12px] border border-black/[0.08] bg-white p-4"
+                    >
+                      <div className="grid gap-3 md:grid-cols-[1fr_1.5fr]">
+                        <label>
+                          <span className={labelClass}>
+                            العنوان
+                          </span>
+
+                          <input
+                            value={
+                              item.title
+                            }
+                            maxLength={80}
+                            onChange={(
+                              event,
+                            ) =>
+                              updateHighlight(
+                                item.id,
+                                {
+                                  title:
+                                    event.target.value,
+                                },
+                              )
+                            }
+                            className={
+                              inputClass
+                            }
+                            placeholder="مثال: الضمان"
+                          />
+                        </label>
+
+                        <label>
+                          <span className={labelClass}>
+                            الوصف — اختياري
+                          </span>
+
+                          <input
+                            value={
+                              item.body
+                            }
+                            maxLength={220}
+                            onChange={(
+                              event,
+                            ) =>
+                              updateHighlight(
+                                item.id,
+                                {
+                                  body:
+                                    event.target.value,
+                                },
+                              )
+                            }
+                            className={
+                              inputClass
+                            }
+                            placeholder="مثال: ضمان لمدة شهرين"
+                          />
+                        </label>
+                      </div>
+
+                      <div className="mt-3 flex flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            updateHighlight(
+                              item.id,
+                              {
+                                isVisible:
+                                  !item.isVisible,
+                              },
+                            )
+                          }
+                          className={[
+                            "rounded-[8px] border px-3 py-2 text-[9px] font-semibold",
+                            item.isVisible
+                              ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                              : "border-black/10 bg-white text-black/45",
+                          ].join(" ")}
+                        >
+                          {item.isVisible
+                            ? "ظاهر للعميل"
+                            : "مخفي"}
+                        </button>
+
+                        <button
+                          type="button"
+                          disabled={
+                            index === 0
+                          }
+                          onClick={() =>
+                            moveHighlight(
+                              index,
+                              -1,
+                            )
+                          }
+                          className="rounded-[8px] border border-black/10 px-3 py-2 text-[9px] disabled:opacity-30"
+                        >
+                          ↑ للأعلى
+                        </button>
+
+                        <button
+                          type="button"
+                          disabled={
+                            index ===
+                            highlights.length -
+                              1
+                          }
+                          onClick={() =>
+                            moveHighlight(
+                              index,
+                              1,
+                            )
+                          }
+                          className="rounded-[8px] border border-black/10 px-3 py-2 text-[9px] disabled:opacity-30"
+                        >
+                          ↓ للأسفل
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() =>
+                            removeHighlight(
+                              item.id,
+                            )
+                          }
+                          className="mr-auto inline-flex items-center gap-1.5 rounded-[8px] border border-red-200 px-3 py-2 text-[9px] text-red-700"
+                        >
+                          <Trash2 size={12} />
+                          حذف
+                        </button>
+                      </div>
+                    </div>
+                  ),
+                )}
+              </div>
+            )}
+
+            <p className="mt-3 text-[9px] text-black/35">
+              {highlights.length}/6 مميزات
+            </p>
+          </section>
+
+          <div className="my-7 border-t border-black/[0.07]" />
           <section><div className="mb-4"><p className="text-[12px] font-semibold">2. صور المنتج</p><p className="mt-1 text-[9px] text-black/40">الصور اختيارية. يمكنك حفظ المنتج بدون صورة، وسيعرض المتجر بديلاً بصريًا مناسبًا للثيم.</p></div><div className="grid gap-4 md:grid-cols-2">
             {[{kind:"primary" as const,label:"الصورة الأساسية — اختيارية",file:primaryFile,setFile:setPrimaryFile,url:form.primaryImageUrl,key:"primaryImageUrl" as const},{kind:"secondary" as const,label:"الصورة الداخلية الإضافية — اختيارية",file:secondaryFile,setFile:setSecondaryFile,url:form.secondaryImageUrl,key:"secondaryImageUrl" as const}].map((item)=><div key={item.kind} className="rounded-[14px] border border-black/[0.07] bg-white p-4"><p className="text-[10px] font-semibold">{item.label}</p><label className="mt-3 flex h-24 cursor-pointer items-center justify-center rounded-[10px] border border-dashed border-black/15 bg-[#faf9f5] text-[10px] text-black/45"><input type="file" accept="image/*" className="hidden" onChange={(e)=>item.setFile(e.target.files?.[0]??null)}/>{item.file?<span>{item.file.name}</span>:<span className="inline-flex items-center gap-2"><Upload size={14}/> رفع من الجهاز</span>}</label><input dir="ltr" value={item.url} onChange={(e)=>update(item.key,e.target.value)} className={`${inputClass} mt-3 text-left`} placeholder="أو رابط صورة مباشر"/>{(item.file||item.url)?<div className="mt-3 flex items-center gap-2 text-[9px] text-[#5d4b2f]"><ImageIcon size={13}/>{item.kind==="primary"?"هذه هي صورة الكرت الخارجية":"تظهر داخل صفحة المنتج"}</div>:null}</div>)}
           </div></section>

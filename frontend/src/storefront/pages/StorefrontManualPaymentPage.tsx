@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Link, useLocation, useParams } from "react-router";
+import { StorefrontPageBrand } from "../components/StorefrontPageBrand";
+import { StorefrontManualDraftPage } from "./StorefrontManualDraftPage";
 import { getAccessToken, getCurrentUser } from "../../features/auth/authSession";
 import { CheckCircle2, Copy, Download, ExternalLink, FileUp, Landmark, RefreshCw, Wallet } from "lucide-react";
 import {
@@ -17,6 +19,11 @@ const money = (amount: number, currency: string) =>
   `${amount.toLocaleString("ar-SA", { maximumFractionDigits: 2 })} ${currency}`;
 
 export function StorefrontManualPaymentPage() {
+  const { orderId = "" } = useParams<{ orderId: string }>();
+  return orderId === "draft" ? <StorefrontManualDraftPage /> : <ExistingManualPaymentPage />;
+}
+
+function ExistingManualPaymentPage() {
   const { storeSlug = "", orderId = "" } = useParams<{ storeSlug: string; orderId: string }>();
   const location = useLocation();
   const incoming = location.state as PaymentLocationState | null;
@@ -198,7 +205,9 @@ export function StorefrontManualPaymentPage() {
     <div className="mx-auto max-w-2xl space-y-5">
       <Link to={base} className="text-sm text-[#527061]">العودة للمتجر</Link>
       <header>
-        <p className="text-xs text-[#527061]">ركن · الطلب #{orderId.slice(0, 8)}</p>
+        <p className="text-xs text-[#527061]">
+          <StorefrontPageBrand storeSlug={storeSlug} /> · الطلب #{orderId.slice(0, 8)}
+        </p>
         <h1 className="mt-2 text-2xl font-bold">بيانات التحويل وإثبات الدفع</h1>
         <p className="mt-2 text-sm leading-7 text-[#607166]">حوّل إلى حساب التاجر مباشرة، ثم أرفق صورة الإيصال. الدفع لا يُعتمد قبل التحقق من وصول المال.</p>
       </header>
@@ -228,7 +237,7 @@ export function StorefrontManualPaymentPage() {
                 {payment.accountKind === "bank" ? <Landmark size={20} /> : <Wallet size={20} />}{payment.accountName}</h2></div>
               <div><p className="text-xs text-[#64746a]">المبلغ المطلوب تحويله</p><strong className="mt-1 block text-lg">{money(payment.amount, payment.currency)}</strong></div>
             </div>
-            {payment.status === "Approved" ? <p className="flex items-center gap-2 rounded-xl bg-green-50 p-3 text-sm text-green-800"><CheckCircle2 size={18} /> تم تأكيد وصول الدفع. الطلب قيد التجهيز.</p> :
+            {payment.status === "Approved" ? <p className="flex items-center gap-2 rounded-xl bg-green-50 p-3 text-sm text-green-800"><CheckCircle2 size={18} /> تم تأكيد وصول الدفع. يمكنك متابعة حالة تجهيز طلبك من صفحة حسابك.</p> :
               payment.status === "PendingReview" ? <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-900">تم استلام الإيصال، والدفع بانتظار مراجعة التاجر.</p> :
               payment.status === "Rejected" ? <p className="rounded-xl bg-red-50 p-3 text-sm text-red-800">رُفض إثبات الدفع: {payment.rejectionReason || "يرجى التواصل مع المتجر."} يمكنك رفع إيصال جديد للطلب نفسه.</p> :
               <p className="rounded-xl bg-amber-50 p-3 text-sm">حوّل المبلغ إلى الحساب الموضح أدناه، ثم أرفق الإيصال لإرساله إلى التاجر.</p>}

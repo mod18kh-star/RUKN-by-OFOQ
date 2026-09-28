@@ -45,6 +45,14 @@ public sealed class ManualOrderPayment : ITenantDataScoped
         Status = "PendingReview";
         UpdatedAtUtc = now;
     }
+    public void CancelBeforeReceipt(DateTimeOffset now)
+    {
+        if (Status != "AwaitingReceipt")
+            throw new InvalidOperationException("Only a payment without a submitted receipt can be cancelled.");
+        Status = "Cancelled";
+        UpdatedAtUtc = now;
+    }
+
     public void Reject(DateTimeOffset now)
     {
         if (Status != "PendingReview") throw new InvalidOperationException("Payment is not pending review.");

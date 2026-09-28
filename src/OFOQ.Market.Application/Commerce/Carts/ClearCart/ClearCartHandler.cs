@@ -21,12 +21,17 @@ public sealed class ClearCartHandler
     private readonly TimeProvider
         _timeProvider;
 
+    private readonly IStockHoldLedger? _holds;
+    private readonly IOrderRepository? _orderRepository;
+
     public ClearCartHandler(
         ICheckoutLockRepository checkoutLockRepository,
         ITransactionExecutor transactionExecutor,
         ICurrentTenant currentTenant,
         IUnitOfWork unitOfWork,
-        TimeProvider timeProvider)
+        TimeProvider timeProvider,
+        IStockHoldLedger? holds = null,
+        IOrderRepository? orderRepository = null)
     {
         _checkoutLockRepository =
             checkoutLockRepository;
@@ -42,6 +47,8 @@ public sealed class ClearCartHandler
 
         _timeProvider =
             timeProvider;
+        _holds = holds;
+        _orderRepository = orderRepository;
     }
 
     public async Task<CartResult?> HandleAsync(
@@ -80,6 +87,12 @@ public sealed class ClearCartHandler
                     {
                         return null;
                     }
+
+                    await PendingCheckoutCartGuard.EnsureEditableAsync(
+                        cart, _orderRepository, transactionCancellationToken);
+
+                    if (_holds?.Enabled == true)
+                        await _holds.ReleaseCartAsync(cart.Id, transactionCancellationToken);
 
                     cart.Clear(
                         _timeProvider.GetUtcNow(),

@@ -21,13 +21,14 @@ import {
 
 import {
   getCheckoutShippingMethods,
-  submitCustomerCheckout,
   previewCheckoutCoupon,
   type CheckoutCouponQuote,
   type CheckoutShippingMethod,
 } from "../data/customerCheckoutApi";
 
-import { listManualMethods, selectManualMethod, type ManualMethodSummary } from "../data/manualCheckoutApi";
+import { listManualMethods, type ManualMethodSummary } from "../data/manualCheckoutApi";
+import { saveManualCheckoutDraft } from "../data/customerCheckoutDraft";
+import { StorefrontPageBrand } from "../components/StorefrontPageBrand";
 
 function money(value: number, currency: string | null) {
   const amount = new Intl.NumberFormat("en-US", {
@@ -232,26 +233,26 @@ export function StorefrontCheckoutPage() {
     setError(null);
 
     try {
-      const result = await submitCustomerCheckout(
-        storeSlug,
-        methodId,
-        requestKey.current,
-        appliedCoupon?.couponCode ?? null,
-      );
-
-      // The order exists and is UNPAID. A failed selection must NOT send the
-      // customer back to checkout: retry only on this existing order's payment page.
-      let selectionError: string | undefined;
-      try {
-        await selectManualMethod(storeSlug, result.orderId, paymentChoice, normalizedPhone);
-      } catch (caught) {
-        selectionError = caught instanceof Error ? caught.message : "تعذر تثبيت وسيلة الدفع للطلب.";
-      }
-      window.dispatchEvent(new CustomEvent("rukn:cart-updated", { detail: { storeSlug } }));
-      navigate(`${base}/orders/${result.orderId}/payment`, {
-        state: { accountId: paymentChoice, customerPhone: normalizedPhone, selectionError },
-        replace: true,
+      // No Order is created when the customer opens manual-payment details.
+      // The cart remains editable; the draft is scoped to this signed-in user/store.
+      const selectedShipping = methods.find(method => method.id === methodId);
+      if (!selectedShipping || !cart?.currency) throw new Error("تعذر تحديد الشحن أو عملة السلة.");
+      const expectedAmount = Number((appliedCoupon?.totalAmount ?? (cart.totalAmount + selectedShipping.price)).toFixed(2));
+      if (expectedAmount <= 0) throw new Error("قيمة الطلب غير صالحة للدفع اليدوي.");
+      saveManualCheckoutDraft(storeSlug, {
+        cartId: cart.id,
+        lines: cart.items.map(item => ({
+          productVariantId: item.productVariantId, quantity: item.quantity, unitPrice: item.unitPrice,
+        })),
+        shippingMethodId: methodId,
+        paymentAccountId: paymentChoice,
+        customerPhone: normalizedPhone,
+        couponCode: appliedCoupon?.couponCode ?? null,
+        expectedAmount,
+        expectedCurrency: cart.currency,
+        idempotencyKey: crypto.randomUUID(),
       });
+      navigate(`${base}/orders/draft/payment`, { replace: false });
       return;
     } catch (caught) {
       setError(
@@ -280,13 +281,20 @@ export function StorefrontCheckoutPage() {
       className="min-h-screen bg-[#faf9f7] px-4 py-8 text-[#21352a] sm:py-14"
     >
       <div className="mx-auto max-w-5xl">
-        <Link
-          to={`${base}/cart`}
-          className="mb-8 inline-flex items-center gap-2 text-sm text-[#53685a]"
-        >
-          <ArrowRight size={17} />
-          العودة إلى السلة
-        </Link>
+        <div className="mb-8 flex items-center justify-between gap-4">
+          <Link
+            to={`${base}/cart`}
+            className="inline-flex items-center gap-2 text-sm text-[#53685a]"
+          >
+            <ArrowRight size={17} />
+            العودة إلى السلة
+          </Link>
+
+          <StorefrontPageBrand
+            storeSlug={storeSlug}
+            className="text-xs font-semibold tracking-wide text-[#53685a]"
+          />
+        </div>
 
         {error && (
           <div

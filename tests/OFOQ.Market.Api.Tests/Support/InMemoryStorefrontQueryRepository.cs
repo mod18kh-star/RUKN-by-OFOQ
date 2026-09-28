@@ -493,7 +493,8 @@ internal sealed class InMemoryStorefrontQueryRepository :
                     primaryImage.AltText,
                     imageResults,
                     variantResults,
-                    attributes));
+                    attributes,
+                    []));
     }
 
     public Task<IReadOnlyList<CartProductDisplayResult>> GetCartProductsAsync(

@@ -28,6 +28,12 @@ import {
   hydrateCurrentTenant,
 } from "./postAuth";
 
+import {
+  MFA_REAUTH_REQUIRED_EVENT,
+  markMfaBrowserSession,
+  shouldRequireMfaForBrowserSession,
+} from "./mfaSessionPolicy";
+
 type GuardKind =
   | "authenticated"
   | "tenant-backoffice"
@@ -47,11 +53,37 @@ export function ProtectedRoute({
       | "ready"
       | "login"
       | "security"
+      | "security-reauth"
       | "onboarding"
       | "review"
       | "suspended"
       | "forbidden"
     >("loading");
+
+  /*
+   * When silent refresh crosses the server-side
+   * six-hour MFA hard cap, move the open panel to
+   * code-only reauthentication immediately.
+   */
+  useEffect(() => {
+    const requireReauthentication = () => {
+      setState(
+        "security-reauth",
+      );
+    };
+
+    window.addEventListener(
+      MFA_REAUTH_REQUIRED_EVENT,
+      requireReauthentication,
+    );
+
+    return () => {
+      window.removeEventListener(
+        MFA_REAUTH_REQUIRED_EVENT,
+        requireReauthentication,
+      );
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -122,7 +154,9 @@ export function ProtectedRoute({
             ) {
               if (!cancelled) {
                 setState(
-                  "security",
+                  user.mfaEnabled
+                    ? "security-reauth"
+                    : "security",
                 );
               }
 
@@ -197,12 +231,36 @@ export function ProtectedRoute({
           ) {
             if (!cancelled) {
               setState(
-                "security",
+                user.mfaEnabled
+                  ? "security-reauth"
+                  : "security",
               );
             }
 
             return;
           }
+
+          /*
+           * Reopen policy is checked only when this browser
+           * session has not already been accepted.
+           */
+          if (
+            shouldRequireMfaForBrowserSession(
+              user,
+            )
+          ) {
+            if (!cancelled) {
+              setState(
+                "security-reauth",
+              );
+            }
+
+            return;
+          }
+
+          markMfaBrowserSession(
+            user,
+          );
         }
 
         if (
@@ -231,7 +289,7 @@ export function ProtectedRoute({
           ) {
             if (!cancelled) {
               setState(
-                "security",
+                "security-reauth",
               );
             }
 
@@ -305,19 +363,25 @@ export function ProtectedRoute({
   }
 
   if (
-    state === "security"
+    state === "security" ||
+    state === "security-reauth"
   ) {
     const returnTo =
       kind === "platform"
         ? "/platform"
-        : "/admin";
+        : `${location.pathname}${location.search}`;
+
+    const reauthentication =
+      state === "security-reauth"
+        ? "&reauth=1"
+        : "";
 
     return (
       <Navigate
         replace
         to={`/security/setup?returnTo=${encodeURIComponent(
           returnTo,
-        )}`}
+        )}${reauthentication}`}
       />
     );
   }

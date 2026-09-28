@@ -21,12 +21,17 @@ public sealed class RemoveCartItemHandler
     private readonly TimeProvider
         _timeProvider;
 
+    private readonly IStockHoldLedger? _holds;
+    private readonly IOrderRepository? _orderRepository;
+
     public RemoveCartItemHandler(
         ICheckoutLockRepository checkoutLockRepository,
         ITransactionExecutor transactionExecutor,
         ICurrentTenant currentTenant,
         IUnitOfWork unitOfWork,
-        TimeProvider timeProvider)
+        TimeProvider timeProvider,
+        IStockHoldLedger? holds = null,
+        IOrderRepository? orderRepository = null)
     {
         _checkoutLockRepository =
             checkoutLockRepository;
@@ -42,6 +47,8 @@ public sealed class RemoveCartItemHandler
 
         _timeProvider =
             timeProvider;
+        _holds = holds;
+        _orderRepository = orderRepository;
     }
 
     public async Task<CartResult> HandleAsync(
@@ -79,6 +86,9 @@ public sealed class RemoveCartItemHandler
                                 transactionCancellationToken)
                         ?? throw new CartNotFoundException();
 
+                    await PendingCheckoutCartGuard.EnsureEditableAsync(
+                        cart, _orderRepository, transactionCancellationToken);
+
                     if (!cart.Items.Any(
                             item =>
                                 item.Id ==
@@ -89,6 +99,11 @@ public sealed class RemoveCartItemHandler
 
                     var now =
                         _timeProvider.GetUtcNow();
+
+                    var removing = cart.Items.Single(x => x.Id == command.CartItemId);
+                    if (_holds?.Enabled == true)
+                        await _holds.ReleaseCartLineAsync(cart.Id, removing.ProductVariantId,
+                            transactionCancellationToken);
 
                     cart.RemoveItem(
                         command.CartItemId,

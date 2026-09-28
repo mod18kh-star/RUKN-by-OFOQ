@@ -98,6 +98,8 @@ public sealed class GetCurrentUserContextHandler
                 membership =>
                     !membership.IsDeleted),
             user.FullName,
-            user.PhoneNumber);
+            user.PhoneNumber,
+            mfa?.ReopenPolicy ??
+                MfaReopenPolicy.EveryBrowserSession);
     }
 }

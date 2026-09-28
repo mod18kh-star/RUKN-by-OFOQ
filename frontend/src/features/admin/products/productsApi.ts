@@ -656,3 +656,79 @@ export async function getCommerceProfile(
 
   return (await response.json()) as CommerceProfile;
 }
+
+export interface ProductContentBlock {
+  blockId: string;
+  type: string;
+  title: string | null;
+  body: string | null;
+  mediaUrl: string | null;
+  sortOrder: number;
+  isVisible: boolean;
+}
+
+export interface ProductContentBlocksResponse {
+  productId: string;
+  blocks: ProductContentBlock[];
+}
+
+export interface ProductContentBlockInput {
+  type: string;
+  title: string | null;
+  body: string | null;
+  mediaUrl: string | null;
+  isVisible: boolean;
+}
+
+export async function getProductContentBlocks(
+  tenantId: string,
+  productId: string,
+): Promise<ProductContentBlocksResponse> {
+  const response =
+    await authorizedApiFetch(
+      `${productsPath(
+        tenantId,
+      )}/${encodeURIComponent(
+        productId,
+      )}/content-blocks`,
+    );
+
+  if (!response.ok) {
+    return throwApiError(
+      response,
+    );
+  }
+
+  return (await response.json()) as
+    ProductContentBlocksResponse;
+}
+
+export async function setProductContentBlocks(
+  tenantId: string,
+  productId: string,
+  blocks: ProductContentBlockInput[],
+): Promise<ProductContentBlocksResponse> {
+  const response =
+    await authorizedApiFetch(
+      `${productsPath(
+        tenantId,
+      )}/${encodeURIComponent(
+        productId,
+      )}/content-blocks`,
+      {
+        method: "PUT",
+        body: JSON.stringify({
+          blocks,
+        }),
+      },
+    );
+
+  if (!response.ok) {
+    return throwApiError(
+      response,
+    );
+  }
+
+  return (await response.json()) as
+    ProductContentBlocksResponse;
+}

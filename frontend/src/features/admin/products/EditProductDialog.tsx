@@ -1,3 +1,4 @@
+import { ProductHighlightsEditor } from "./ProductHighlightsEditor";
 import {
   useEffect,
   useMemo,
@@ -766,7 +767,16 @@ export function EditProductDialog({
           ) : null}
         </div>
 
-        <div className="flex items-center justify-between gap-3 border-t border-black/[0.08] bg-white px-6 py-4">
+        <div className="my-7 border-t border-black/[0.07]" />
+
+          <ProductHighlightsEditor
+            tenantId={tenantId}
+            productId={product.productId}
+          />
+
+          <div className="my-7 border-t border-black/[0.07]" />
+
+          <div className="flex items-center justify-between gap-3 border-t border-black/[0.08] bg-white px-6 py-4">
           <p className="text-[9px] text-black/35">
             النشر والظهور والأرشفة تظل متاحة من جدول المنتجات.
           </p>

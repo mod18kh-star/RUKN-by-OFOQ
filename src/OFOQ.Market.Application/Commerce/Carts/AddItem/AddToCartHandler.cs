@@ -37,6 +37,9 @@ public sealed class AddToCartHandler
     private readonly TimeProvider
         _timeProvider;
 
+    private readonly IStockHoldLedger? _holds;
+    private readonly IOrderRepository? _orderRepository;
+
     public AddToCartHandler(
         ICartRepository cartRepository,
         ICheckoutLockRepository checkoutLockRepository,
@@ -47,7 +50,9 @@ public sealed class AddToCartHandler
         IProductVariantOptionValueRepository variantOptionValueRepository,
         ICurrentTenant currentTenant,
         IUnitOfWork unitOfWork,
-        TimeProvider timeProvider)
+        TimeProvider timeProvider,
+        IStockHoldLedger? holds = null,
+        IOrderRepository? orderRepository = null)
     {
         _cartRepository =
             cartRepository;
@@ -78,6 +83,8 @@ public sealed class AddToCartHandler
 
         _timeProvider =
             timeProvider;
+        _holds = holds;
+        _orderRepository = orderRepository;
     }
 
     public async Task<CartResult> HandleAsync(
@@ -157,6 +164,10 @@ public sealed class AddToCartHandler
                                 command.CustomerUserId,
                                 transactionCancellationToken);
 
+                    if (cart is not null)
+                        await PendingCheckoutCartGuard.EnsureEditableAsync(
+                            cart, _orderRepository, transactionCancellationToken);
+
                     var existingQuantity =
                         cart?.Items
                             .FirstOrDefault(
@@ -214,6 +225,19 @@ public sealed class AddToCartHandler
                     var unitPrice =
                         variant.PriceOverride
                         ?? product.Price;
+
+                    if (_holds?.Enabled == true)
+                    {
+                        try
+                        {
+                            await _holds.ReserveCartLineAsync(cart.Id, variant.Id,
+                                requestedTotalQuantity, now, transactionCancellationToken);
+                        }
+                        catch (StockHoldUnavailableException)
+                        {
+                            throw new CartInsufficientStockException();
+                        }
+                    }
 
                     cart.AddItem(
                         product.Id,

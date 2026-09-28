@@ -53,6 +53,12 @@ internal sealed class UserMfaConfiguration :
                 userMfa => userMfa.LastAcceptedTimeStep)
             .HasColumnName("last_accepted_time_step")
             .IsConcurrencyToken();
+        builder.Property(
+                userMfa => userMfa.ReopenPolicy)
+            .HasConversion<string>()
+            .HasColumnName("reopen_policy")
+            .HasMaxLength(32)
+            .IsRequired();
 
         builder.Property(
                 userMfa => userMfa.CreatedAtUtc)

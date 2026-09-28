@@ -95,6 +95,11 @@ public sealed record StorefrontProductImageResult(
     int SortOrder,
     bool IsPrimary);
 
+public sealed record StorefrontProductHighlightResult(
+    string Title,
+    string? Body,
+    int SortOrder);
+
 public sealed record StorefrontProductDetailResult(
     Guid ProductId,
     string Name,
@@ -111,7 +116,8 @@ public sealed record StorefrontProductDetailResult(
     string? PrimaryImageAltText,
     IReadOnlyList<StorefrontProductImageResult> Images,
     IReadOnlyList<StorefrontVariantResult> Variants,
-    IReadOnlyList<StorefrontProductAttributeResult> Attributes);
+    IReadOnlyList<StorefrontProductAttributeResult> Attributes,
+    IReadOnlyList<StorefrontProductHighlightResult> Highlights);
 
 public sealed record StorefrontProductLookupResult(
     bool StoreExists,

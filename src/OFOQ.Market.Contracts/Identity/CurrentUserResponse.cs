@@ -12,4 +12,7 @@ public sealed record CurrentUserResponse(
     bool HasTenantMemberships,
     Guid? SessionId,
     string? FullName = null,
-    string? PhoneNumber = null);
+    string? PhoneNumber = null,
+    string MfaReopenPolicy = "EveryBrowserSession",
+    DateTimeOffset? SessionMfaVerifiedAtUtc = null,
+    DateTimeOffset? SessionMfaHardCapExpiresAtUtc = null);
