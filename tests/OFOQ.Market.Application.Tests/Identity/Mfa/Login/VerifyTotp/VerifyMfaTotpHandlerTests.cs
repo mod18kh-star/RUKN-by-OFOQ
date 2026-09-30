@@ -1,4 +1,4 @@
-using OFOQ.Market.Application.Common.Persistence;
+﻿using OFOQ.Market.Application.Common.Persistence;
 using OFOQ.Market.Application.Common.Security;
 using OFOQ.Market.Application.Identity.Mfa.Login.VerifyTotp;
 using OFOQ.Market.Domain.Identity;
@@ -34,9 +34,6 @@ public sealed class VerifyMfaTotpHandlerTests
         var unitOfWork =
             new FakeUnitOfWork();
 
-        var accessTokenService =
-            new FakeAccessTokenService();
-
         var handler =
             CreateHandler(
                 user,
@@ -45,8 +42,7 @@ public sealed class VerifyMfaTotpHandlerTests
                 new TotpVerificationResult(
                     true,
                     101),
-                unitOfWork,
-                accessTokenService);
+                unitOfWork);
 
         var result =
             await handler.HandleAsync(
@@ -68,18 +64,6 @@ public sealed class VerifyMfaTotpHandlerTests
         Assert.Equal(
             1,
             unitOfWork.SaveChangesCount);
-
-        Assert.Equal(
-            1,
-            accessTokenService.CreateCount);
-
-        Assert.Equal(
-            AccessTokenAuthenticationLevel.MultiFactor,
-            accessTokenService.LastAuthenticationLevel);
-
-        Assert.Equal(
-            "ACCESS-TOKEN",
-            result.AccessToken);
 
         Assert.Equal(
             user.Id,
@@ -107,9 +91,6 @@ public sealed class VerifyMfaTotpHandlerTests
         var unitOfWork =
             new FakeUnitOfWork();
 
-        var accessTokenService =
-            new FakeAccessTokenService();
-
         var handler =
             CreateHandler(
                 user,
@@ -118,8 +99,7 @@ public sealed class VerifyMfaTotpHandlerTests
                 new TotpVerificationResult(
                     false,
                     null),
-                unitOfWork,
-                accessTokenService);
+                unitOfWork);
 
         await Assert.ThrowsAsync<
             InvalidMfaLoginChallengeException>(
@@ -139,13 +119,6 @@ public sealed class VerifyMfaTotpHandlerTests
         Assert.Equal(
             1,
             unitOfWork.SaveChangesCount);
-
-        Assert.Equal(
-            0,
-            accessTokenService.CreateCount);
-
-        Assert.Null(
-            accessTokenService.LastAuthenticationLevel);
     }
 
     [Fact]
@@ -165,9 +138,6 @@ public sealed class VerifyMfaTotpHandlerTests
         var unitOfWork =
             new FakeUnitOfWork();
 
-        var accessTokenService =
-            new FakeAccessTokenService();
-
         var handler =
             CreateHandler(
                 user,
@@ -176,8 +146,7 @@ public sealed class VerifyMfaTotpHandlerTests
                 new TotpVerificationResult(
                     true,
                     100),
-                unitOfWork,
-                accessTokenService);
+                unitOfWork);
 
         await Assert.ThrowsAsync<
             InvalidMfaLoginChallengeException>(
@@ -197,13 +166,6 @@ public sealed class VerifyMfaTotpHandlerTests
 
         Assert.False(
             challenge.IsConsumed);
-
-        Assert.Equal(
-            0,
-            accessTokenService.CreateCount);
-
-        Assert.Null(
-            accessTokenService.LastAuthenticationLevel);
     }
 
     [Fact]
@@ -223,9 +185,6 @@ public sealed class VerifyMfaTotpHandlerTests
         var unitOfWork =
             new FakeUnitOfWork();
 
-        var accessTokenService =
-            new FakeAccessTokenService();
-
         var handler =
             CreateHandler(
                 user,
@@ -234,8 +193,7 @@ public sealed class VerifyMfaTotpHandlerTests
                 new TotpVerificationResult(
                     true,
                     101),
-                unitOfWork,
-                accessTokenService);
+                unitOfWork);
 
         await Assert.ThrowsAsync<
             InvalidMfaLoginChallengeException>(
@@ -255,13 +213,6 @@ public sealed class VerifyMfaTotpHandlerTests
         Assert.Equal(
             0,
             unitOfWork.SaveChangesCount);
-
-        Assert.Equal(
-            0,
-            accessTokenService.CreateCount);
-
-        Assert.Null(
-            accessTokenService.LastAuthenticationLevel);
     }
 
     [Fact]
@@ -284,9 +235,6 @@ public sealed class VerifyMfaTotpHandlerTests
         var unitOfWork =
             new FakeUnitOfWork();
 
-        var accessTokenService =
-            new FakeAccessTokenService();
-
         var handler =
             CreateHandler(
                 user,
@@ -295,8 +243,7 @@ public sealed class VerifyMfaTotpHandlerTests
                 new TotpVerificationResult(
                     true,
                     101),
-                unitOfWork,
-                accessTokenService);
+                unitOfWork);
 
         await Assert.ThrowsAsync<
             InvalidMfaLoginChallengeException>(
@@ -308,13 +255,6 @@ public sealed class VerifyMfaTotpHandlerTests
 
         Assert.False(
             challenge.IsConsumed);
-
-        Assert.Equal(
-            0,
-            accessTokenService.CreateCount);
-
-        Assert.Null(
-            accessTokenService.LastAuthenticationLevel);
 
         Assert.Equal(
             0,
@@ -350,9 +290,6 @@ public sealed class VerifyMfaTotpHandlerTests
         var unitOfWork =
             new FakeUnitOfWork();
 
-        var accessTokenService =
-            new FakeAccessTokenService();
-
         var handler =
             CreateHandler(
                 user,
@@ -361,8 +298,7 @@ public sealed class VerifyMfaTotpHandlerTests
                 new TotpVerificationResult(
                     false,
                     null),
-                unitOfWork,
-                accessTokenService);
+                unitOfWork);
 
         await Assert.ThrowsAsync<
             InvalidMfaLoginChallengeException>(
@@ -386,13 +322,6 @@ public sealed class VerifyMfaTotpHandlerTests
         Assert.Equal(
             1,
             unitOfWork.SaveChangesCount);
-
-        Assert.Equal(
-            0,
-            accessTokenService.CreateCount);
-
-        Assert.Null(
-            accessTokenService.LastAuthenticationLevel);
     }
 
     [Fact]
@@ -412,9 +341,6 @@ public sealed class VerifyMfaTotpHandlerTests
         var unitOfWork =
             new FakeUnitOfWork();
 
-        var accessTokenService =
-            new FakeAccessTokenService();
-
         var handler =
             CreateHandler(
                 user,
@@ -423,8 +349,7 @@ public sealed class VerifyMfaTotpHandlerTests
                 new TotpVerificationResult(
                     true,
                     101),
-                unitOfWork,
-                accessTokenService);
+                unitOfWork);
 
         await Assert.ThrowsAsync<
             InvalidMfaLoginChallengeException>(
@@ -441,13 +366,6 @@ public sealed class VerifyMfaTotpHandlerTests
         Assert.Equal(
             1,
             unitOfWork.SaveChangesCount);
-
-        Assert.Equal(
-            0,
-            accessTokenService.CreateCount);
-
-        Assert.Null(
-            accessTokenService.LastAuthenticationLevel);
     }
 
     private static VerifyMfaTotpHandler CreateHandler(
@@ -455,8 +373,7 @@ public sealed class VerifyMfaTotpHandlerTests
         UserMfa mfa,
         MfaLoginChallenge challenge,
         TotpVerificationResult verificationResult,
-        FakeUnitOfWork unitOfWork,
-        FakeAccessTokenService accessTokenService)
+        FakeUnitOfWork unitOfWork)
     {
         return new VerifyMfaTotpHandler(
             new FakeChallengeRepository(
@@ -474,8 +391,6 @@ public sealed class VerifyMfaTotpHandlerTests
 
             new FakeTotpService(
                 verificationResult),
-
-            accessTokenService,
 
             unitOfWork,
 
@@ -752,31 +667,6 @@ public sealed class VerifyMfaTotpHandlerTests
         }
     }
 
-    private sealed class FakeAccessTokenService :
-        IAccessTokenService
-    {
-        public int CreateCount { get; private set; }
-
-        public AccessTokenAuthenticationLevel?
-            LastAuthenticationLevel { get; private set; }
-
-        public AccessTokenResult Create(
-            UserId userId,
-            string email,
-            DateTimeOffset nowUtc,
-            AccessTokenAuthenticationLevel authenticationLevel)
-        {
-            CreateCount++;
-
-            LastAuthenticationLevel =
-                authenticationLevel;
-
-            return new AccessTokenResult(
-                "ACCESS-TOKEN",
-                nowUtc.AddMinutes(15));
-        }
-    }
-
     private sealed class FakeUnitOfWork :
         IUnitOfWork
     {
@@ -810,3 +700,4 @@ public sealed class VerifyMfaTotpHandlerTests
         }
     }
 }
+

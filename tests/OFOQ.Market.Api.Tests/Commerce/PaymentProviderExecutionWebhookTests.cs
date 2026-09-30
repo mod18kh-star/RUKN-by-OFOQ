@@ -6,6 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using OFOQ.Market.Api.Tests.Support;
 using OFOQ.Market.Application.Common.Payments;
 using OFOQ.Market.Application.Common.Persistence;
+using OFOQ.Market.Application.Common.Security;
 using OFOQ.Market.Contracts.Commerce.Payments;
 using OFOQ.Market.Domain.Catalog;
 using OFOQ.Market.Domain.Commerce.Carts;
@@ -265,7 +266,13 @@ public sealed class PaymentProviderExecutionWebhookTests
         MarketApiFactory factory,
         HttpClient client)
     {
-        var customerUserId = UserId.New();
+        var customer =
+            await CreateUserAsync(
+                factory);
+
+        var customerUserId =
+            customer.Id;
+
         var tenant = Tenant.Create(
             "Provider Execution Store",
             $"provider-execution-{Guid.NewGuid():N}",
@@ -320,7 +327,10 @@ public sealed class PaymentProviderExecutionWebhookTests
         var provider = factory.Services.GetRequiredService<FakePaymentProvider>();
         provider.Reset();
 
-        SetAccessToken(client, customerUserId);
+        SetAccessToken(
+            factory,
+            client,
+            customerUserId);
 
         var createRequest = new HttpRequestMessage(
             HttpMethod.Post,
@@ -364,18 +374,54 @@ public sealed class PaymentProviderExecutionWebhookTests
     }
 
     private static void SetAccessToken(
+        MarketApiFactory factory,
         HttpClient client,
         UserId userId)
     {
-        var now = DateTimeOffset.UtcNow;
-        var token = TestJwtTokenFactory.Create(
-            userId.Value,
-            $"provider-{userId.Value:N}@example.com",
-            now.AddMinutes(-1),
-            now.AddMinutes(15));
+        var user =
+            factory.Services
+                .GetRequiredService<
+                    IUserRepository>()
+                .GetByIdAsync(
+                    userId)
+                .GetAwaiter()
+                .GetResult();
+
+        Assert.NotNull(
+            user);
+
+        var token =
+            factory.Services
+                .GetRequiredService<
+                    ITestAccessTokenService>()
+                .Create(
+                    user.Id,
+                    user.Email.Value,
+                    DateTimeOffset.UtcNow,
+                    AccessTokenAuthenticationLevel.PasswordOnly);
 
         client.DefaultRequestHeaders.Authorization =
-            new AuthenticationHeaderValue("Bearer", token);
+            new AuthenticationHeaderValue(
+                "Bearer",
+                token.Token);
+    }
+
+    private static async Task<User> CreateUserAsync(
+        MarketApiFactory factory)
+    {
+        var user =
+            User.Create(
+                $"provider-{Guid.NewGuid():N}@example.com",
+                "test-password-hash",
+                DateTimeOffset.UtcNow);
+
+        await factory.Services
+            .GetRequiredService<
+                IUserRepository>()
+            .AddAsync(
+                user);
+
+        return user;
     }
 
     private sealed record TestSetup(

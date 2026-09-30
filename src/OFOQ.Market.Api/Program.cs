@@ -220,12 +220,12 @@ builder.Services
                                         "sid")?
                                     .Value;
 
-                            // Legacy/service tokens without a session claim keep
-                            // working during this closure phase. All interactive
-                            // login tokens issued by /api/auth now carry sid.
                             if (string.IsNullOrWhiteSpace(
                                     sessionClaim))
                             {
+                                context.Fail(
+                                    "Authentication session is required.");
+
                                 return;
                             }
 
@@ -531,7 +531,23 @@ app.UseStaticFiles(
                 publicUploadsRoot),
 
         RequestPath =
-            "/public-uploads"
+            "/public-uploads",
+
+        OnPrepareResponse =
+            context =>
+            {
+                var headers =
+                    context.Context.Response.Headers;
+
+                headers["X-Content-Type-Options"] =
+                    "nosniff";
+
+                headers["Content-Security-Policy"] =
+                    "sandbox; default-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'";
+
+                headers["Referrer-Policy"] =
+                    "no-referrer";
+            }
     });
 
 app.UseRouting();

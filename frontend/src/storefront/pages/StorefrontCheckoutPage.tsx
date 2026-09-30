@@ -7,6 +7,7 @@ import {
   Landmark,
   Wallet,
   ChevronDown,
+  MapPin,
 } from "lucide-react";
 
 import {
@@ -20,10 +21,14 @@ import {
 } from "../data/customerCartApi";
 
 import {
+  createCheckoutAddress,
+  getCheckoutAddresses,
   getCheckoutShippingMethods,
   previewCheckoutCoupon,
   type CheckoutCouponQuote,
   type CheckoutShippingMethod,
+  type CustomerCheckoutAddress,
+  type CustomerCheckoutAddressInput,
 } from "../data/customerCheckoutApi";
 
 import { listManualMethods, type ManualMethodSummary } from "../data/manualCheckoutApi";
@@ -85,6 +90,36 @@ export function StorefrontCheckoutPage() {
   const [cart, setCart] = useState<CustomerCart | null>(null);
   const [methods, setMethods] = useState<CheckoutShippingMethod[]>([]);
   const [methodId, setMethodId] = useState("");
+  const [addresses, setAddresses] = useState<CustomerCheckoutAddress[]>([]);
+  const [addressId, setAddressId] = useState("");
+
+  const [addressEditorOpen, setAddressEditorOpen] = useState(false);
+  const [addressSaving, setAddressSaving] = useState(false);
+  const [addressError, setAddressError] = useState("");
+
+  const [deliveryMapUrl, setDeliveryMapUrl] = useState("");
+  const [deliveryLatitude, setDeliveryLatitude] =
+    useState<number | null>(null);
+  const [deliveryLongitude, setDeliveryLongitude] =
+    useState<number | null>(null);
+  const [deliveryAccuracyMeters, setDeliveryAccuracyMeters] =
+    useState<number | null>(null);
+  const [locatingAddress, setLocatingAddress] = useState(false);
+
+  const [addressForm, setAddressForm] =
+    useState<CustomerCheckoutAddressInput>({
+      label: "موقع التوصيل",
+      recipientName: "",
+      phone: "",
+      countryCode: "",
+      region: "",
+      city: "",
+      postalCode: "",
+      line1: "",
+      line2: "",
+      isDefault: false,
+    });
+
   const [couponCode, setCouponCode] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState<CheckoutCouponQuote | null>(null);
   const [couponBusy, setCouponBusy] = useState(false);
@@ -107,18 +142,23 @@ export function StorefrontCheckoutPage() {
       }
 
       try {
-        const [cartResult, shippingResult, paymentResult] = await Promise.all([
+        const [
+          cartResult,
+          shippingResult,
+          paymentResult,
+          addressResult,
+        ] = await Promise.all([
           getCustomerCart(storeSlug),
           getCheckoutShippingMethods(storeSlug),
           listManualMethods(storeSlug),
+          getCheckoutAddresses(storeSlug),
         ]);
 
         if (!active) return;
 
-        const availablePickup = shippingResult.filter(
+        const availableMethods = shippingResult.filter(
           (method) =>
             method.isEnabled &&
-            method.type.toLowerCase() === "pickup" &&
             method.currency === cartResult?.currency &&
             (method.minimumOrderAmount == null ||
               (cartResult?.totalAmount ?? 0) >= method.minimumOrderAmount) &&
@@ -126,11 +166,22 @@ export function StorefrontCheckoutPage() {
               (cartResult?.totalAmount ?? 0) <= method.maximumOrderAmount),
         );
 
+        const activeAddresses = addressResult.filter(
+          (address) => address.isActive,
+        );
+
+        const preferredAddress =
+          activeAddresses.find((address) => address.isDefault) ??
+          activeAddresses[0] ??
+          null;
+
         setManualMethods(paymentResult);
         setPaymentChoice("");
         setCart(cartResult);
-        setMethods(availablePickup);
-        setMethodId(availablePickup[0]?.id ?? "");
+        setMethods(availableMethods);
+        setMethodId(availableMethods[0]?.id ?? "");
+        setAddresses(activeAddresses);
+        setAddressId(preferredAddress?.addressId ?? "");
       } catch (caught) {
         if (active) {
           setError(
@@ -167,8 +218,373 @@ export function StorefrontCheckoutPage() {
     return () => { active = false; };
   }, []);
 
+  const selectedMethod =
+    methods.find((method) => method.id === methodId) ?? null;
+
+  const deliveryRequiresAddress =
+    selectedMethod !== null &&
+    selectedMethod.type.toLowerCase() !== "pickup";
+
+  const selectedAddress =
+    addresses.find((address) => address.addressId === addressId) ?? null;
+
+  function patchAddress<
+    K extends keyof CustomerCheckoutAddressInput
+  >(
+    key: K,
+    value: CustomerCheckoutAddressInput[K],
+  ) {
+    setAddressForm((current) => ({
+      ...current,
+      [key]: value,
+    }));
+  }
+
+  function detectDeliveryLocation() {
+    if (
+      locatingAddress ||
+      addressSaving
+    ) {
+      return;
+    }
+
+    if (!navigator.geolocation) {
+      setAddressError(
+        "تحديد الموقع غير مدعوم في هذا المتصفح. يمكنك لصق رابط Google Maps يدويًا.",
+      );
+
+      return;
+    }
+
+    if (!window.isSecureContext) {
+      setAddressError(
+        "تحديد الموقع يحتاج HTTPS أو التشغيل على localhost.",
+      );
+
+      return;
+    }
+
+    setLocatingAddress(true);
+    setAddressError("");
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const latitude =
+          Number(
+            position.coords.latitude.toFixed(6),
+          );
+
+        const longitude =
+          Number(
+            position.coords.longitude.toFixed(6),
+          );
+
+        const accuracyMeters =
+          Number.isFinite(
+            position.coords.accuracy,
+          )
+            ? Math.max(
+                0,
+                Math.round(
+                  position.coords.accuracy,
+                ),
+              )
+            : null;
+
+        const url =
+          `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`;
+
+        setDeliveryLatitude(
+          latitude,
+        );
+
+        setDeliveryLongitude(
+          longitude,
+        );
+
+        setDeliveryAccuracyMeters(
+          accuracyMeters,
+        );
+
+        setDeliveryMapUrl(
+          url,
+        );
+
+        setLocatingAddress(
+          false,
+        );
+
+        setAddressError(
+          "",
+        );
+      },
+      () => {
+        setLocatingAddress(
+          false,
+        );
+
+        setAddressError(
+          "تعذر تحديد موقعك. اسمح للمتصفح باستخدام الموقع أو الصق رابط Google Maps يدويًا.",
+        );
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 15000,
+        maximumAge: 60000,
+      },
+    );
+  }
+
+  async function saveDeliveryAddress() {
+    if (addressSaving) {
+      return;
+    }
+
+    let normalizedMapUrl = "";
+
+    if (deliveryMapUrl.trim()) {
+      try {
+        const parsed =
+          new URL(
+            deliveryMapUrl.trim(),
+          );
+
+        const host =
+          parsed.hostname.toLowerCase();
+
+        const googleMapsUrl =
+          parsed.protocol === "https:" &&
+          !parsed.username &&
+          !parsed.password &&
+          (
+            host === "maps.app.goo.gl" ||
+            host === "maps.google.com" ||
+            (
+              host === "goo.gl" &&
+              parsed.pathname.startsWith(
+                "/maps",
+              )
+            ) ||
+            (
+              (
+                host === "google.com" ||
+                host === "www.google.com" ||
+                host.endsWith(".google.com")
+              ) &&
+              parsed.pathname.startsWith(
+                "/maps",
+              )
+            )
+          );
+
+        if (!googleMapsUrl) {
+          throw new Error(
+            "INVALID_MAP_URL",
+          );
+        }
+
+        normalizedMapUrl =
+          parsed.toString();
+      } catch {
+        setAddressError(
+          "ألصق رابط Google Maps صحيحًا، أو استخدم زر «حدد موقعي الحالي».",
+        );
+
+        return;
+      }
+    }
+
+    const hasCoordinates =
+      deliveryLatitude !== null &&
+      deliveryLongitude !== null;
+
+    if (
+      !normalizedMapUrl &&
+      hasCoordinates
+    ) {
+      normalizedMapUrl =
+        `https://www.google.com/maps/search/?api=1&query=${deliveryLatitude},${deliveryLongitude}`;
+    }
+
+    if (
+      !hasCoordinates &&
+      !normalizedMapUrl
+    ) {
+      setAddressError(
+        "حدد موقع التوصيل أولًا أو ألصق رابط Google Maps.",
+      );
+
+      return;
+    }
+
+    if (
+      normalizedMapUrl.length >
+      240
+    ) {
+      setAddressError(
+        "رابط الموقع طويل جدًا. من Google Maps استخدم «مشاركة» ثم انسخ رابط المشاركة المختصر.",
+      );
+
+      return;
+    }
+
+    const deliveryNotes =
+      addressForm.line2?.trim() ||
+      null;
+
+    const input: CustomerCheckoutAddressInput = {
+      label:
+        addressForm.label.trim() ||
+        "موقع التوصيل",
+
+      recipientName:
+        addressForm.recipientName.trim(),
+
+      phone:
+        addressForm.phone.trim(),
+
+      countryCode: "",
+      region: null,
+      city: "",
+      postalCode: null,
+
+      line1:
+        normalizedMapUrl,
+
+      line2:
+        deliveryNotes,
+
+      latitude:
+        deliveryLatitude,
+
+      longitude:
+        deliveryLongitude,
+
+      accuracyMeters:
+        deliveryAccuracyMeters,
+
+      mapUrl:
+        normalizedMapUrl,
+
+      deliveryNotes,
+
+      isDefault:
+        addresses.length === 0,
+    };
+
+    if (!input.recipientName) {
+      setAddressError(
+        "أدخل اسم المستلم.",
+      );
+
+      return;
+    }
+
+    if (
+      input.phone.length < 7 ||
+      input.phone.length > 40 ||
+      (input.phone.match(/\d/g)?.length ?? 0) < 7 ||
+      !/^[+\d()\-\s]+$/.test(input.phone)
+    ) {
+      setAddressError(
+        "أدخل رقم هاتف صحيحًا للمستلم.",
+      );
+
+      return;
+    }
+
+    setAddressSaving(true);
+    setAddressError("");
+
+    try {
+      const created =
+        await createCheckoutAddress(
+          storeSlug,
+          input,
+        );
+
+      setAddresses((current) => {
+        const normalized =
+          created.isDefault
+            ? current.map((address) => ({
+                ...address,
+                isDefault: false,
+              }))
+            : current;
+
+        return [
+          created,
+          ...normalized,
+        ];
+      });
+
+      setAddressId(
+        created.addressId,
+      );
+
+      setAddressEditorOpen(
+        false,
+      );
+
+      setAddressForm({
+        label: "موقع التوصيل",
+        recipientName: "",
+        phone: "",
+        countryCode: "",
+        region: "",
+        city: "",
+        postalCode: "",
+        line1: "",
+        line2: "",
+        isDefault: false,
+      });
+
+      setDeliveryLatitude(
+        null,
+      );
+
+      setDeliveryLongitude(
+        null,
+      );
+
+      setDeliveryAccuracyMeters(
+        null,
+      );
+
+      setDeliveryMapUrl("");
+
+      requestKey.current =
+        null;
+
+      setAppliedCoupon(
+        null,
+      );
+
+      setCouponError(
+        "",
+      );
+    } catch (caught) {
+      setAddressError(
+        caught instanceof Error
+          ? caught.message
+          : "تعذر حفظ موقع التوصيل.",
+      );
+    } finally {
+      setAddressSaving(
+        false,
+      );
+    }
+  }
+
   async function applyCoupon() {
-    if (submitting || couponBusy || !cart?.items.length || !methodId) return;
+    if (
+      submitting ||
+      couponBusy ||
+      !cart?.items.length ||
+      !methodId ||
+      !selectedMethod ||
+      (deliveryRequiresAddress && !selectedAddress)
+    ) return;
     const code = couponCode.trim().toUpperCase();
     setCouponError("");
     setAppliedCoupon(null);
@@ -178,7 +594,12 @@ export function StorefrontCheckoutPage() {
     }
     setCouponBusy(true);
     try {
-      const quote = await previewCheckoutCoupon(storeSlug, methodId, code);
+      const quote = await previewCheckoutCoupon(
+        storeSlug,
+        methodId,
+        code,
+        deliveryRequiresAddress ? selectedAddress?.addressId ?? null : null,
+      );
       // A preview is not a reservation. The server will validate again at checkout.
       if (quote.currency !== cart.currency || quote.couponCode !== code ||
           !Number.isFinite(quote.discountAmount) || quote.discountAmount <= 0 ||
@@ -200,7 +621,9 @@ export function StorefrontCheckoutPage() {
       submitting ||
       !cart?.items.length ||
       !methodId ||
-      !methods.some((method) => method.id === methodId)
+      !selectedMethod ||
+      !methods.some((method) => method.id === methodId) ||
+      (deliveryRequiresAddress && !selectedAddress)
     ) {
       return;
     }
@@ -237,6 +660,19 @@ export function StorefrontCheckoutPage() {
       // The cart remains editable; the draft is scoped to this signed-in user/store.
       const selectedShipping = methods.find(method => method.id === methodId);
       if (!selectedShipping || !cart?.currency) throw new Error("تعذر تحديد الشحن أو عملة السلة.");
+
+      const customerAddressId =
+        selectedShipping.type.toLowerCase() === "pickup"
+          ? null
+          : selectedAddress?.addressId ?? null;
+
+      if (
+        selectedShipping.type.toLowerCase() !== "pickup" &&
+        !customerAddressId
+      ) {
+        throw new Error("اختر عنوان توصيل صالحًا قبل المتابعة.");
+      }
+
       const expectedAmount = Number((appliedCoupon?.totalAmount ?? (cart.totalAmount + selectedShipping.price)).toFixed(2));
       if (expectedAmount <= 0) throw new Error("قيمة الطلب غير صالحة للدفع اليدوي.");
       saveManualCheckoutDraft(storeSlug, {
@@ -245,6 +681,7 @@ export function StorefrontCheckoutPage() {
           productVariantId: item.productVariantId, quantity: item.quantity, unitPrice: item.unitPrice,
         })),
         shippingMethodId: methodId,
+        customerAddressId,
         paymentAccountId: paymentChoice,
         customerPhone: normalizedPhone,
         couponCode: appliedCoupon?.couponCode ?? null,
@@ -343,7 +780,7 @@ export function StorefrontCheckoutPage() {
               </h1>
 
               <p className="mt-3 text-sm text-[#718176]">
-                راجع تفاصيل طلبك واختر طريقة الاستلام والدفع المناسبة.
+                راجع تفاصيل طلبك واختر طريقة التوصيل أو الاستلام والدفع المناسبة.
               </p>
             </header>
 
@@ -351,20 +788,23 @@ export function StorefrontCheckoutPage() {
               <div className="space-y-5">
                 <section className="rounded-2xl border border-[#e7eae5] bg-white p-6">
                   <h2 className="mb-4 text-lg font-semibold">
-                    طريقة الاستلام
+                    طريقة التسليم
                   </h2>
 
                   {methods.length === 0 ? (
                     <p className="rounded-xl bg-[#f7f5ef] p-4 text-sm leading-7 text-[#7a6040]">
-                      لم يفعّل المتجر طريقة استلام مناسبة لهذا الطلب.
-                      لن يتم إنشاء الطلب قبل توفير طريقة استلام صحيحة.
+                      لا توجد طريقة توصيل أو استلام مفعّلة ومناسبة لهذا الطلب حاليًا.
                     </p>
                   ) : (
                     <div className="space-y-3">
                       {methods.map((method) => (
                         <label
                           key={method.id}
-                          className="flex cursor-pointer items-center gap-3 rounded-xl border border-[#e4e9e2] p-4"
+                          className={`flex cursor-pointer items-center gap-3 rounded-xl border p-4 ${
+                            methodId === method.id
+                              ? "border-[#315F5B] bg-[#f5faf7]"
+                              : "border-[#e4e9e2]"
+                          }`}
                         >
                           <input
                             type="radio"
@@ -379,18 +819,358 @@ export function StorefrontCheckoutPage() {
                             }}
                           />
 
-                          <span className="flex-1 text-sm font-medium">
-                            {method.name}
+                          <span className="flex min-w-0 flex-1 items-center gap-2 text-sm font-medium">
+                            {method.type.toLowerCase() === "pickup" ? (
+                              <Package size={17} className="shrink-0 text-[#315F5B]" />
+                            ) : (
+                              <MapPin size={17} className="shrink-0 text-[#315F5B]" />
+                            )}
+
+                            <span className="truncate">
+                              {method.name}
+                            </span>
                           </span>
 
                           <span className="text-sm">
-                            {money(method.price, method.currency)}
+                            {method.price === 0
+                              ? "مجاني"
+                              : money(method.price, method.currency)}
                           </span>
                         </label>
                       ))}
+
+                      {deliveryRequiresAddress && (
+                        <div className="mt-4 border-t border-[#edf0eb] pt-5">
+                          <div className="mb-3 flex items-center gap-2">
+                            <MapPin size={18} className="text-[#315F5B]" />
+
+                            <div>
+                              <h3 className="text-sm font-semibold">
+                                موقع التوصيل
+                              </h3>
+
+                              <p className="mt-1 text-xs leading-6 text-[#718176]">
+                                اختر موقعًا محفوظًا أو أضف موقع التوصيل الحالي.
+                              </p>
+                            </div>
+                          </div>
+
+                          {addresses.length > 0 ? (
+                            <div className="space-y-3">
+                              <select
+                                value={addressId}
+                                onChange={(event) => {
+                                  setAddressId(event.target.value);
+                                  requestKey.current = null;
+                                  setAppliedCoupon(null);
+                                  setCouponError("");
+                                }}
+                                className="h-12 w-full rounded-xl border border-[#e4e9e2] bg-white px-4 text-sm outline-none focus:border-[#315F5B]"
+                              >
+                                {addresses.map((address) => (
+                                  <option
+                                    key={address.addressId}
+                                    value={address.addressId}
+                                  >
+                                    {address.label} — {(address.mapUrl || (address.latitude !== null && address.longitude !== null)) ? "موقع محدد على الخريطة" : [address.city, address.line1].filter(Boolean).join(" — ")}
+                                  </option>
+                                ))}
+                              </select>
+
+                              {!addressEditorOpen ? (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setAddressError("");
+                                    setAddressEditorOpen(true);
+                                  }}
+                                  className="text-sm font-semibold text-[#315F5B] underline underline-offset-4"
+                                >
+                                  + إضافة عنوان توصيل آخر
+                                </button>
+                              ) : null}
+                            </div>
+                          ) : !addressEditorOpen ? (
+                            <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-[#f7f5ef] px-4 py-3">
+                              <div>
+                                <p className="text-sm font-medium text-[#6f5638]">
+                                  لا يوجد موقع توصيل محفوظ.
+                                </p>
+
+                                <p className="mt-1 text-xs leading-6 text-[#8a765d]">
+                                  حدد موقعك الآن وسيتم اختياره تلقائيًا لهذا الطلب.
+                                </p>
+                              </div>
+
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setAddressError("");
+                                  setAddressEditorOpen(true);
+                                }}
+                                className="min-h-10 rounded-lg border border-[#d8cec0] bg-white px-4 text-sm font-semibold text-[#5f4b34]"
+                              >
+                                + إضافة عنوان
+                              </button>
+                            </div>
+                          ) : null}
+
+                          {addressEditorOpen ? (
+                            <div className="mt-4 border-t border-[#edf0eb] pt-5">
+                              <div className="mb-4 flex items-start justify-between gap-4">
+                                <div>
+                                  <h4 className="text-sm font-semibold">
+                                    إضافة موقع التوصيل
+                                  </h4>
+
+                                  <p className="mt-1 text-xs leading-6 text-[#718176]">
+                                    حدد الموقع وأدخل بيانات المستلم بدون مغادرة صفحة إتمام الطلب.
+                                  </p>
+                                </div>
+
+                                {addresses.length > 0 ? (
+                                  <button
+                                    type="button"
+                                    disabled={addressSaving}
+                                    onClick={() => {
+                                      setAddressEditorOpen(false);
+                                      setAddressError("");
+                                    }}
+                                    className="text-xs text-[#718176] underline"
+                                  >
+                                    إلغاء
+                                  </button>
+                                ) : null}
+                              </div>
+
+                              <section className="mb-5 rounded-xl border border-[#dfe7e1] bg-[#f8faf8] p-4">
+                                <div className="flex items-start justify-between gap-4">
+                                  <div>
+                                    <h4 className="text-sm font-semibold text-[#21352a]">
+                                      موقع التوصيل
+                                    </h4>
+
+                                    <p className="mt-1 text-xs leading-6 text-[#718176]">
+                                      حدد موقعك بضغطة واحدة أو الصق رابط Google Maps. لا تحتاج لكتابة المدينة أو الشارع.
+                                    </p>
+                                  </div>
+
+                                  <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-white text-[#315F5B]">
+                                    <MapPin size={17} />
+                                  </span>
+                                </div>
+
+                                <div className="mt-4 flex flex-wrap gap-2">
+                                  <button
+                                    type="button"
+                                    disabled={
+                                      locatingAddress ||
+                                      addressSaving
+                                    }
+                                    onClick={
+                                      detectDeliveryLocation
+                                    }
+                                    className="min-h-11 rounded-xl bg-[#315F5B] px-5 text-sm font-semibold text-white disabled:opacity-50"
+                                  >
+                                    {locatingAddress
+                                      ? "جاري تحديد موقعك..."
+                                      : "حدد موقعي الحالي"}
+                                  </button>
+
+                                  <a
+                                    href="https://www.google.com/maps"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex min-h-11 items-center justify-center rounded-xl border border-[#dfe7e1] bg-white px-4 text-sm font-medium text-[#315F5B]"
+                                  >
+                                    فتح Google Maps
+                                  </a>
+                                </div>
+
+                                <label className="mt-4 block text-sm">
+                                  <span className="mb-2 block text-xs font-medium text-[#586a60]">
+                                    رابط الموقع من Google Maps
+                                  </span>
+
+                                  <input
+                                    dir="ltr"
+                                    type="url"
+                                    value={
+                                      deliveryMapUrl
+                                    }
+                                    disabled={
+                                      addressSaving
+                                    }
+                                    onChange={(event) => {
+                                      setDeliveryMapUrl(
+                                        event.target.value,
+                                      );
+
+                                      setDeliveryLatitude(
+                                        null,
+                                      );
+
+                                      setDeliveryLongitude(
+                                        null,
+                                      );
+
+                                      setDeliveryAccuracyMeters(
+                                        null,
+                                      );
+
+                                      setAddressError("");
+                                    }}
+                                    placeholder="https://maps.app.goo.gl/..."
+                                    className="h-11 w-full rounded-xl border border-[#e4e9e2] bg-white px-3 text-left outline-none focus:border-[#315F5B]"
+                                  />
+                                </label>
+
+                                {deliveryMapUrl ? (
+                                  <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+                                    <span className="text-xs text-[#4f675a]">
+                                      {deliveryLatitude !== null &&
+                                      deliveryLongitude !== null
+                                        ? deliveryAccuracyMeters !== null
+                                          ? `تم تحديد موقعك بدقة تقريبية ${deliveryAccuracyMeters} متر.`
+                                          : "تم تحديد موقعك."
+                                        : "تم حفظ رابط الموقع."}
+                                    </span>
+
+                                    <a
+                                      href={
+                                        deliveryMapUrl
+                                      }
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-xs font-semibold text-[#315F5B] underline underline-offset-4"
+                                    >
+                                      معاينة الموقع على الخريطة
+                                    </a>
+                                  </div>
+                                ) : null}
+                              </section>
+
+                              <div className="mb-4 flex items-center gap-3">
+                                <span className="h-px flex-1 bg-[#edf0ed]" />
+
+                                <span className="shrink-0 text-[11px] font-semibold text-[#65766c]">
+                                  بيانات المستلم
+                                </span>
+
+                                <span className="h-px flex-1 bg-[#edf0ed]" />
+                              </div>
+
+                              <div className="grid gap-3 sm:grid-cols-2">
+                                <label className="text-sm">
+                                  <span className="mb-2 block text-xs font-semibold text-[#4d6256]">
+                                    اسم المستلم
+                                  </span>
+
+                                  <input
+                                    value={addressForm.recipientName}
+                                    maxLength={160}
+                                    disabled={addressSaving}
+                                    autoComplete="name"
+                                    onChange={(event) =>
+                                      patchAddress(
+                                        "recipientName",
+                                        event.target.value,
+                                      )
+                                    }
+                                    placeholder="الاسم الكامل"
+                                    className="h-11 w-full rounded-xl border border-[#e4e9e2] bg-white px-3 outline-none focus:border-[#315F5B]"
+                                  />
+                                </label>
+
+                                <label className="text-sm">
+                                  <span className="mb-2 block text-xs font-semibold text-[#4d6256]">
+                                    رقم الهاتف
+                                  </span>
+
+                                  <input
+                                    dir="ltr"
+                                    type="tel"
+                                    value={addressForm.phone}
+                                    maxLength={40}
+                                    autoComplete="tel"
+                                    disabled={addressSaving}
+                                    onChange={(event) =>
+                                      patchAddress(
+                                        "phone",
+                                        event.target.value,
+                                      )
+                                    }
+                                    placeholder="+9665XXXXXXXX"
+                                    className="h-11 w-full rounded-xl border border-[#e4e9e2] bg-white px-3 text-left outline-none focus:border-[#315F5B]"
+                                  />
+                                </label>
+
+                                <label className="text-sm sm:col-span-2">
+                                  <span className="mb-2 block text-xs font-semibold text-[#4d6256]">
+                                    ملاحظة للمندوب
+                                    <span className="mr-1 font-normal text-[#87938c]">
+                                      اختياري
+                                    </span>
+                                  </span>
+
+                                  <input
+                                    value={addressForm.line2 ?? ""}
+                                    maxLength={240}
+                                    disabled={addressSaving}
+                                    onChange={(event) =>
+                                      patchAddress(
+                                        "line2",
+                                        event.target.value,
+                                      )
+                                    }
+                                    placeholder="مثال: اتصل قبل الوصول، المدخل الخلفي..."
+                                    className="h-11 w-full rounded-xl border border-[#e4e9e2] bg-white px-3 outline-none focus:border-[#315F5B]"
+                                  />
+                                </label>
+                              </div>
+                              {addressError ? (
+                                <p
+                                  role="alert"
+                                  className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800"
+                                >
+                                  {addressError}
+                                </p>
+                              ) : null}
+
+                              <div className="mt-4 flex flex-wrap items-center gap-2">
+                                <button
+                                  type="button"
+                                  disabled={addressSaving}
+                                  onClick={() =>
+                                    void saveDeliveryAddress()
+                                  }
+                                  className="min-h-11 rounded-xl bg-[#315F5B] px-5 text-sm font-semibold text-white disabled:opacity-50"
+                                >
+                                  {addressSaving
+                                    ? "جاري حفظ الموقع..."
+                                    : "حفظ واستخدام هذا الموقع"}
+                                </button>
+
+                                {addresses.length > 0 ? (
+                                  <button
+                                    type="button"
+                                    disabled={addressSaving}
+                                    onClick={() => {
+                                      setAddressEditorOpen(false);
+                                      setAddressError("");
+                                    }}
+                                    className="min-h-11 rounded-xl border border-[#e4e9e2] px-4 text-sm disabled:opacity-50"
+                                  >
+                                    إلغاء
+                                  </button>
+                                ) : null}
+                              </div>
+                            </div>
+                          ) : null}
+                        </div>
+                      )}
                     </div>
                   )}
-
                 </section>
 
                 <section className="rounded-2xl border border-[#e7eae5] bg-white p-6">
@@ -464,7 +1244,7 @@ export function StorefrontCheckoutPage() {
                         }}
                         className="block min-h-12 w-full rounded-xl border border-[#e4e9e2] px-4 text-left" />
                     </label>
-                    <button type="button" disabled={!couponCode.trim() || couponBusy || submitting || !methodId}
+                    <button type="button" disabled={!couponCode.trim() || couponBusy || submitting || !methodId || (deliveryRequiresAddress && !selectedAddress)}
                       onClick={() => void applyCoupon()}
                       className="min-h-12 rounded-xl bg-[#315F5B] px-5 text-sm font-semibold text-white disabled:opacity-50">
                       {couponBusy ? "جارٍ التحقق…" : "تطبيق الكوبون"}
@@ -560,7 +1340,7 @@ export function StorefrontCheckoutPage() {
                 <button
                   type="button"
                   onClick={() => void confirmOrder()}
-                  disabled={!methodId || submitting || couponBusy || (Boolean(couponCode.trim()) && !appliedCoupon) || !paymentChoice || !manualMethods.some(method => method.id === paymentChoice) || contactPhone.trim().length < 7}
+                  disabled={!methodId || submitting || couponBusy || (Boolean(couponCode.trim()) && !appliedCoupon) || !paymentChoice || !manualMethods.some(method => method.id === paymentChoice) || contactPhone.trim().length < 7 || (deliveryRequiresAddress && !selectedAddress)}
                   className="mt-5 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#193c30] px-5 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50"
                   style={{ color: "#ffffff" }}
                 >

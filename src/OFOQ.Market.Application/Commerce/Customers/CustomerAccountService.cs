@@ -6,7 +6,7 @@ using OFOQ.Market.Domain.Identity;
 namespace OFOQ.Market.Application.Commerce.Customers;
 
 public sealed record CustomerProfileResult(Guid UserId, string? DisplayName, string? Phone, bool IsBlocked, string? MerchantNotes);
-public sealed record CustomerAddressResult(Guid AddressId, string Label, string RecipientName, string Phone, string CountryCode, string? Region, string City, string? PostalCode, string Line1, string? Line2, bool IsDefault, bool IsActive);
+public sealed record CustomerAddressResult(Guid AddressId, string Label, string RecipientName, string Phone, string CountryCode, string? Region, string City, string? PostalCode, string Line1, string? Line2, bool IsDefault, bool IsActive, double? Latitude = null, double? Longitude = null, double? AccuracyMeters = null, string? MapUrl = null, string? DeliveryNotes = null);
 
 public sealed class CustomerAccountService
 {
@@ -56,7 +56,7 @@ public sealed class CustomerAccountService
     public async Task<IReadOnlyList<CustomerAddressResult>> GetAddressesAsync(UserId userId, CancellationToken cancellationToken = default)
         => (await _addresses.GetForUserAsync(userId, cancellationToken)).Select(Map).ToArray();
 
-    public async Task<CustomerAddressResult> AddAddressAsync(UserId userId, string label, string recipientName, string phone, string countryCode, string? region, string city, string? postalCode, string line1, string? line2, bool isDefault, CancellationToken cancellationToken = default)
+    public async Task<CustomerAddressResult> AddAddressAsync(UserId userId, string label, string recipientName, string phone, string countryCode, string? region, string city, string? postalCode, string line1, string? line2, bool isDefault, CancellationToken cancellationToken = default, double? latitude = null, double? longitude = null, double? accuracyMeters = null, string? mapUrl = null, string? deliveryNotes = null)
     {
         EnsureTenant();
         var existing = await _addresses.GetForUserAsync(userId, cancellationToken);
@@ -64,19 +64,54 @@ public sealed class CustomerAccountService
         var makeDefault = isDefault || existing.Count == 0;
         if (makeDefault)
             foreach (var item in existing.Where(x => x.IsDefault)) item.ClearDefault(now, userId.Value);
-        var address = CustomerAddress.Create(_currentTenant.TenantId!.Value, userId, label, recipientName, phone, countryCode, region, city, postalCode, line1, line2, makeDefault, now, userId.Value);
+        var address = CustomerAddress.Create(
+            _currentTenant.TenantId!.Value,
+            userId,
+            label,
+            recipientName,
+            phone,
+            countryCode,
+            region,
+            city,
+            postalCode,
+            line1,
+            line2,
+            makeDefault,
+            now,
+            createdByUserId: userId.Value,
+            latitude: latitude,
+            longitude: longitude,
+            accuracyMeters: accuracyMeters,
+            mapUrl: mapUrl,
+            deliveryNotes: deliveryNotes);
         await _addresses.AddAsync(address, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
         return Map(address);
     }
 
-    public async Task<CustomerAddressResult?> UpdateAddressAsync(UserId userId, CustomerAddressId addressId, string label, string recipientName, string phone, string countryCode, string? region, string city, string? postalCode, string line1, string? line2, bool makeDefault, CancellationToken cancellationToken = default)
+    public async Task<CustomerAddressResult?> UpdateAddressAsync(UserId userId, CustomerAddressId addressId, string label, string recipientName, string phone, string countryCode, string? region, string city, string? postalCode, string line1, string? line2, bool makeDefault, CancellationToken cancellationToken = default, double? latitude = null, double? longitude = null, double? accuracyMeters = null, string? mapUrl = null, string? deliveryNotes = null)
     {
         EnsureTenant();
         var address = await _addresses.GetByIdForUserAsync(addressId, userId, cancellationToken);
         if (address is null) return null;
         var now = _timeProvider.GetUtcNow();
-        address.Update(label, recipientName, phone, countryCode, region, city, postalCode, line1, line2, now, userId.Value);
+        address.Update(
+            label,
+            recipientName,
+            phone,
+            countryCode,
+            region,
+            city,
+            postalCode,
+            line1,
+            line2,
+            now,
+            userId.Value,
+            latitude,
+            longitude,
+            accuracyMeters,
+            mapUrl,
+            deliveryNotes);
         if (makeDefault)
         {
             var all = await _addresses.GetForUserAsync(userId, cancellationToken);
@@ -111,5 +146,5 @@ public sealed class CustomerAccountService
     }
 
     private static CustomerProfileResult Map(CustomerProfile x) => new(x.UserId.Value, x.DisplayName, x.Phone, x.IsBlocked, x.MerchantNotes);
-    private static CustomerAddressResult Map(CustomerAddress x) => new(x.Id.Value, x.Label, x.RecipientName, x.Phone, x.CountryCode, x.Region, x.City, x.PostalCode, x.Line1, x.Line2, x.IsDefault, x.IsActive);
+    private static CustomerAddressResult Map(CustomerAddress x) => new(x.Id.Value, x.Label, x.RecipientName, x.Phone, x.CountryCode, x.Region, x.City, x.PostalCode, x.Line1, x.Line2, x.IsDefault, x.IsActive, x.Latitude, x.Longitude, x.AccuracyMeters, x.MapUrl, x.DeliveryNotes);
 }

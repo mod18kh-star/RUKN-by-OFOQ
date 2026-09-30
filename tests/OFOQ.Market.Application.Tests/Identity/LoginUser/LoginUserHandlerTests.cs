@@ -1,4 +1,4 @@
-using OFOQ.Market.Application.Common.Persistence;
+﻿using OFOQ.Market.Application.Common.Persistence;
 using OFOQ.Market.Application.Common.Security;
 using OFOQ.Market.Application.Identity.LoginUser;
 using OFOQ.Market.Domain.Identity;
@@ -22,19 +22,13 @@ public sealed class LoginUserHandlerTests
     {
         var user =
             CreateUser();
-
-        var accessTokenService =
-            new FakeAccessTokenService();
-
-        var unitOfWork =
+var unitOfWork =
             new FakeUnitOfWork();
 
         var handler =
             CreateHandler(
                 user,
                 mfa: null,
-                accessTokenService:
-                    accessTokenService,
                 unitOfWork:
                     unitOfWork);
 
@@ -53,31 +47,11 @@ public sealed class LoginUserHandlerTests
 
         Assert.Equal(
             user.Email.Value,
-            result.Email);
-
-        Assert.Equal(
-            "ACCESS-TOKEN",
-            result.AccessToken);
-
-        Assert.Equal(
-            FixedNow.AddMinutes(15),
-            result.AccessTokenExpiresAtUtc);
-
-        Assert.Null(
+            result.Email);Assert.Null(
             result.MfaChallengeToken);
 
         Assert.Null(
-            result.MfaChallengeExpiresAtUtc);
-
-        Assert.Equal(
-            1,
-            accessTokenService.CreateCount);
-
-        Assert.Equal(
-            AccessTokenAuthenticationLevel.PasswordOnly,
-            accessTokenService.LastAuthenticationLevel);
-
-        Assert.Equal(
+            result.MfaChallengeExpiresAtUtc);Assert.Equal(
             0,
             unitOfWork.SaveChangesCount);
     }
@@ -94,11 +68,7 @@ public sealed class LoginUserHandlerTests
 
         var challengeRepository =
             new FakeMfaLoginChallengeRepository();
-
-        var accessTokenService =
-            new FakeAccessTokenService();
-
-        var unitOfWork =
+var unitOfWork =
             new FakeUnitOfWork();
 
         var handler =
@@ -107,8 +77,6 @@ public sealed class LoginUserHandlerTests
                 mfa,
                 challengeRepository:
                     challengeRepository,
-                accessTokenService:
-                    accessTokenService,
                 unitOfWork:
                     unitOfWork);
 
@@ -121,12 +89,6 @@ public sealed class LoginUserHandlerTests
         Assert.True(
             result.RequiresMfa);
 
-        Assert.Null(
-            result.AccessToken);
-
-        Assert.Null(
-            result.AccessTokenExpiresAtUtc);
-
         Assert.Equal(
             "RAW-CHALLENGE-TOKEN",
             result.MfaChallengeToken);
@@ -134,13 +96,6 @@ public sealed class LoginUserHandlerTests
         Assert.Equal(
             FixedNow.AddMinutes(5),
             result.MfaChallengeExpiresAtUtc);
-
-        Assert.Equal(
-            0,
-            accessTokenService.CreateCount);
-
-        Assert.Null(
-            accessTokenService.LastAuthenticationLevel);
 
         Assert.Equal(
             1,
@@ -178,16 +133,10 @@ public sealed class LoginUserHandlerTests
                 user.Id,
                 "PROTECTED-SECRET",
                 FixedNow.AddMinutes(-10));
-
-        var accessTokenService =
-            new FakeAccessTokenService();
-
-        var handler =
+var handler =
             CreateHandler(
                 user,
-                pendingMfa,
-                accessTokenService:
-                    accessTokenService);
+                pendingMfa);
 
         var result =
             await handler.HandleAsync(
@@ -196,19 +145,8 @@ public sealed class LoginUserHandlerTests
                     "correct-password"));
 
         Assert.False(
-            result.RequiresMfa);
-
-        Assert.Equal(
-            "ACCESS-TOKEN",
-            result.AccessToken);
-
-        Assert.Null(
-            result.MfaChallengeToken);
-
-        Assert.Equal(
-            AccessTokenAuthenticationLevel.PasswordOnly,
-            accessTokenService.LastAuthenticationLevel);
-    }
+            result.RequiresMfa);Assert.Null(
+            result.MfaChallengeToken);}
 
     [Fact]
     public async Task Login_WithEnabledMfa_RevokesExistingActiveChallenge()
@@ -277,11 +215,7 @@ public sealed class LoginUserHandlerTests
 
         var challengeRepository =
             new FakeMfaLoginChallengeRepository();
-
-        var accessTokenService =
-            new FakeAccessTokenService();
-
-        var unitOfWork =
+var unitOfWork =
             new FakeUnitOfWork();
 
         var handler =
@@ -290,8 +224,6 @@ public sealed class LoginUserHandlerTests
                 mfa,
                 challengeRepository:
                     challengeRepository,
-                accessTokenService:
-                    accessTokenService,
                 unitOfWork:
                     unitOfWork);
 
@@ -305,13 +237,6 @@ public sealed class LoginUserHandlerTests
 
         Assert.Empty(
             challengeRepository.Items);
-
-        Assert.Equal(
-            0,
-            accessTokenService.CreateCount);
-
-        Assert.Null(
-            accessTokenService.LastAuthenticationLevel);
 
         Assert.Equal(
             0,
@@ -332,7 +257,7 @@ public sealed class LoginUserHandlerTests
                     null),
                 new FakeMfaLoginChallengeRepository(),
                 passwordHasher,
-                new FakeAccessTokenService(),
+
                 new FakeChallengeTokenService(),
                 new FakeUnitOfWork(),
                 new FixedTimeProvider(
@@ -355,7 +280,7 @@ public sealed class LoginUserHandlerTests
         User user,
         UserMfa? mfa,
         FakeMfaLoginChallengeRepository? challengeRepository = null,
-        FakeAccessTokenService? accessTokenService = null,
+        
         FakeUnitOfWork? unitOfWork = null)
     {
         return new LoginUserHandler(
@@ -366,8 +291,6 @@ public sealed class LoginUserHandlerTests
             challengeRepository ??
                 new FakeMfaLoginChallengeRepository(),
             new FakePasswordHasher(),
-            accessTokenService ??
-                new FakeAccessTokenService(),
             new FakeChallengeTokenService(),
             unitOfWork ??
                 new FakeUnitOfWork(),
@@ -598,30 +521,6 @@ public sealed class LoginUserHandlerTests
         }
     }
 
-    private sealed class FakeAccessTokenService :
-        IAccessTokenService
-    {
-        public int CreateCount { get; private set; }
-
-        public AccessTokenAuthenticationLevel?
-            LastAuthenticationLevel { get; private set; }
-
-        public AccessTokenResult Create(
-            UserId userId,
-            string email,
-            DateTimeOffset nowUtc,
-            AccessTokenAuthenticationLevel authenticationLevel)
-        {
-            CreateCount++;
-
-            LastAuthenticationLevel =
-                authenticationLevel;
-
-            return new AccessTokenResult(
-                "ACCESS-TOKEN",
-                nowUtc.AddMinutes(15));
-        }
-    }
 
     private sealed class FakeChallengeTokenService :
         IMfaLoginChallengeTokenService
@@ -686,3 +585,11 @@ public sealed class LoginUserHandlerTests
         }
     }
 }
+
+
+
+
+
+
+
+

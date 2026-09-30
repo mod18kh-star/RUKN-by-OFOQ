@@ -46,7 +46,7 @@ public static class CustomerAccountEndpoints
     private static async Task<IResult> AddAddressAsync(CustomerAddressRequest request, CustomerAccountService service, HttpContext http, CancellationToken ct)
     {
         var userId = GetUserId(http); if (!userId.HasValue) return Results.Unauthorized();
-        try { return Results.Ok(Map(await service.AddAddressAsync(userId.Value, request.Label, request.RecipientName, request.Phone, request.CountryCode, request.Region, request.City, request.PostalCode, request.Line1, request.Line2, request.IsDefault, ct))); }
+        try { return Results.Ok(Map(await service.AddAddressAsync(userId.Value, request.Label, request.RecipientName, request.Phone, request.CountryCode, request.Region, request.City, request.PostalCode, request.Line1, request.Line2, request.IsDefault, ct, request.Latitude, request.Longitude, request.AccuracyMeters, request.MapUrl, request.DeliveryNotes))); }
         catch (TenantScopeViolationException) { return Results.Forbid(); }
         catch (ArgumentException e) { return Validation(e.Message); }
     }
@@ -54,7 +54,7 @@ public static class CustomerAccountEndpoints
     private static async Task<IResult> UpdateAddressAsync(Guid addressId, CustomerAddressRequest request, CustomerAccountService service, HttpContext http, CancellationToken ct)
     {
         var userId = GetUserId(http); if (!userId.HasValue) return Results.Unauthorized();
-        try { var x = await service.UpdateAddressAsync(userId.Value, CustomerAddressId.From(addressId), request.Label, request.RecipientName, request.Phone, request.CountryCode, request.Region, request.City, request.PostalCode, request.Line1, request.Line2, request.IsDefault, ct); return x is null ? Results.NotFound() : Results.Ok(Map(x)); }
+        try { var x = await service.UpdateAddressAsync(userId.Value, CustomerAddressId.From(addressId), request.Label, request.RecipientName, request.Phone, request.CountryCode, request.Region, request.City, request.PostalCode, request.Line1, request.Line2, request.IsDefault, ct, request.Latitude, request.Longitude, request.AccuracyMeters, request.MapUrl, request.DeliveryNotes); return x is null ? Results.NotFound() : Results.Ok(Map(x)); }
         catch (TenantScopeViolationException) { return Results.Forbid(); }
         catch (ArgumentException e) { return Validation(e.Message); }
     }
@@ -73,6 +73,6 @@ public static class CustomerAccountEndpoints
         return Guid.TryParse(raw, out var id) && id != Guid.Empty ? UserId.From(id) : null;
     }
 
-    private static CustomerAddressResponse Map(CustomerAddressResult x) => new(x.AddressId, x.Label, x.RecipientName, x.Phone, x.CountryCode, x.Region, x.City, x.PostalCode, x.Line1, x.Line2, x.IsDefault, x.IsActive);
+    private static CustomerAddressResponse Map(CustomerAddressResult x) => new(x.AddressId, x.Label, x.RecipientName, x.Phone, x.CountryCode, x.Region, x.City, x.PostalCode, x.Line1, x.Line2, x.IsDefault, x.IsActive, x.Latitude, x.Longitude, x.AccuracyMeters, x.MapUrl, x.DeliveryNotes);
     private static IResult Validation(string message) => Results.BadRequest(new { code = "customer_account_invalid", message });
 }

@@ -1,4 +1,6 @@
 using System.IdentityModel.Tokens.Jwt;
+using Microsoft.AspNetCore.Http.Features;
+using OFOQ.Market.Api.Security.Uploads;
 using OFOQ.Market.Api.Security.Authorization;
 using OFOQ.Market.Application.Common.Persistence;
 using OFOQ.Market.Application.Common.Tenancy;
@@ -164,32 +166,90 @@ public static class ContentEndpoints
             return Results.Forbid();
         }
 
-        var form = await request.ReadFormAsync(cancellationToken);
-        var file = form.Files.GetFile("file");
+        const long maxFileBytes =
+            8L * 1024L * 1024L;
 
-        if (file is null || file.Length <= 0)
+        if (!request.HasFormContentType ||
+            request.ContentLength is >
+                maxFileBytes + 65536)
         {
-            return Validation("content_page_asset_required", "يرجى اختيار صورة صالحة.");
+            return Validation(
+                "content_page_asset_invalid_request",
+                "صيغة طلب رفع الصورة أو حجمه غير صالح.");
         }
 
-        if (file.Length > 8 * 1024 * 1024)
+        var bodySizeFeature =
+            request.HttpContext.Features
+                .Get<IHttpMaxRequestBodySizeFeature>();
+
+        if (bodySizeFeature is
+            { IsReadOnly: false })
         {
-            return Validation("content_page_asset_too_large", "حجم الصورة يجب أن يكون أقل من 8MB.");
+            bodySizeFeature.MaxRequestBodySize =
+                maxFileBytes + 65536;
         }
 
-        if (!string.IsNullOrWhiteSpace(file.ContentType) &&
-            !file.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
+        var form =
+            await request.ReadFormAsync(
+                cancellationToken);
+
+        var file =
+            form.Files.GetFile(
+                "file");
+
+        if (form.Files.Count != 1 ||
+            file is null ||
+            file.Length <= 0)
         {
-            return Validation("content_page_asset_invalid_type", "نوع الملف يجب أن يكون صورة.");
+            return Validation(
+                "content_page_asset_required",
+                "يرجى اختيار صورة صالحة.");
         }
 
-        var extension = Path.GetExtension(file.FileName);
-        var allowedExtensions = new[] { ".png", ".jpg", ".jpeg", ".webp" };
-
-        if (string.IsNullOrWhiteSpace(extension) ||
-            !allowedExtensions.Contains(extension, StringComparer.OrdinalIgnoreCase))
+        if (file.Length > maxFileBytes)
         {
-            return Validation("content_page_asset_invalid_extension", "الامتداد المدعوم هو PNG أو JPG أو WEBP.");
+            return Validation(
+                "content_page_asset_too_large",
+                "حجم الصورة يجب أن يكون أقل من 8MB.");
+        }
+
+        var content =
+            new byte[(int)file.Length];
+
+        await using (var source =
+                     file.OpenReadStream())
+        {
+            var position = 0;
+
+            while (position < content.Length)
+            {
+                var read =
+                    await source.ReadAsync(
+                        content.AsMemory(
+                            position),
+                        cancellationToken);
+
+                if (read == 0)
+                {
+                    return Validation(
+                        "content_page_asset_read_failed",
+                        "تعذر قراءة ملف الصورة كاملًا.");
+                }
+
+                position += read;
+            }
+        }
+
+        if (!PublicImageUploadValidator.TryValidate(
+                file.FileName,
+                file.ContentType,
+                content,
+                out var extension,
+                out _))
+        {
+            return Validation(
+                "content_page_asset_invalid_file",
+                "ملف الصورة غير صالح. استخدم PNG أو JPG أو WEBP حقيقيًا بأبعاد آمنة.");
         }
 
         var tenantPath = tenantId.ToString("N");
@@ -200,10 +260,10 @@ public static class ContentEndpoints
         var fileName = $"page-{Guid.NewGuid():N}{extension.ToLowerInvariant()}";
         var physicalPath = Path.Combine(physicalDirectory, fileName);
 
-        await using (var stream = File.Create(physicalPath))
-        {
-            await file.CopyToAsync(stream, cancellationToken);
-        }
+        await File.WriteAllBytesAsync(
+            physicalPath,
+            content,
+            cancellationToken);
 
         return Results.Ok(new
         {

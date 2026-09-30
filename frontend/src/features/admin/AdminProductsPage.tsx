@@ -7,17 +7,26 @@ import {
 
 import {
   AlertTriangle,
-  Boxes,
   Archive,
+  ArrowDownUp,
+  Boxes,
+  CheckCircle2,
+  CircleAlert,
+  Ellipsis,
   Eye,
   EyeOff,
-  Pencil,
+  Image as ImageIcon,
+  Layers3,
   PackageCheck,
   PackagePlus,
+  Pencil,
   RefreshCw,
   RotateCcw,
   Search,
   ShieldAlert,
+  SlidersHorizontal,
+  Sparkles,
+  Warehouse,
 } from "lucide-react";
 
 import {
@@ -37,6 +46,7 @@ import {
   archiveProduct,
   createProduct,
   getCurrentTenantId,
+  getProductImages,
   getProducts,
   hideProduct,
   moveProductToDraft,
@@ -48,14 +58,49 @@ import {
   updateProductInventory,
   type CreateProductInput,
   type Product,
+  type ProductImage,
   type UpdateProductInput,
 } from "./products/productsApi";
+
+import {
+  getMerchantDashboardSummary,
+  type MerchantDashboardTopProduct,
+} from "./dashboard/adminDashboardApi";
+
+import "./products/AdminProductsCardsV2.css";
+import "./products/AdminProductsV4.css";
+import "./products/AdminProductsV42.css";
+import "./products/AdminProductsV43.css";
 
 type StatusFilter =
   | "all"
   | "draft"
   | "published"
   | "archived";
+
+type AttentionFilter =
+  | "all"
+  | "low-stock"
+  | "hidden"
+  | "no-image";
+
+type SortMode =
+  | "newest"
+  | "name"
+  | "price-high"
+  | "stock-low";
+
+type ProductImageState =
+  | {
+      state: "loading";
+    }
+  | {
+      state: "ready";
+      image: ProductImage | null;
+    }
+  | {
+      state: "error";
+    };
 
 function normalizeStatus(
   status: string,
@@ -73,22 +118,18 @@ function statusLabel(
       status,
     );
 
-  if (
-    value === "published"
-  ) {
+  if (value === "published") {
     return "منشور";
   }
 
-  if (
-    value === "archived"
-  ) {
+  if (value === "archived") {
     return "مؤرشف";
   }
 
   return "مسودة";
 }
 
-function statusClasses(
+function statusClass(
   status: string,
 ) {
   const value =
@@ -96,31 +137,15 @@ function statusClasses(
       status,
     );
 
-  if (
-    value === "published"
-  ) {
-    return (
-      "bg-emerald-50 " +
-      "text-emerald-700 " +
-      "border-emerald-100"
-    );
+  if (value === "published") {
+    return "is-published";
   }
 
-  if (
-    value === "archived"
-  ) {
-    return (
-      "bg-black/[0.04] " +
-      "text-black/45 " +
-      "border-black/[0.07]"
-    );
+  if (value === "archived") {
+    return "is-archived";
   }
 
-  return (
-    "bg-[#f3eadc] " +
-    "text-[#8c642f] " +
-    "border-[#dfceb4]"
-  );
+  return "is-draft";
 }
 
 function formatMoney(
@@ -129,17 +154,40 @@ function formatMoney(
 ) {
   try {
     return new Intl.NumberFormat(
-      "ar",
+      "en-US",
       {
         style: "currency",
         currency,
-        maximumFractionDigits:
-          2,
+        maximumFractionDigits: 2,
       },
     ).format(value);
   } catch {
     return `${value} ${currency}`;
   }
+}
+
+function formatDate(
+  value: string,
+) {
+  const date =
+    new Date(value);
+
+  if (
+    Number.isNaN(
+      date.getTime(),
+    )
+  ) {
+    return "—";
+  }
+
+  return new Intl.DateTimeFormat(
+    "ar-SA-u-nu-latn",
+    {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    },
+  ).format(date);
 }
 
 function defaultVariant(
@@ -155,6 +203,146 @@ function defaultVariant(
   );
 }
 
+function discountPercentage(
+  product: Product,
+) {
+  if (
+    product.compareAtPrice === null ||
+    product.compareAtPrice <=
+      product.price ||
+    product.compareAtPrice <= 0
+  ) {
+    return null;
+  }
+
+  return Math.round(
+    (
+      1 -
+      product.price /
+        product.compareAtPrice
+    ) *
+      100,
+  );
+}
+
+function inventoryMeta(
+  product: Product,
+) {
+  const variant =
+    defaultVariant(
+      product,
+    );
+
+  if (
+    !variant ||
+    !variant.trackInventory
+  ) {
+    return {
+      tracked: false,
+      quantity: null,
+      label: "غير متتبع",
+      tone: "untracked",
+      progress: 0,
+    };
+  }
+
+  const quantity =
+    variant.quantity;
+
+  const threshold =
+    Math.max(
+      variant.lowStockThreshold,
+      0,
+    );
+
+  if (quantity <= 0) {
+    return {
+      tracked: true,
+      quantity,
+      label: "نفد المخزون",
+      tone: "out",
+      progress: 0,
+    };
+  }
+
+  if (
+    quantity <=
+    threshold
+  ) {
+    const target =
+      Math.max(
+        threshold,
+        1,
+      );
+
+    return {
+      tracked: true,
+      quantity,
+      label: "مخزون منخفض",
+      tone: "low",
+      progress:
+        Math.min(
+          100,
+          Math.max(
+            8,
+            (
+              quantity /
+              target
+            ) *
+              100,
+          ),
+        ),
+    };
+  }
+
+  const healthyTarget =
+    Math.max(
+      threshold * 3,
+      20,
+    );
+
+  return {
+    tracked: true,
+    quantity,
+    label: "متوفر",
+    tone: "healthy",
+    progress:
+      Math.min(
+        100,
+        Math.max(
+          28,
+          (
+            quantity /
+            healthyTarget
+          ) *
+            100,
+        ),
+      ),
+  };
+}
+
+function ProductSkeleton() {
+  return (
+    <article className="rukn-products-v2-card is-skeleton">
+      <div className="rukn-products-v2-media">
+        <div className="rukn-admin-skeleton absolute inset-0" />
+      </div>
+
+      <div className="rukn-products-v2-card-body">
+        <div className="rukn-admin-skeleton h-3 w-[58%]" />
+        <div className="rukn-admin-skeleton mt-3 h-2 w-[38%]" />
+
+        <div className="rukn-products-v2-skeleton-metrics">
+          <div className="rukn-admin-skeleton h-10" />
+          <div className="rukn-admin-skeleton h-10" />
+          <div className="rukn-admin-skeleton h-10" />
+        </div>
+
+        <div className="rukn-admin-skeleton mt-4 h-8 w-full" />
+      </div>
+    </article>
+  );
+}
 export function AdminProductsPage() {
   const tenantId =
     getCurrentTenantId();
@@ -165,17 +353,48 @@ export function AdminProductsPage() {
   const [categories, setCategories] =
     useState<AdminCategory[]>([]);
 
+  const [
+    productImageStates,
+    setProductImageStates,
+  ] =
+    useState<
+      Record<
+        string,
+        ProductImageState
+      >
+    >({});
+
   const [loading, setLoading] =
     useState(true);
+  const [
+    salesByProduct,
+    setSalesByProduct,
+  ] =
+    useState<
+      Record<
+        string,
+        MerchantDashboardTopProduct
+      >
+    >({});
 
   const [creating, setCreating] =
     useState(false);
 
-  const [changingProductId, setChangingProductId] =
-    useState<string | null>(null);
+  const [
+    changingProductId,
+    setChangingProductId,
+  ] =
+    useState<string | null>(
+      null,
+    );
 
-  const [editingProduct, setEditingProduct] =
-    useState<Product | null>(null);
+  const [
+    editingProduct,
+    setEditingProduct,
+  ] =
+    useState<Product | null>(
+      null,
+    );
 
   const [savingEdit, setSavingEdit] =
     useState(false);
@@ -191,11 +410,107 @@ export function AdminProductsPage() {
       "all",
     );
 
+  const [
+    attention,
+    setAttention,
+  ] =
+    useState<AttentionFilter>(
+      "all",
+    );
+
+  const [
+    categoryFilter,
+    setCategoryFilter,
+  ] =
+    useState("all");
+
+  const [sortMode, setSortMode] =
+    useState<SortMode>(
+      "newest",
+    );
+
+  const [
+    openActionsId,
+    setOpenActionsId,
+  ] =
+    useState<string | null>(
+      null,
+    );
+
   const [error, setError] =
     useState<{
       message: string;
       status: number | null;
     } | null>(null);
+
+  const loadProductImage =
+    useCallback(
+      async (
+        productId: string,
+      ) => {
+        if (!tenantId) {
+          return;
+        }
+
+        setProductImageStates(
+          (current) => ({
+            ...current,
+            [productId]: {
+              state: "loading",
+            },
+          }),
+        );
+
+        try {
+          const result =
+            await getProductImages(
+              tenantId,
+              productId,
+            );
+
+          const sorted =
+            [...result.images].sort(
+              (a, b) => {
+                if (
+                  a.isPrimary !==
+                  b.isPrimary
+                ) {
+                  return a.isPrimary
+                    ? -1
+                    : 1;
+                }
+
+                return (
+                  a.sortOrder -
+                  b.sortOrder
+                );
+              },
+            );
+
+          setProductImageStates(
+            (current) => ({
+              ...current,
+              [productId]: {
+                state: "ready",
+                image:
+                  sorted[0] ??
+                  null,
+              },
+            }),
+          );
+        } catch {
+          setProductImageStates(
+            (current) => ({
+              ...current,
+              [productId]: {
+                state: "error",
+              },
+            }),
+          );
+        }
+      },
+      [tenantId],
+    );
 
   const loadProducts =
     useCallback(
@@ -237,6 +552,52 @@ export function AdminProductsPage() {
           setCategories(
             categoryResult,
           );
+          try {
+            const dashboard =
+              await getMerchantDashboardSummary(
+                tenantId,
+                8,
+              );
+
+            setSalesByProduct(
+              Object.fromEntries(
+                dashboard.topProducts.map(
+                  (item) => [
+                    item.productId,
+                    item,
+                  ],
+                ),
+              ),
+            );
+          } catch {
+            setSalesByProduct({});
+          }
+
+          const initialImages =
+            Object.fromEntries(
+              productResult.map(
+                (product) => [
+                  product.productId,
+                  {
+                    state:
+                      "loading",
+                  } satisfies ProductImageState,
+                ],
+              ),
+            );
+
+          setProductImageStates(
+            initialImages,
+          );
+
+          void Promise.all(
+            productResult.map(
+              (product) =>
+                loadProductImage(
+                  product.productId,
+                ),
+            ),
+          );
         } catch (exception) {
           if (
             exception instanceof
@@ -259,81 +620,40 @@ export function AdminProductsPage() {
           setLoading(false);
         }
       },
-      [tenantId],
+      [
+        tenantId,
+        loadProductImage,
+      ],
     );
 
-  useEffect(
-    () => {
-      const timer =
-        window.setTimeout(
-          () => {
-            void loadProducts();
-          },
-          0,
-        );
+  useEffect(() => {
+    const timer =
+      window.setTimeout(
+        () => {
+          void loadProducts();
+        },
+        0,
+      );
 
-      return () => {
-        window.clearTimeout(
-          timer,
-        );
-      };
-    },
-    [loadProducts],
-  );
+    return () => {
+      window.clearTimeout(
+        timer,
+      );
+    };
+  }, [loadProducts]);
 
-  const filtered =
+  const categoryById =
     useMemo(
-      () => {
-        const normalizedQuery =
-          query
-            .trim()
-            .toLowerCase();
-
-        return products.filter(
-          (product) => {
-            const matchesStatus =
-              status === "all" ||
-              normalizeStatus(
-                product.status,
-              ) === status;
-
-            if (
-              !matchesStatus
-            ) {
-              return false;
-            }
-
-            if (
-              !normalizedQuery
-            ) {
-              return true;
-            }
-
-            const variant =
-              defaultVariant(
-                product,
-              );
-
-            return [
-              product.name,
-              product.slug,
-              variant?.sku ?? "",
-            ].some(
-              (value) =>
-                value
-                  .toLowerCase()
-                  .includes(
-                    normalizedQuery,
-                  ),
-            );
-          },
-        );
-      },
-      [
-        products,
-        query,
-        status,
-      ],
+      () =>
+        new Map(
+          categories.map(
+            (category) => [
+              category.categoryId,
+              category,
+            ],
+          ),
+        ),
+      [categories],
     );
 
   const publishedCount =
@@ -352,22 +672,253 @@ export function AdminProductsPage() {
         ) === "draft",
     ).length;
 
+  const hiddenCount =
+    products.filter(
+      (product) =>
+        !product.isVisible,
+    ).length;
+
   const lowStockCount =
     products.filter(
       (product) => {
-        const variant =
-          defaultVariant(
+        const inventory =
+          inventoryMeta(
             product,
           );
 
-        return Boolean(
-          variant &&
-          variant.trackInventory &&
-          variant.quantity <=
-            variant.lowStockThreshold,
+        return (
+          inventory.tone ===
+            "low" ||
+          inventory.tone ===
+            "out"
         );
       },
     ).length;
+
+  const noImageCount =
+    products.filter(
+      (product) => {
+        const imageState =
+          productImageStates[
+            product.productId
+          ];
+
+        return (
+          imageState?.state ===
+            "ready" &&
+          imageState.image ===
+            null
+        );
+      },
+    ).length;
+
+  const needsAttentionCount =
+    products.filter(
+      (product) => {
+        const inventory =
+          inventoryMeta(
+            product,
+          );
+
+        const imageState =
+          productImageStates[
+            product.productId
+          ];
+
+        return (
+          normalizeStatus(
+            product.status,
+          ) === "draft" ||
+          !product.isVisible ||
+          inventory.tone ===
+            "low" ||
+          inventory.tone ===
+            "out" ||
+          (
+            imageState?.state ===
+              "ready" &&
+            imageState.image ===
+              null
+          )
+        );
+      },
+    ).length;
+
+  const filtered =
+    useMemo(() => {
+      const normalizedQuery =
+        query
+          .trim()
+          .toLowerCase();
+
+      const next =
+        products.filter(
+          (product) => {
+            const productStatus =
+              normalizeStatus(
+                product.status,
+              );
+
+            const matchesStatus =
+              status === "all" ||
+              productStatus ===
+                status;
+
+            if (!matchesStatus) {
+              return false;
+            }
+
+            if (
+              categoryFilter !==
+                "all" &&
+              product.categoryId !==
+                categoryFilter
+            ) {
+              return false;
+            }
+
+            const inventory =
+              inventoryMeta(
+                product,
+              );
+
+            const imageState =
+              productImageStates[
+                product.productId
+              ];
+
+            if (
+              attention ===
+                "low-stock" &&
+              inventory.tone !==
+                "low" &&
+              inventory.tone !==
+                "out"
+            ) {
+              return false;
+            }
+
+            if (
+              attention ===
+                "hidden" &&
+              product.isVisible
+            ) {
+              return false;
+            }
+
+            if (
+              attention ===
+                "no-image" &&
+              !(
+                imageState?.state ===
+                  "ready" &&
+                imageState.image ===
+                  null
+              )
+            ) {
+              return false;
+            }
+
+            if (
+              !normalizedQuery
+            ) {
+              return true;
+            }
+
+            const variant =
+              defaultVariant(
+                product,
+              );
+
+            const categoryName =
+              product.categoryId
+                ? categoryById.get(
+                    product.categoryId,
+                  )?.name ?? ""
+                : "";
+
+            return [
+              product.name,
+              product.slug,
+              variant?.sku ?? "",
+              categoryName,
+            ].some(
+              (value) =>
+                value
+                  .toLowerCase()
+                  .includes(
+                    normalizedQuery,
+                  ),
+            );
+          },
+        );
+
+      next.sort(
+        (a, b) => {
+          if (
+            sortMode ===
+            "name"
+          ) {
+            return a.name.localeCompare(
+              b.name,
+              "ar",
+            );
+          }
+
+          if (
+            sortMode ===
+            "price-high"
+          ) {
+            return (
+              b.price -
+              a.price
+            );
+          }
+
+          if (
+            sortMode ===
+            "stock-low"
+          ) {
+            const aStock =
+              inventoryMeta(
+                a,
+              ).quantity ??
+              Number.MAX_SAFE_INTEGER;
+
+            const bStock =
+              inventoryMeta(
+                b,
+              ).quantity ??
+              Number.MAX_SAFE_INTEGER;
+
+            return (
+              aStock -
+              bStock
+            );
+          }
+
+          return (
+            new Date(
+              b.createdAtUtc,
+            ).getTime() -
+            new Date(
+              a.createdAtUtc,
+            ).getTime()
+          );
+        },
+      );
+
+      return next;
+    }, [
+      products,
+      query,
+      status,
+      attention,
+      categoryFilter,
+      sortMode,
+      categoryById,
+      productImageStates,
+    ]);
 
   async function handleCreate(
     input:
@@ -408,6 +959,10 @@ export function AdminProductsPage() {
             ],
           );
 
+          void loadProductImage(
+            created.productId,
+          );
+
           throw new Error(
             exception instanceof Error
               ? `تم حفظ المنتج كمسودة، لكن تعذر نشره: ${exception.message}`
@@ -427,6 +982,10 @@ export function AdminProductsPage() {
         ],
       );
 
+      void loadProductImage(
+        finalProduct.productId,
+      );
+
       return finalProduct;
     } finally {
       setCreating(false);
@@ -444,9 +1003,7 @@ export function AdminProductsPage() {
       );
     }
 
-    setSavingEdit(
-      true,
-    );
+    setSavingEdit(true);
 
     try {
       await updateProduct(
@@ -470,9 +1027,7 @@ export function AdminProductsPage() {
 
       await loadProducts();
     } finally {
-      setSavingEdit(
-        false,
-      );
+      setSavingEdit(false);
     }
   }
 
@@ -485,37 +1040,47 @@ export function AdminProductsPage() {
       | "show"
       | "hide",
   ) {
-    if (!tenantId) return;
+    if (!tenantId) {
+      return;
+    }
 
     setChangingProductId(
       product.productId,
     );
 
+    setOpenActionsId(null);
     setError(null);
 
     try {
-      let updated:
-        Product;
+      let updated: Product;
 
-      if (action === "publish") {
+      if (
+        action === "publish"
+      ) {
         updated =
           await publishProduct(
             tenantId,
             product.productId,
           );
-      } else if (action === "draft") {
+      } else if (
+        action === "draft"
+      ) {
         updated =
           await moveProductToDraft(
             tenantId,
             product.productId,
           );
-      } else if (action === "archive") {
+      } else if (
+        action === "archive"
+      ) {
         updated =
           await archiveProduct(
             tenantId,
             product.productId,
           );
-      } else if (action === "show") {
+      } else if (
+        action === "show"
+      ) {
         updated =
           await showProduct(
             tenantId,
@@ -546,7 +1111,8 @@ export function AdminProductsPage() {
             ? exception.message
             : "تعذر تغيير حالة المنتج.",
         status:
-          exception instanceof ProductsApiError
+          exception instanceof
+          ProductsApiError
             ? exception.status
             : null,
       });
@@ -560,111 +1126,186 @@ export function AdminProductsPage() {
   return (
     <div
       dir="rtl"
-      className="mx-auto max-w-[1380px]"
+      className="rukn-products-pro rukn-products-v4 mx-auto max-w-[1500px]"
     >
-      <div className="flex flex-wrap items-end justify-between gap-5">
-        <div>
-          <p className="text-[11px] font-semibold text-[#9d723d]">
-            الكتالوج
-          </p>
+      <section className="rukn-products-hero">
+        <div className="relative z-10 flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
+          <div className="max-w-[760px]">
+            <div className="rukn-products-eyebrow">
+              <Sparkles size={13} />
+              مركز إدارة الكتالوج
+            </div>
 
-          <h1 className="mt-2 text-[31px] font-semibold tracking-[-0.04em]">
-            المنتجات
-          </h1>
+            <h1 className="mt-4 text-[32px] font-semibold tracking-[-0.045em] md:text-[38px]">
+              المنتجات
+            </h1>
 
-          <p className="mt-2 max-w-[620px] text-[12px] leading-7 text-black/45">
-            أضف منتجاتك وعدّل الاسم والوصف
-            والسعر والصورة والقسم والمخزون
-            والنشر والظهور من مكان واحد.
-          </p>
+            <p className="rukn-products-muted mt-3 max-w-[690px] text-[12px] leading-7 md:text-[13px]">
+              راقب حالة منتجاتك وصورها وأسعارها ومخزونها من شاشة واحدة،
+              ووصل مباشرة لما يحتاج تدخل بدل البحث داخل عشرات الصفوف.
+            </p>
+
+            <div className="mt-5 flex flex-wrap items-center gap-2">
+              <span className="rukn-products-insight">
+                <CircleAlert size={13} />
+                {needsAttentionCount} يحتاج انتباه
+              </span>
+
+              <span className="rukn-products-insight">
+                <Warehouse size={13} />
+                {lowStockCount} مخزون منخفض
+              </span>
+
+              <span className="rukn-products-insight">
+                <EyeOff size={13} />
+                {hiddenCount} غير ظاهر
+              </span>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() =>
+              setCreateOpen(true)
+            }
+            className="rukn-products-primary-action"
+          >
+            <PackagePlus size={17} />
+            إضافة منتج
+          </button>
         </div>
+      </section>
+
+      <section className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <button
+          type="button"
+          onClick={() => {
+            setStatus("all");
+            setAttention("all");
+          }}
+          className="rukn-products-metric"
+        >
+          <span className="rukn-products-metric-icon">
+            <Layers3 size={16} />
+          </span>
+
+          <span>
+            <span className="rukn-products-metric-label">
+              كل المنتجات
+            </span>
+
+            <strong>
+              {products.length}
+            </strong>
+
+            <small>
+              إجمالي الكتالوج الحالي
+            </small>
+          </span>
+        </button>
 
         <button
           type="button"
           onClick={() =>
-            setCreateOpen(
-              true,
+            setStatus(
+              "published",
             )
           }
-          style={{
-            color:
-              "#ffffff",
-          }}
-          className="inline-flex h-12 items-center gap-2.5 rounded-[10px] bg-[#080b14] px-5 text-[12px] font-semibold shadow-[0_10px_28px_rgba(8,11,20,.12)]"
+          className="rukn-products-metric"
         >
-          <PackagePlus
-            size={17}
-          />
-          إضافة منتج
+          <span className="rukn-products-metric-icon is-success">
+            <CheckCircle2 size={16} />
+          </span>
+
+          <span>
+            <span className="rukn-products-metric-label">
+              منشورة
+            </span>
+
+            <strong>
+              {publishedCount}
+            </strong>
+
+            <small>
+              جاهزة للبيع حاليًا
+            </small>
+          </span>
         </button>
-      </div>
 
-      <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {[
-          {
-            label:
-              "كل المنتجات",
-            value:
-              products.length,
-          },
-          {
-            label:
-              "منشورة",
-            value:
-              publishedCount,
-          },
-          {
-            label:
-              "مسودات",
-            value:
-              draftCount,
-          },
-          {
-            label:
-              "مخزون يحتاج انتباه",
-            value:
-              lowStockCount,
-          },
-        ].map(
-          (metric) => (
-            <div
-              key={
-                metric.label
-              }
-              className="rounded-[15px] border border-black/[0.07] bg-white p-5"
-            >
-              <p className="text-[10px] text-black/43">
-                {metric.label}
-              </p>
+        <button
+          type="button"
+          onClick={() => {
+            setAttention(
+              "low-stock",
+            );
+            setStatus("all");
+          }}
+          className="rukn-products-metric"
+        >
+          <span className="rukn-products-metric-icon is-warning">
+            <Warehouse size={16} />
+          </span>
 
-              <p className="mt-3 text-[26px] font-semibold tracking-[-0.04em]">
-                {metric.value}
-              </p>
-            </div>
-          ),
-        )}
-      </div>
+          <span>
+            <span className="rukn-products-metric-label">
+              المخزون
+            </span>
 
-      <div className="mt-6 rounded-[17px] border border-black/[0.07] bg-white">
-        <div className="flex flex-col gap-4 border-b border-black/[0.07] p-4 md:flex-row md:items-center md:justify-between">
-          <div className="relative w-full md:max-w-[360px]">
+            <strong>
+              {lowStockCount}
+            </strong>
+
+            <small>
+              يحتاج تدخل قريب
+            </small>
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            setStatus("draft");
+            setAttention("all");
+          }}
+          className="rukn-products-metric"
+        >
+          <span className="rukn-products-metric-icon is-neutral">
+            <Pencil size={16} />
+          </span>
+
+          <span>
+            <span className="rukn-products-metric-label">
+              المسودات
+            </span>
+
+            <strong>
+              {draftCount}
+            </strong>
+
+            <small>
+              لم تُنشر بعد
+            </small>
+          </span>
+        </button>
+      </section>
+
+      <section className="rukn-products-workspace mt-5">
+        <div className="rukn-products-toolbar">
+          <div className="relative min-w-0 flex-1">
             <Search
               size={16}
-              className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-black/32"
+              className="rukn-products-search-icon"
             />
 
             <input
               value={query}
-              onChange={(
-                event,
-              ) =>
+              onChange={(event) =>
                 setQuery(
-                  event.target
-                    .value,
+                  event.target.value,
                 )
               }
-              className="h-11 w-full rounded-[9px] border border-black/[0.09] bg-[#f8f7f3] pr-11 pl-4 text-[11px] outline-none placeholder:text-black/28 focus:border-[#a77a43]/60"
-              placeholder="ابحث بالاسم أو الرابط أو SKU"
+              className="rukn-products-search"
+              placeholder="ابحث بالاسم، SKU، الرابط أو القسم..."
             />
           </div>
 
@@ -676,12 +1317,12 @@ export function AdminProductsPage() {
                   "الكل",
                 ],
                 [
-                  "draft",
-                  "مسودة",
-                ],
-                [
                   "published",
                   "منشور",
+                ],
+                [
+                  "draft",
+                  "مسودة",
                 ],
                 [
                   "archived",
@@ -702,11 +1343,10 @@ export function AdminProductsPage() {
                     )
                   }
                   className={[
-                    "h-9 rounded-[8px] px-3.5 text-[10px] font-semibold transition",
-                    status ===
-                    value
-                      ? "bg-[#080b14] text-white"
-                      : "bg-[#f3f2ed] text-black/48 hover:text-black",
+                    "rukn-products-filter-chip",
+                    status === value
+                      ? "is-active"
+                      : "",
                   ].join(" ")}
                 >
                   {label}
@@ -719,393 +1359,740 @@ export function AdminProductsPage() {
               onClick={() =>
                 void loadProducts()
               }
-              className="flex size-9 items-center justify-center rounded-[8px] border border-black/[0.08]"
-              aria-label="تحديث"
+              className="rukn-products-icon-action"
+              aria-label="تحديث المنتجات"
+              title="تحديث"
             >
-              <RefreshCw
-                size={14}
-              />
+              <RefreshCw size={15} />
             </button>
           </div>
         </div>
 
-        {loading ? (
-          <div className="flex min-h-[320px] items-center justify-center">
-            <div className="text-center">
-              <RefreshCw
-                size={20}
-                className="mx-auto animate-spin text-black/28"
-              />
+        <div className="rukn-products-secondary-toolbar">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="rukn-products-toolbar-label">
+              <SlidersHorizontal size={13} />
+              تصفية سريعة
+            </span>
 
-              <p className="mt-3 text-[11px] text-black/42">
-                جاري تحميل المنتجات...
-              </p>
-            </div>
+            <button
+              type="button"
+              onClick={() =>
+                setAttention(
+                  "all",
+                )
+              }
+              className={[
+                "rukn-products-mini-filter",
+                attention === "all"
+                  ? "is-active"
+                  : "",
+              ].join(" ")}
+            >
+              الكل
+            </button>
+
+            <button
+              type="button"
+              onClick={() =>
+                setAttention(
+                  "low-stock",
+                )
+              }
+              className={[
+                "rukn-products-mini-filter",
+                attention === "low-stock"
+                  ? "is-active"
+                  : "",
+              ].join(" ")}
+            >
+              مخزون منخفض
+              {lowStockCount > 0 ? (
+                <span>
+                  {lowStockCount}
+                </span>
+              ) : null}
+            </button>
+
+            <button
+              type="button"
+              onClick={() =>
+                setAttention(
+                  "hidden",
+                )
+              }
+              className={[
+                "rukn-products-mini-filter",
+                attention === "hidden"
+                  ? "is-active"
+                  : "",
+              ].join(" ")}
+            >
+              غير ظاهر
+              {hiddenCount > 0 ? (
+                <span>
+                  {hiddenCount}
+                </span>
+              ) : null}
+            </button>
+
+            <button
+              type="button"
+              onClick={() =>
+                setAttention(
+                  "no-image",
+                )
+              }
+              className={[
+                "rukn-products-mini-filter",
+                attention === "no-image"
+                  ? "is-active"
+                  : "",
+              ].join(" ")}
+            >
+              بدون صورة
+              {noImageCount > 0 ? (
+                <span>
+                  {noImageCount}
+                </span>
+              ) : null}
+            </button>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <select
+              value={
+                categoryFilter
+              }
+              onChange={(event) =>
+                setCategoryFilter(
+                  event.target.value,
+                )
+              }
+              className="rukn-products-select"
+              aria-label="فلترة حسب القسم"
+            >
+              <option value="all">
+                كل الأقسام
+              </option>
+
+              {categories.map(
+                (category) => (
+                  <option
+                    key={
+                      category.categoryId
+                    }
+                    value={
+                      category.categoryId
+                    }
+                  >
+                    {category.name}
+                  </option>
+                ),
+              )}
+            </select>
+
+            <label className="rukn-products-sort-wrap">
+              <ArrowDownUp size={13} />
+
+              <select
+                value={sortMode}
+                onChange={(event) =>
+                  setSortMode(
+                    event.target
+                      .value as
+                      SortMode,
+                  )
+                }
+                className="rukn-products-sort"
+                aria-label="ترتيب المنتجات"
+              >
+                <option value="newest">
+                  الأحدث
+                </option>
+
+                <option value="name">
+                  الاسم
+                </option>
+
+                <option value="price-high">
+                  السعر الأعلى
+                </option>
+
+                <option value="stock-low">
+                  الأقل مخزونًا
+                </option>
+              </select>
+            </label>
+          </div>
+        </div>
+
+        <div className="rukn-products-result-bar">
+          <span>
+            عرض
+            {" "}
+            <strong>
+              {filtered.length}
+            </strong>
+            {" "}
+            من
+            {" "}
+            {products.length}
+            {" "}
+            منتج
+          </span>
+
+          {attention !== "all" ||
+          status !== "all" ||
+          categoryFilter !==
+            "all" ||
+          query ? (
+            <button
+              type="button"
+              onClick={() => {
+                setQuery("");
+                setStatus("all");
+                setAttention("all");
+                setCategoryFilter(
+                  "all",
+                );
+              }}
+            >
+              مسح الفلاتر
+            </button>
+          ) : null}
+        </div>
+
+        {loading ? (
+          <div className="p-3">
+            {Array.from({
+              length: 6,
+            }).map((_, index) => (
+              <ProductSkeleton
+                key={index}
+              />
+            ))}
           </div>
         ) : error ? (
-          <div className="flex min-h-[330px] items-center justify-center p-6">
-            <div className="max-w-[520px] text-center">
-              <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-[#f1e8dc]">
-                {error.status ===
-                403 ? (
-                  <ShieldAlert
-                    size={20}
-                    className="text-[#956a34]"
-                  />
-                ) : (
-                  <AlertTriangle
-                    size={20}
-                    className="text-[#956a34]"
-                  />
-                )}
-              </div>
-
-              <h2 className="mt-5 text-[18px] font-semibold">
-                {error.status ===
-                403
-                  ? "الحساب يحتاج إكمال الحماية"
-                  : "ما قدرنا نحمّل المنتجات"}
-              </h2>
-
-              <p className="mt-3 text-[11px] leading-7 text-black/48">
-                {error.message}
-              </p>
-
+          <div className="rukn-products-state">
+            <div className="rukn-products-state-icon is-warning">
               {error.status ===
               403 ? (
-                <p className="mt-3 text-[10px] leading-6 text-black/38">
-                  ما رح نخفف حماية لوحة الإدارة.
-                  الخطوة القادمة رح نكمل إعداد MFA
-                  وبعدها تشتغل إدارة المنتجات فعليًا.
-                </p>
-              ) : null}
-
-              <button
-                type="button"
-                onClick={() =>
-                  void loadProducts()
-                }
-                className="mt-6 h-10 rounded-[8px] border border-black/12 px-4 text-[10px] font-semibold"
-              >
-                إعادة المحاولة
-              </button>
+                <ShieldAlert
+                  size={22}
+                />
+              ) : (
+                <AlertTriangle
+                  size={22}
+                />
+              )}
             </div>
+
+            <h2>
+              {error.status === 403
+                ? "الحساب يحتاج إكمال الحماية"
+                : "تعذر تحميل المنتجات"}
+            </h2>
+
+            <p>
+              {error.message}
+            </p>
+
+            <button
+              type="button"
+              onClick={() =>
+                void loadProducts()
+              }
+              className="rukn-products-secondary-action"
+            >
+              <RefreshCw size={14} />
+              إعادة المحاولة
+            </button>
           </div>
         ) : filtered.length ===
           0 ? (
-          <div className="flex min-h-[350px] items-center justify-center p-6">
-            <div className="max-w-[430px] text-center">
-              <div className="mx-auto flex size-14 items-center justify-center rounded-full bg-[#f0ece3]">
-                <Boxes
-                  size={22}
-                  className="text-black/40"
-                />
-              </div>
-
-              <h2 className="mt-5 text-[19px] font-semibold">
-                {products.length ===
-                0
-                  ? "أضف أول منتج"
-                  : "ما لقينا نتائج"}
-              </h2>
-
-              <p className="mt-3 text-[11px] leading-7 text-black/46">
-                {products.length ===
-                0
-                  ? "خلينا نبدأ بالمعلومات الأساسية وبعدها نكمل الصور والخيارات والمواصفات."
-                  : "جرّب تغيّر البحث أو حالة المنتج."}
-              </p>
-
-              {products.length ===
-              0 ? (
-                <button
-                  type="button"
-                  onClick={() =>
-                    setCreateOpen(
-                      true,
-                    )
-                  }
-                  style={{
-                    color:
-                      "#ffffff",
-                  }}
-                  className="mt-6 inline-flex h-11 items-center gap-2 rounded-[9px] bg-[#080b14] px-5 text-[11px] font-semibold"
-                >
-                  <PackagePlus
-                    size={15}
-                  />
-                  إضافة أول منتج
-                </button>
-              ) : null}
+          <div className="rukn-products-state">
+            <div className="rukn-products-state-icon">
+              <Boxes size={22} />
             </div>
+
+            <h2>
+              {products.length === 0
+                ? "ابدأ أول منتج في متجرك"
+                : "لا توجد نتائج بهذه الفلاتر"}
+            </h2>
+
+            <p>
+              {products.length === 0
+                ? "أضف المنتج ثم أكمل صوره ومخزونه ونشره من مكان واحد."
+                : "جرّب مسح أحد الفلاتر أو البحث بكلمة أخرى."}
+            </p>
+
+            {products.length === 0 ? (
+              <button
+                type="button"
+                onClick={() =>
+                  setCreateOpen(true)
+                }
+                className="rukn-products-primary-action"
+              >
+                <PackagePlus
+                  size={15}
+                />
+                إضافة أول منتج
+              </button>
+            ) : null}
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[850px] border-collapse text-right">
-              <thead>
-                <tr className="border-b border-black/[0.07] bg-[#faf9f6]">
-                  <th className="px-5 py-4 text-[10px] font-semibold text-black/42">
-                    المنتج
-                  </th>
+          <div className="rukn-products-v2-grid">
+            {filtered.map(
+              (product) => {
+                const variant =
+                  defaultVariant(
+                    product,
+                  );
 
-                  <th className="px-5 py-4 text-[10px] font-semibold text-black/42">
-                    السعر
-                  </th>
+                const category =
+                  product.categoryId
+                    ? categoryById.get(
+                        product.categoryId,
+                      )
+                    : null;
 
-                  <th className="px-5 py-4 text-[10px] font-semibold text-black/42">
-                    SKU
-                  </th>
+                const inventory =
+                  inventoryMeta(
+                    product,
+                  );
 
-                  <th className="px-5 py-4 text-[10px] font-semibold text-black/42">
-                    المخزون
-                  </th>
+                const discount =
+                  discountPercentage(
+                    product,
+                  );
 
-                  <th className="px-5 py-4 text-[10px] font-semibold text-black/42">
-                    الحالة
-                  </th>
+                const imageState =
+                  productImageStates[
+                    product.productId
+                  ];
 
-                  <th className="px-5 py-4 text-[10px] font-semibold text-black/42">
-                    الظهور
-                  </th>
+                const image =
+                  imageState?.state ===
+                  "ready"
+                    ? imageState.image
+                    : null;
 
-                  <th className="px-5 py-4 text-[10px] font-semibold text-black/42">
-                    الإجراءات
-                  </th>
-                </tr>
-              </thead>
+                const busy =
+                  changingProductId ===
+                    product.productId ||
+                  savingEdit;
 
-              <tbody>
-                {filtered.map(
-                  (product) => {
-                    const variant =
-                      defaultVariant(
-                        product,
-                      );
+                const sales =
+                  salesByProduct[
+                    product.productId
+                  ] ??
+                  null;
 
-                    const lowStock =
-                      Boolean(
-                        variant &&
-                        variant.trackInventory &&
-                        variant.quantity <=
-                          variant.lowStockThreshold,
-                      );
+                const productStatus =
+                  normalizeStatus(
+                    product.status,
+                  );
 
-                    return (
-                      <tr
-                        key={
-                          product.productId
-                        }
-                        className="border-b border-black/[0.06] last:border-b-0 hover:bg-[#fbfaf7]"
-                      >
-                        <td className="px-5 py-4">
-                          <div className="flex items-center gap-3">
-                            <div className="flex size-11 shrink-0 items-center justify-center rounded-[10px] bg-[#efebe2]">
-                              <Boxes
-                                size={17}
-                                className="text-[#8d6a3e]"
-                              />
-                            </div>
+                const demandUnits =
+                  sales?.quantitySold ??
+                  null;
 
-                            <div>
-                              <p className="text-[12px] font-semibold">
-                                {
-                                  product.name
-                                }
-                              </p>
+                const demandLevel =
+                  demandUnits === null
+                    ? "unknown"
+                    : demandUnits >= 10
+                      ? "high"
+                      : demandUnits >= 3
+                        ? "medium"
+                        : "low";
 
-                              <p
-                                dir="ltr"
-                                className="mt-1 text-left text-[9px] text-black/35"
-                              >
-                                /{
-                                  product.slug
-                                }
-                              </p>
-                            </div>
-                          </div>
-                        </td>
+                const demandLabel =
+                  demandLevel === "high"
+                    ? "إقبال مرتفع"
+                    : demandLevel === "medium"
+                      ? "إقبال مقبول"
+                      : demandLevel === "low"
+                        ? "إقبال منخفض"
+                        : "غير مصنف";
 
-                        <td className="px-5 py-4">
-                          <p className="text-[11px] font-semibold">
+                return (
+                  <article
+                    key={product.productId}
+                    className="rukn-products-v2-card rukn-products-v43-card"
+                  >
+                    <div className="rukn-products-v2-media rukn-products-v43-media">
+                      {imageState?.state ===
+                      "loading" ? (
+                        <div className="rukn-admin-skeleton absolute inset-0" />
+                      ) : null}
+
+                      {image ? (
+                        <img
+                          src={image.url}
+                          alt={
+                            image.altText ??
+                            product.name
+                          }
+                          loading="lazy"
+                          onError={(
+                            event,
+                          ) => {
+                            event.currentTarget.style.display =
+                              "none";
+                          }}
+                        />
+                      ) : (
+                        <div className="rukn-products-v43-empty">
+                          <span>
+                            <ImageIcon
+                              size={23}
+                            />
+                          </span>
+
+                          <strong>
+                            بدون صورة
+                          </strong>
+
+                          <small>
+                            أضف صورة لعرض أفضل
+                          </small>
+                        </div>
+                      )}
+
+                      <div className="rukn-products-v43-badges">
+                        <span
+                          className={[
+                            "rukn-products-v43-status",
+                            statusClass(
+                              product.status,
+                            ),
+                          ].join(" ")}
+                        >
+                          <i />
+
+                          {statusLabel(
+                            product.status,
+                          )}
+
+                          {productStatus ===
+                            "published" &&
+                          !product.isVisible
+                            ? " · مخفي"
+                            : ""}
+                        </span>
+
+                        <span
+                          className="rukn-products-v43-demand"
+                          data-level={
+                            demandLevel
+                          }
+                          title="مؤشر مبني على بيانات الوحدات المباعة المتاحة"
+                        >
+                          <i />
+
+                          {demandLabel}
+                        </span>
+                      </div>
+
+                      {discount !== null ? (
+                        <span className="rukn-products-v43-discount">
+                          -
+                          {discount}
+                          %
+                        </span>
+                      ) : null}
+                    </div>
+
+                    <div className="rukn-products-v43-body">
+                      <div className="rukn-products-v43-head">
+                        <div className="rukn-products-v43-name">
+                          <span>
+                            {category?.name ??
+                              "بدون قسم"}
+                          </span>
+
+                          <h3>
+                            {product.name}
+                          </h3>
+
+                          <p dir="ltr">
+                            <small>
+                              SKU
+                            </small>
+
+                            {variant?.sku ??
+                              "—"}
+                          </p>
+                        </div>
+
+                        <div className="rukn-products-v43-price">
+                          <strong dir="ltr">
                             {formatMoney(
                               product.price,
                               product.currency,
                             )}
-                          </p>
+                          </strong>
 
                           {product.compareAtPrice !==
                           null ? (
-                            <p className="mt-1 text-[9px] text-black/35 line-through">
+                            <span dir="ltr">
                               {formatMoney(
                                 product.compareAtPrice,
                                 product.currency,
                               )}
-                            </p>
-                          ) : null}
-                        </td>
-
-                        <td
-                          dir="ltr"
-                          className="px-5 py-4 text-left text-[10px] text-black/55"
-                        >
-                          {variant?.sku ??
-                            "—"}
-                        </td>
-
-                        <td className="px-5 py-4">
-                          {variant?.trackInventory ? (
-                            <div>
-                              <p
-                                className={[
-                                  "text-[11px] font-semibold",
-                                  lowStock
-                                    ? "text-amber-700"
-                                    : "",
-                                ].join(" ")}
-                              >
-                                {
-                                  variant.quantity
-                                }
-                              </p>
-
-                              {lowStock ? (
-                                <p className="mt-1 text-[9px] text-amber-700/70">
-                                  مخزون منخفض
-                                </p>
-                              ) : null}
-                            </div>
-                          ) : (
-                            <span className="text-[9px] text-black/35">
-                              غير متتبع
                             </span>
-                          )}
-                        </td>
+                          ) : null}
+                        </div>
+                      </div>
 
-                        <td className="px-5 py-4">
-                          <span
-                            className={[
-                              "inline-flex rounded-full border px-3 py-1.5 text-[9px] font-semibold",
-                              statusClasses(
-                                product.status,
-                              ),
-                            ].join(" ")}
-                          >
-                            {statusLabel(
-                              product.status,
-                            )}
+                      <div
+                        className={[
+                          "rukn-products-v43-stock",
+                          inventory.tone,
+                        ].join(" ")}
+                      >
+                        <span className="rukn-products-v43-stock-icon">
+                          <PackageCheck
+                            size={13}
+                          />
+                        </span>
+
+                        <strong>
+                          {inventory.tracked
+                            ? `${inventory.quantity} وحدة`
+                            : "غير متتبع"}
+                        </strong>
+
+                        <small>
+                          {inventory.label}
+                        </small>
+                      </div>
+
+                      <div className="rukn-products-v43-performance">
+                        <div>
+                          <span>
+                            مباع
                           </span>
-                        </td>
 
-                        <td className="px-5 py-4">
-                          <span
-                            className={[
-                              "inline-flex items-center gap-2 text-[10px] font-medium",
-                              product.isVisible
-                                ? "text-emerald-700"
-                                : "text-black/38",
-                            ].join(" ")}
+                          <strong>
+                            {sales
+                              ? sales.quantitySold
+                              : "—"}
+                          </strong>
+                        </div>
+
+                        <div>
+                          <span>
+                            المبيعات
+                          </span>
+
+                          <strong dir="ltr">
+                            {sales
+                              ? formatMoney(
+                                  sales.capturedSales,
+                                  sales.currency,
+                                )
+                              : "—"}
+                          </strong>
+                        </div>
+
+                        <div>
+                          <span>
+                            الخيارات
+                          </span>
+
+                          <strong>
+                            {product.variants.length}
+                          </strong>
+                        </div>
+                      </div>
+
+                      <div className="rukn-products-v43-meta">
+                        <span>
+                          أضيف
+                        </span>
+
+                        <strong>
+                          {formatDate(
+                            product.createdAtUtc,
+                          )}
+                        </strong>
+                      </div>
+
+                      <div className="rukn-products-v43-actions">
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() =>
+                            setEditingProduct(
+                              product,
+                            )
+                          }
+                          className="rukn-products-v43-edit"
+                        >
+                          <Pencil
+                            size={14}
+                          />
+
+                          تعديل المنتج
+                        </button>
+
+                        {productStatus !==
+                        "published" ? (
+                          <button
+                            type="button"
+                            disabled={busy}
+                            onClick={() =>
+                              void changeState(
+                                product,
+                                "publish",
+                              )
+                            }
+                            className="rukn-products-v43-quick"
                           >
-                            <span
-                              className={[
-                                "size-2 rounded-full",
-                                product.isVisible
-                                  ? "bg-emerald-500"
-                                  : "bg-black/15",
-                              ].join(" ")}
+                            <PackageCheck
+                              size={14}
                             />
 
-                            {product.isVisible
-                              ? "ظاهر"
-                              : "مخفي"}
-                          </span>
-                        </td>
-                        <td className="px-5 py-4">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <button
-                              type="button"
-                              disabled={changingProductId === product.productId || savingEdit}
-                              onClick={() => setEditingProduct(product)}
-                              className="inline-flex h-8 items-center gap-1.5 rounded-[7px] border border-black/[0.09] bg-white px-3 text-[9px] font-semibold disabled:opacity-40"
-                            >
-                              <Pencil size={13} />
-                              تعديل
-                            </button>
+                            نشر
+                          </button>
+                        ) : !product.isVisible ? (
+                          <button
+                            type="button"
+                            disabled={busy}
+                            onClick={() =>
+                              void changeState(
+                                product,
+                                "show",
+                              )
+                            }
+                            className="rukn-products-v43-quick"
+                          >
+                            <Eye
+                              size={14}
+                            />
 
-                            {normalizeStatus(product.status) !== "published" ? (
-                              <button
-                                type="button"
-                                disabled={changingProductId === product.productId}
-                                onClick={() => void changeState(product, "publish")}
-                                className="inline-flex h-8 items-center gap-1.5 rounded-[7px] bg-[#080b14] px-3 text-[9px] font-semibold text-white disabled:opacity-40"
-                              >
-                                <PackageCheck size={13} />
-                                نشر
-                              </button>
-                            ) : (
-                              <button
-                                type="button"
-                                disabled={changingProductId === product.productId}
-                                onClick={() => void changeState(product, "draft")}
-                                className="inline-flex h-8 items-center gap-1.5 rounded-[7px] border border-black/[0.09] bg-white px-3 text-[9px] font-semibold disabled:opacity-40"
-                              >
-                                <RotateCcw size={13} />
-                                لمسودة
-                              </button>
-                            )}
+                            إظهار
+                          </button>
+                        ) : null}
 
-                            {normalizeStatus(product.status) === "published" ? (
-                              <button
-                                type="button"
-                                disabled={changingProductId === product.productId}
-                                onClick={() =>
-                                  void changeState(
-                                    product,
-                                    product.isVisible ? "hide" : "show",
-                                  )
-                                }
-                                className="inline-flex h-8 items-center gap-1.5 rounded-[7px] border border-black/[0.09] bg-white px-3 text-[9px] font-semibold disabled:opacity-40"
-                              >
-                                {product.isVisible ? <EyeOff size={13} /> : <Eye size={13} />}
-                                {product.isVisible ? "إخفاء" : "إظهار"}
-                              </button>
-                            ) : null}
+                        <div className="rukn-products-v43-more-wrap">
+                          <button
+                            type="button"
+                            disabled={busy}
+                            onClick={() =>
+                              setOpenActionsId(
+                                (
+                                  current,
+                                ) =>
+                                  current ===
+                                  product.productId
+                                    ? null
+                                    : product.productId,
+                              )
+                            }
+                            className="rukn-products-v43-more"
+                            aria-label="إجراءات إضافية"
+                            title="إجراءات إضافية"
+                          >
+                            <Ellipsis
+                              size={17}
+                            />
+                          </button>
 
-                            {normalizeStatus(product.status) !== "archived" ? (
-                              <button
-                                type="button"
-                                disabled={changingProductId === product.productId}
-                                onClick={() => void changeState(product, "archive")}
-                                className="inline-flex size-8 items-center justify-center rounded-[7px] border border-black/[0.09] bg-white text-black/45 disabled:opacity-40"
-                                aria-label="أرشفة المنتج"
-                                title="أرشفة المنتج"
-                              >
-                                <Archive size={13} />
-                              </button>
-                            ) : null}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  },
-                )}
-              </tbody>
-            </table>
+                          {openActionsId ===
+                          product.productId ? (
+                            <div className="rukn-products-actions-menu rukn-products-v43-menu">
+                              {productStatus ===
+                              "published" ? (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    void changeState(
+                                      product,
+                                      "draft",
+                                    )
+                                  }
+                                >
+                                  <RotateCcw
+                                    size={13}
+                                  />
+
+                                  إرجاع لمسودة
+                                </button>
+                              ) : null}
+
+                              {productStatus ===
+                              "published" ? (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    void changeState(
+                                      product,
+                                      product.isVisible
+                                        ? "hide"
+                                        : "show",
+                                    )
+                                  }
+                                >
+                                  {product.isVisible ? (
+                                    <EyeOff
+                                      size={13}
+                                    />
+                                  ) : (
+                                    <Eye
+                                      size={13}
+                                    />
+                                  )}
+
+                                  {product.isVisible
+                                    ? "إخفاء من المتجر"
+                                    : "إظهار في المتجر"}
+                                </button>
+                              ) : null}
+
+                              {productStatus !==
+                              "archived" ? (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    void changeState(
+                                      product,
+                                      "archive",
+                                    )
+                                  }
+                                >
+                                  <Archive
+                                    size={13}
+                                  />
+
+                                  أرشفة المنتج
+                                </button>
+                              ) : null}
+                            </div>
+                          ) : null}
+                        </div>
+                      </div>
+                    </div>
+                  </article>
+                );
+              },
+            )}
           </div>
         )}
-      </div>
+      </section>
 
       <CreateProductDialog
         open={createOpen}
         busy={creating}
         categories={categories}
         onClose={() =>
-          setCreateOpen(
-            false,
-          )
+          setCreateOpen(false)
         }
-        onCreate={
-          handleCreate
-        }
+        onCreate={handleCreate}
       />
 
       <EditProductDialog
@@ -1118,20 +2105,12 @@ export function AdminProductsPage() {
         )}
         busy={savingEdit}
         tenantId={tenantId}
-        product={
-          editingProduct
-        }
-        categories={
-          categories
-        }
+        product={editingProduct}
+        categories={categories}
         onClose={() =>
-          setEditingProduct(
-            null,
-          )
+          setEditingProduct(null)
         }
-        onSave={
-          handleEdit
-        }
+        onSave={handleEdit}
       />
     </div>
   );

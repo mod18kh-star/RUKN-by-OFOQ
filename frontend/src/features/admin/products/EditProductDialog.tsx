@@ -1,9 +1,12 @@
 import { ProductHighlightsEditor } from "./ProductHighlightsEditor";
+import "./EditProductDialogV5.css";
 import {
   useEffect,
   useMemo,
   useState,
 } from "react";
+
+import { createPortal } from "react-dom";
 
 import {
   Image as ImageIcon,
@@ -222,6 +225,50 @@ export function EditProductDialog({
       null,
     );
 
+  useEffect(
+    () => {
+      if (!open) {
+        return;
+      }
+
+      const previousOverflow =
+        document.body.style.overflow;
+
+      document.body.style.overflow =
+        "hidden";
+
+      const handleKeyDown = (
+        event: KeyboardEvent,
+      ) => {
+        if (
+          event.key === "Escape" &&
+          !busy
+        ) {
+          onClose();
+        }
+      };
+
+      window.addEventListener(
+        "keydown",
+        handleKeyDown,
+      );
+
+      return () => {
+        document.body.style.overflow =
+          previousOverflow;
+
+        window.removeEventListener(
+          "keydown",
+          handleKeyDown,
+        );
+      };
+    },
+    [
+      open,
+      busy,
+      onClose,
+    ],
+  );
   useEffect(
     () => {
       if (
@@ -520,10 +567,10 @@ export function EditProductDialog({
     }
   }
 
-  return (
+  return createPortal(
     <div
       dir="rtl"
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/35 p-4 backdrop-blur-[2px]"
+      className="rukn-edit-v5-backdrop fixed inset-0 z-[9999] flex items-center justify-center bg-black/35 p-4 backdrop-blur-[2px]"
       onMouseDown={(
         event,
       ) => {
@@ -536,14 +583,17 @@ export function EditProductDialog({
         }
       }}
     >
-      <div className="max-h-[92vh] w-full max-w-[920px] overflow-hidden rounded-[20px] border border-black/[0.08] bg-[#f8f7f3] shadow-[0_35px_100px_rgba(0,0,0,.22)]">
-        <div className="flex items-center justify-between border-b border-black/[0.08] bg-white px-6 py-5">
+      <div className="rukn-edit-v5-dialog max-h-[92vh] w-full max-w-[920px] overflow-hidden rounded-[20px] border border-black/[0.08] bg-[#f8f7f3] shadow-[0_35px_100px_rgba(0,0,0,.22)]"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="rukn-edit-product-title">
+        <div className="rukn-edit-v5-header flex items-center justify-between border-b border-black/[0.08] bg-white px-6 py-5">
           <div>
             <p className="text-[10px] font-semibold text-[#9d723d]">
               إدارة المنتج
             </p>
 
-            <h2 className="mt-1 text-[20px] font-semibold">
+            <h2 id="rukn-edit-product-title" className="mt-1 text-[20px] font-semibold">
               تعديل {product.name}
             </h2>
           </div>
@@ -552,15 +602,15 @@ export function EditProductDialog({
             type="button"
             disabled={busy}
             onClick={onClose}
-            className="flex size-10 items-center justify-center rounded-[9px] border border-black/[0.08] bg-white disabled:opacity-40"
+            className="rukn-edit-v5-close flex size-10 items-center justify-center rounded-[9px] border border-black/[0.08] bg-white disabled:opacity-40"
             aria-label="إغلاق"
           >
             <X size={17} />
           </button>
         </div>
 
-        <div className="max-h-[calc(92vh-150px)] overflow-y-auto p-6">
-          <div className="grid gap-5 md:grid-cols-2">
+        <div className="rukn-edit-v5-scroll max-h-[calc(92vh-150px)] overflow-y-auto p-6">
+          <div className="rukn-edit-v5-grid grid gap-5 md:grid-cols-2">
             <div>
               <label className={labelClass}>اسم المنتج</label>
               <input
@@ -674,7 +724,7 @@ export function EditProductDialog({
                   </p>
                 </div>
 
-                <div className="flex h-[155px] items-center justify-center overflow-hidden rounded-[12px] border border-black/[0.08] bg-white">
+                <div className="rukn-edit-v5-preview flex h-[155px] items-center justify-center overflow-hidden rounded-[12px] border border-black/[0.08] bg-white">
                   {loadingImage ? (
                     <p className="text-[10px] text-black/35">جاري تحميل الصورة...</p>
                   ) : form.primaryImageUrl.trim() ? (
@@ -693,7 +743,7 @@ export function EditProductDialog({
               </div>
             </div>
 
-            <div className="md:col-span-2 border-t border-black/[0.07] pt-5">
+            <div className="rukn-edit-v5-inventory-head md:col-span-2 border-t border-black/[0.07] pt-5">
               <label className="flex items-center justify-between gap-4">
                 <div>
                   <p className="text-[11px] font-semibold">تتبع المخزون</p>
@@ -739,7 +789,7 @@ export function EditProductDialog({
                   />
                 </div>
 
-                <label className="md:col-span-2 flex items-center gap-3 rounded-[10px] border border-black/[0.08] bg-white p-4">
+                <label className="rukn-edit-v5-toggle-row md:col-span-2 flex items-center gap-3 rounded-[10px] border border-black/[0.08] bg-white p-4">
                   <input
                     type="checkbox"
                     checked={form.continueSellingWhenOutOfStock}
@@ -769,29 +819,56 @@ export function EditProductDialog({
 
         <div className="my-7 border-t border-black/[0.07]" />
 
+        <section className="rukn-edit-v5-highlights">
           <ProductHighlightsEditor
             tenantId={tenantId}
             productId={product.productId}
           />
+        </section>
 
           <div className="my-7 border-t border-black/[0.07]" />
 
-          <div className="flex items-center justify-between gap-3 border-t border-black/[0.08] bg-white px-6 py-4">
-          <p className="text-[9px] text-black/35">
-            النشر والظهور والأرشفة تظل متاحة من جدول المنتجات.
-          </p>
+        <footer className="rukn-edit-v5-footer">
+          <div className="rukn-edit-v5-footer-copy">
+            <strong>
+              التغييرات غير محفوظة تلقائيًا
+            </strong>
 
-          <button
-            type="button"
-            disabled={busy || loadingImage}
-            onClick={() => void submit()}
-            className="inline-flex h-11 items-center gap-2 rounded-[9px] bg-[#080b14] px-5 text-[11px] font-semibold text-white disabled:opacity-40"
-          >
-            <Save size={15} />
-            {busy ? "جاري الحفظ..." : "حفظ التعديلات"}
-          </button>
-        </div>
+            <span>
+              راجع البيانات ثم احفظ التعديلات.
+            </span>
+          </div>
+
+          <div className="rukn-edit-v5-footer-actions">
+            <button
+              type="button"
+              disabled={busy}
+              onClick={onClose}
+              className="rukn-edit-v5-cancel"
+            >
+              إلغاء
+            </button>
+
+            <button
+              type="button"
+              disabled={busy || loadingImage}
+              onClick={() =>
+                void submit()
+              }
+              className="rukn-edit-v5-save"
+            >
+              <Save
+                size={15}
+              />
+
+              {busy
+                ? "جاري الحفظ..."
+                : "حفظ التعديلات"}
+            </button>
+          </div>
+        </footer>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

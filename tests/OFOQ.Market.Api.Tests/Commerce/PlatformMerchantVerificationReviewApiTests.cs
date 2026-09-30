@@ -574,7 +574,7 @@ public sealed class PlatformMerchantVerificationReviewApiTests
         var accessTokenService =
             factory.Services
                 .GetRequiredService<
-                    IAccessTokenService>();
+                    ITestAccessTokenService>();
 
         var token =
             accessTokenService.Create(

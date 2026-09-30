@@ -777,7 +777,7 @@ public sealed class CartManagementEndpointsTests
         var service =
             factory.Services
                 .GetRequiredService<
-                    IAccessTokenService>();
+                    ITestAccessTokenService>();
 
         var token =
             service.Create(

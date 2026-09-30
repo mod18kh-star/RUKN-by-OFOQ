@@ -75,6 +75,7 @@ export interface ManualCheckoutDraft {
   cartId: string;
   lines: { productVariantId: string; quantity: number; unitPrice: number }[];
   shippingMethodId: string;
+  customerAddressId: string | null;
   paymentAccountId: string;
   customerPhone: string;
   couponCode: string | null;
@@ -142,6 +143,16 @@ function isUsableManualCheckoutDraft(
   if (
     typeof draft.shippingMethodId !== "string" ||
     !draft.shippingMethodId.trim()
+  ) {
+    return false;
+  }
+
+  if (
+    draft.customerAddressId !== null &&
+    (
+      typeof draft.customerAddressId !== "string" ||
+      !GUID.test(draft.customerAddressId)
+    )
   ) {
     return false;
   }

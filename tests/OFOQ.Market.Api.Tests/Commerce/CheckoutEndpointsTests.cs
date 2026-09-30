@@ -627,7 +627,7 @@ public sealed class CheckoutEndpointsTests
         var service =
             factory.Services
                 .GetRequiredService<
-                    IAccessTokenService>();
+                    ITestAccessTokenService>();
 
         var token =
             service.Create(

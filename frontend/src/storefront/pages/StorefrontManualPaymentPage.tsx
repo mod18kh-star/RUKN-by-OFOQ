@@ -16,7 +16,7 @@ type PaymentLocationState = {
 };
 
 const money = (amount: number, currency: string) =>
-  `${amount.toLocaleString("ar-SA", { maximumFractionDigits: 2 })} ${currency}`;
+  `${amount.toLocaleString("en-US", { maximumFractionDigits: 2 })} ${currency}`;
 
 export function StorefrontManualPaymentPage() {
   const { orderId = "" } = useParams<{ orderId: string }>();
@@ -233,14 +233,14 @@ function ExistingManualPaymentPage() {
         </form> : <>
           <section className="space-y-4 rounded-2xl border bg-white p-5 sm:p-7">
             <div className="flex flex-wrap items-center justify-between gap-2 border-b pb-4">
-              <div><p className="text-xs text-[#64746a]">وسيلة الدفع المختارة</p><h2 className="mt-1 flex items-center gap-2 text-lg font-bold">
+              <div><p className="text-sm font-semibold text-[#52665b]">وسيلة الدفع المختارة</p><h2 className="mt-1 flex items-center gap-2 text-xl font-extrabold text-[#173c35]">
                 {payment.accountKind === "bank" ? <Landmark size={20} /> : <Wallet size={20} />}{payment.accountName}</h2></div>
-              <div><p className="text-xs text-[#64746a]">المبلغ المطلوب تحويله</p><strong className="mt-1 block text-lg">{money(payment.amount, payment.currency)}</strong></div>
+              <div><p className="text-sm font-semibold text-[#52665b]">المبلغ المطلوب تحويله</p><strong className="mt-1 block text-xl font-extrabold text-[#173c35]">{money(payment.amount, payment.currency)}</strong></div>
             </div>
             {payment.status === "Approved" ? <p className="flex items-center gap-2 rounded-xl bg-green-50 p-3 text-sm text-green-800"><CheckCircle2 size={18} /> تم تأكيد وصول الدفع. يمكنك متابعة حالة تجهيز طلبك من صفحة حسابك.</p> :
-              payment.status === "PendingReview" ? <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-900">تم استلام الإيصال، والدفع بانتظار مراجعة التاجر.</p> :
-              payment.status === "Rejected" ? <p className="rounded-xl bg-red-50 p-3 text-sm text-red-800">رُفض إثبات الدفع: {payment.rejectionReason || "يرجى التواصل مع المتجر."} يمكنك رفع إيصال جديد للطلب نفسه.</p> :
-              <p className="rounded-xl bg-amber-50 p-3 text-sm">حوّل المبلغ إلى الحساب الموضح أدناه، ثم أرفق الإيصال لإرساله إلى التاجر.</p>}
+              payment.status === "PendingReview" ? <p className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-base font-semibold leading-7 text-amber-950">تم استلام الإيصال، والدفع بانتظار مراجعة التاجر.</p> :
+              payment.status === "Rejected" ? <p className="rounded-xl border border-red-200 bg-red-50 p-4 text-base font-semibold leading-7 text-red-900">رُفض إثبات الدفع: {payment.rejectionReason || "يرجى التواصل مع المتجر."} يمكنك رفع إيصال جديد للطلب نفسه.</p> :
+              <p className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-base font-medium leading-7 text-amber-950">حوّل المبلغ إلى الحساب الموضح أدناه، ثم أرفق الإيصال لإرساله إلى التاجر.</p>}
             {payment.status !== "Approved" && <>
               <h3 className="text-base font-bold">تفاصيل الحساب الذي ستحوّل إليه</h3>
               {payment.accountKind === "bank" ? <>

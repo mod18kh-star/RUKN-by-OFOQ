@@ -297,7 +297,7 @@ public sealed class ProductImageEndpointsTests
         var token =
             factory.Services
                 .GetRequiredService<
-                    IAccessTokenService>()
+                    ITestAccessTokenService>()
                 .Create(
                     user.Id,
                     user.Email.Value,

@@ -497,3 +497,18 @@ frontend/.env.local
 frontend/node_modules/
 
 frontend/dist/
+
+# RUKN local work artifacts
+.rukn-diagnostics/
+.rukn-tools/
+
+# Temporary RUKN exports and checkpoints
+RUKN_*.txt
+RUKN_*.zip
+RUKN_*.cs
+rukn_*.txt
+
+# Temporary backups
+*.backup-*
+*_BACKUP_*/
+

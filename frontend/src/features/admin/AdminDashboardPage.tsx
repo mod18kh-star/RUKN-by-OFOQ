@@ -1,19 +1,32 @@
 import {
   AlertTriangle,
   ArrowUpLeft,
+  Boxes,
   ChevronLeft,
+  ChevronRight,
   Clock3,
+  MapPin,
   PackageCheck,
+  ReceiptText,
   RefreshCw,
   ShoppingBag,
+  Sparkles,
   Store,
   TrendingUp,
+  Truck,
+  UserRound,
+} from "lucide-react";
+
+import type {
+  LucideIcon,
 } from "lucide-react";
 
 import {
   useCallback,
   useEffect,
+  useMemo,
   useState,
+  type ReactNode,
 } from "react";
 
 import {
@@ -23,230 +36,941 @@ import {
 import {
   AdminOperationApiError,
   getMerchantDashboardSummary,
+  getMerchantOrderById,
+  getMerchantOrders,
   type MerchantOperationsDashboard,
+  type MerchantOrderDetail,
+  type MerchantOrderSummary,
 } from "./dashboard/adminDashboardApi";
+
+import {
+  listManualReviews,
+  type ManualReviewOrder,
+} from "./payments/manualReviewApi";
 
 import {
   readAdminStore,
 } from "./store-setup/storeSetupStorage";
 
-function formatMoney(
+import "./dashboard/AdminDashboardV5.css";
+
+type Tone =
+  | "neutral"
+  | "accent"
+  | "success"
+  | "warning"
+  | "danger"
+  | "info";
+
+function normalize(
+  value:
+    | string
+    | null
+    | undefined,
+) {
+  return (
+    value ??
+    ""
+  )
+    .trim()
+    .toLowerCase();
+}
+
+function formatNumberEn(
   value: number,
-  currency: string | null,
+) {
+  return new Intl.NumberFormat(
+    "en-US",
+    {
+      maximumFractionDigits:
+        0,
+    },
+  ).format(value);
+}
+
+function formatMoney(
+  amount: number,
+  currency:
+    | string
+    | null,
 ) {
   if (!currency) {
-    return value.toLocaleString(
-      "ar",
+    return formatNumberEn(
+      amount,
     );
   }
 
   try {
     return new Intl.NumberFormat(
-      "ar",
+      "en-US",
       {
-        style: "currency",
+        style:
+          "currency",
         currency,
-        maximumFractionDigits: 0,
+        maximumFractionDigits:
+          0,
       },
-    ).format(value);
+    ).format(amount);
   } catch {
-    return `${value.toLocaleString(
-      "ar",
+    return `${formatNumberEn(
+      amount,
     )} ${currency}`;
   }
 }
 
-function orderStatusLabel(
-  status: string,
-  fulfillmentStatus: string,
+function formatDateTime(
+  utc:
+    | string
+    | null
+    | undefined,
 ) {
-  const fulfillment =
-    fulfillmentStatus.toLowerCase();
+  if (!utc) {
+    return "—";
+  }
 
+  const date =
+    new Date(utc);
+
+  if (
+    Number.isNaN(
+      date.getTime(),
+    )
+  ) {
+    return "—";
+  }
+
+  return new Intl.DateTimeFormat(
+    "ar-SA-u-nu-latn",
+    {
+      day:
+        "2-digit",
+      month:
+        "short",
+      year:
+        "numeric",
+      hour:
+        "2-digit",
+      minute:
+        "2-digit",
+    },
+  ).format(date);
+}
+
+function relativeTime(
+  utc:
+    | string
+    | null
+    | undefined,
+) {
+  if (!utc) {
+    return "—";
+  }
+
+  const date =
+    new Date(utc);
+
+  if (
+    Number.isNaN(
+      date.getTime(),
+    )
+  ) {
+    return "—";
+  }
+
+  const minutes =
+    Math.max(
+      0,
+      Math.floor(
+        (
+          Date.now() -
+          date.getTime()
+        ) /
+          60000,
+      ),
+    );
+
+  if (minutes < 1) {
+    return "الآن";
+  }
+
+  if (minutes < 60) {
+    return `منذ ${formatNumberEn(
+      minutes,
+    )} دقيقة`;
+  }
+
+  const hours =
+    Math.floor(
+      minutes /
+        60,
+    );
+
+  if (hours < 24) {
+    return `منذ ${formatNumberEn(
+      hours,
+    )} ساعة`;
+  }
+
+  return `منذ ${formatNumberEn(
+    Math.floor(
+      hours /
+        24,
+    ),
+  )} يوم`;
+}
+
+function shortId(
+  id: string,
+) {
+  return id
+    .slice(
+      0,
+      8,
+    )
+    .toUpperCase();
+}
+
+function paymentMeta(
+  order:
+    MerchantOrderSummary,
+): {
+  label: string;
+  tone: Tone;
+} {
+  const value =
+    normalize(
+      order.paymentStatus,
+    );
+
+  if (
+    [
+      "paid",
+      "captured",
+      "approved",
+    ].includes(
+      value,
+    )
+  ) {
+    return {
+      label:
+        "مدفوع",
+      tone:
+        "success",
+    };
+  }
+
+  if (
+    [
+      "failed",
+      "rejected",
+      "cancelled",
+    ].includes(
+      value,
+    )
+  ) {
+    return {
+      label:
+        "فشل الدفع",
+      tone:
+        "danger",
+    };
+  }
+
+  return {
+    label:
+      "بانتظار الدفع",
+    tone:
+      "warning",
+  };
+}
+
+function orderMeta(
+  order:
+    MerchantOrderSummary,
+): {
+  label: string;
+  next: string;
+  tone: Tone;
+} {
   const orderStatus =
-    status.toLowerCase();
+    normalize(
+      order.orderStatus,
+    );
+
+  const fulfillment =
+    normalize(
+      order.fulfillmentStatus,
+    );
 
   if (
-    orderStatus === "cancelled" ||
-    fulfillment === "cancelled"
+    orderStatus ===
+      "cancelled" ||
+    fulfillment ===
+      "cancelled"
   ) {
-    return "ملغي";
+    return {
+      label:
+        "ملغي",
+      next:
+        "لا يوجد إجراء",
+      tone:
+        "danger",
+    };
   }
 
   if (
-    fulfillment === "delivered" ||
-    fulfillment === "fulfilled"
+    orderStatus ===
+      "returned" ||
+    orderStatus ===
+      "refunded"
   ) {
-    return "تم التوصيل";
-  }
-
-  if (
-    fulfillment === "intransit"
-  ) {
-    return "قيد التوصيل";
-  }
-
-  if (
-    fulfillment === "shipped"
-  ) {
-    return "تم الشحن";
+    return {
+      label:
+        "مرتجع",
+      next:
+        "الطلب مؤرشف",
+      tone:
+        "danger",
+    };
   }
 
   if (
     fulfillment ===
-    "readytoship"
+      "delivered" ||
+    fulfillment ===
+      "fulfilled"
   ) {
-    return "جاهز للشحن";
+    return {
+      label:
+        "تم التسليم",
+      next:
+        "الطلب مكتمل",
+      tone:
+        "success",
+    };
   }
 
   if (
-    fulfillment === "processing" ||
-    orderStatus === "processing"
+    fulfillment ===
+      "intransit"
   ) {
-    return "قيد التجهيز";
+    return {
+      label:
+        "قيد التوصيل",
+      next:
+        "تأكيد التسليم",
+      tone:
+        "info",
+    };
   }
 
-  if (orderStatus === "paid") {
-    return "مدفوع";
+  if (
+    fulfillment ===
+      "shipped"
+  ) {
+    return {
+      label:
+        "تم الشحن",
+      next:
+        "متابعة التوصيل",
+      tone:
+        "info",
+    };
   }
 
-  return "جديد";
+  if (
+    fulfillment ===
+      "readytoship"
+  ) {
+    return {
+      label:
+        "جاهز للشحن",
+      next:
+        "تسليم شركة الشحن",
+      tone:
+        "warning",
+    };
+  }
+
+  if (
+    fulfillment ===
+      "processing" ||
+    orderStatus ===
+      "processing"
+  ) {
+    return {
+      label:
+        "قيد التجهيز",
+      next:
+        "إنهاء التجهيز",
+      tone:
+        "accent",
+    };
+  }
+
+  if (
+    orderStatus ===
+      "confirmed"
+  ) {
+    return {
+      label:
+        "مؤكد",
+      next:
+        "بدء التجهيز",
+      tone:
+        "accent",
+    };
+  }
+
+  if (
+    orderStatus ===
+      "paid"
+  ) {
+    return {
+      label:
+        "مدفوع",
+      next:
+        "تأكيد الطلب",
+      tone:
+        "warning",
+    };
+  }
+
+  return {
+    label:
+      "طلب جديد",
+    next:
+      "مراجعة الطلب",
+    tone:
+      "neutral",
+  };
+}
+
+function destinationText(
+  detail:
+    MerchantOrderDetail
+    | null,
+) {
+  if (!detail) {
+    return "بيانات الوجهة غير متاحة";
+  }
+
+  if (
+    normalize(
+      detail.shippingMethodType,
+    ) === "pickup"
+  ) {
+    return (
+      detail.shippingMethodName ??
+      "استلام من المتجر"
+    );
+  }
+
+  const parts = [
+    detail.shippingCity,
+    detail.shippingRegion,
+    detail.shippingCountryCode,
+  ].filter(Boolean);
+
+  return parts.length >
+    0
+    ? parts.join(
+        "، ",
+      )
+    : detail.shippingMethodName ??
+        "لم تحدد الوجهة";
+}
+
+function paymentMethodText(
+  order:
+    MerchantOrderSummary,
+  review:
+    ManualReviewOrder
+    | undefined,
+) {
+  if (review) {
+    return `تحويل يدوي · ${review.accountName}`;
+  }
+
+  return paymentMeta(
+    order,
+  ).label;
+}
+
+function productInitial(
+  name: string,
+) {
+  const value =
+    name.trim();
+
+  return value
+    ? value
+        .slice(
+          0,
+          1,
+        )
+        .toUpperCase()
+    : "P";
 }
 
 export function AdminDashboardPage() {
   const store =
     readAdminStore();
 
-  const [summary, setSummary] =
+  const [
+    summary,
+    setSummary,
+  ] =
     useState<MerchantOperationsDashboard | null>(
       null,
     );
 
-  const [loading, setLoading] =
+  const [
+    latestOrders,
+    setLatestOrders,
+  ] =
+    useState<
+      MerchantOrderSummary[]
+    >([]);
+
+  const [
+    orderDetails,
+    setOrderDetails,
+  ] =
+    useState<
+      Record<
+        string,
+        MerchantOrderDetail
+      >
+    >({});
+
+  const [
+    manualReviews,
+    setManualReviews,
+  ] =
+    useState<
+      ManualReviewOrder[]
+    >([]);
+
+  const [
+    loading,
+    setLoading,
+  ] =
     useState(true);
 
-  const [error, setError] =
-    useState<string | null>(
-      null,
-    );
+  const [
+    error,
+    setError,
+  ] =
+    useState<
+      string |
+      null
+    >(null);
+
+  const [
+    activeOrderIndex,
+    setActiveOrderIndex,
+  ] =
+    useState(0);
+
+  const [
+    carouselPaused,
+    setCarouselPaused,
+  ] =
+    useState(false);
 
   const load =
     useCallback(
       async () => {
-        if (!store?.tenantId) {
-          setLoading(false);
+        if (
+          !store?.tenantId
+        ) {
+          setLoading(
+            false,
+          );
+
           setError(
             "لم يتم العثور على متجر مرتبط بالحساب الحالي.",
           );
+
           return;
         }
 
-        setLoading(true);
-        setError(null);
+        setLoading(
+          true,
+        );
+
+        setError(
+          null,
+        );
 
         try {
-          const result =
-            await getMerchantDashboardSummary(
-              store.tenantId,
-              8,
+          const [
+            dashboardResult,
+            orderRows,
+            reviewRows,
+          ] =
+            await Promise.all([
+              getMerchantDashboardSummary(
+                store.tenantId,
+                8,
+              ),
+
+              getMerchantOrders(
+                store.tenantId,
+                8,
+              ),
+
+              listManualReviews(
+                store.tenantId,
+              ).catch(
+                () => [],
+              ),
+            ]);
+
+          const sortedOrders =
+            [
+              ...orderRows,
+            ]
+              .sort(
+                (
+                  a,
+                  b,
+                ) =>
+                  b.createdAtUtc.localeCompare(
+                    a.createdAtUtc,
+                  ),
+              )
+              .slice(
+                0,
+                6,
+              );
+
+          setSummary(
+            dashboardResult,
+          );
+
+          setLatestOrders(
+            sortedOrders,
+          );
+
+          setManualReviews(
+            reviewRows,
+          );
+
+          setActiveOrderIndex(
+            0,
+          );
+
+          const details =
+            await Promise.all(
+              sortedOrders.map(
+                async (
+                  order,
+                ) => {
+                  try {
+                    return await getMerchantOrderById(
+                      store.tenantId,
+                      order.orderId,
+                    );
+                  } catch {
+                    return null;
+                  }
+                },
+              ),
             );
 
-          setSummary(result);
-        } catch (caught) {
+          const next:
+            Record<
+              string,
+              MerchantOrderDetail
+            > =
+              {};
+
+          details.forEach(
+            (
+              detail,
+            ) => {
+              if (
+                detail
+              ) {
+                next[
+                  detail.orderId
+                ] =
+                  detail;
+              }
+            },
+          );
+
+          setOrderDetails(
+            next,
+          );
+        } catch (
+          caught
+        ) {
           if (
             caught instanceof
               AdminOperationApiError &&
-            caught.status === 403
+            caught.status ===
+              403
           ) {
             setError(
-              "الجلسة الحالية لا تحقق متطلبات الأمان للإدارة. سجل الدخول بكلمة المرور وأكمل التحقق بخطوتين.",
+              "الجلسة الحالية تحتاج تحققًا أمنيًا إضافيًا للوصول إلى بيانات التشغيل.",
             );
           } else {
             setError(
-              caught instanceof Error
+              caught instanceof
+                Error
                 ? caught.message
-                : "تعذر تحميل لوحة التشغيل.",
+                : "تعذر تحميل الصفحة الرئيسية.",
             );
           }
         } finally {
-          setLoading(false);
+          setLoading(
+            false,
+          );
         }
       },
-      [store?.tenantId],
+      [
+        store?.tenantId,
+      ],
     );
 
-  useEffect(() => {
-    const timer =
-      window.setTimeout(
-        () => {
-          void load();
-        },
-        0,
-      );
+  useEffect(
+    () => {
+      const timer =
+        window.setTimeout(
+          () => {
+            void load();
+          },
+          0,
+        );
 
-    return () =>
-      window.clearTimeout(
-        timer,
-      );
-  }, [load]);
+      return () =>
+        window.clearTimeout(
+          timer,
+        );
+    },
+    [
+      load,
+    ],
+  );
+
+  useEffect(
+    () => {
+      if (
+        carouselPaused ||
+        latestOrders.length <=
+          1
+      ) {
+        return;
+      }
+
+      const timer =
+        window.setInterval(
+          () => {
+            setActiveOrderIndex(
+              (
+                current,
+              ) =>
+                (
+                  current +
+                  1
+                ) %
+                latestOrders.length,
+            );
+          },
+          5500,
+        );
+
+      return () =>
+        window.clearInterval(
+          timer,
+        );
+    },
+    [
+      carouselPaused,
+      latestOrders.length,
+    ],
+  );
+
+  const reviewByOrder =
+    useMemo(
+      () =>
+        new Map(
+          manualReviews.map(
+            (
+              review,
+            ) => [
+              review.orderId,
+              review,
+            ],
+          ),
+        ),
+      [
+        manualReviews,
+      ],
+    );
+
+  const safeIndex =
+    latestOrders.length
+      ? activeOrderIndex %
+        latestOrders.length
+      : 0;
+
+  const activeOrder =
+    latestOrders[
+      safeIndex
+    ] ??
+    null;
+
+  const activeDetail =
+    activeOrder
+      ? orderDetails[
+          activeOrder.orderId
+        ] ??
+        null
+      : null;
+
+  const activeReview =
+    activeOrder
+      ? reviewByOrder.get(
+          activeOrder.orderId,
+        )
+      : undefined;
 
   const readiness =
-    summary?.readiness.percentage ??
+    summary?.readiness
+      .percentage ??
     0;
-
-  const storeStatus =
-    (
-      summary?.readiness
-        .storeStatus ??
-      store?.status ??
-      "Draft"
-    ).toLowerCase();
-
-  const isActive =
-    storeStatus === "active";
-
-  const isSuspended =
-    storeStatus === "suspended";
 
   const dateLabel =
     new Intl.DateTimeFormat(
-      "ar-SA",
+      "ar-SA-u-nu-latn",
       {
-        weekday: "long",
-        day: "numeric",
-        month: "long",
+        weekday:
+          "long",
+        day:
+          "2-digit",
+        month:
+          "long",
+        year:
+          "numeric",
       },
-    ).format(new Date());
+    ).format(
+      new Date(),
+    );
+
+  const topProducts =
+    summary?.topProducts
+      .slice(
+        0,
+        5,
+      ) ??
+    [];
+
+  const topUnits =
+    topProducts.reduce(
+      (
+        total,
+        product,
+      ) =>
+        total +
+        product.quantitySold,
+      0,
+    );
+
+  const maxSold =
+    Math.max(
+      1,
+      ...topProducts.map(
+        (
+          product,
+        ) =>
+          product.quantitySold,
+      ),
+    );
+
+  function previousOrder() {
+    if (
+      !latestOrders.length
+    ) {
+      return;
+    }
+
+    setActiveOrderIndex(
+      (
+        current,
+      ) =>
+        (
+          current -
+          1 +
+          latestOrders.length
+        ) %
+        latestOrders.length,
+    );
+  }
+
+  function nextOrder() {
+    if (
+      !latestOrders.length
+    ) {
+      return;
+    }
+
+    setActiveOrderIndex(
+      (
+        current,
+      ) =>
+        (
+          current +
+          1
+        ) %
+        latestOrders.length,
+    );
+  }
 
   return (
-    <div className="mx-auto max-w-[1320px] pb-12">
-      <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+    <div
+      dir="rtl"
+      className="rukn-d5"
+    >
+      <section className="rukn-d5-intro">
         <div>
-          <p className="text-[10px] text-black/38">
-            {dateLabel}
-          </p>
+          <div className="rukn-d5-date">
+            <Sparkles
+              size={16}
+            />
 
-          <h1 className="mt-2 text-[32px] font-semibold tracking-[-0.045em] text-[#0b0f0d]">
-            الرئيسية
+            {dateLabel}
+          </div>
+
+          <h1>
+            مرحبًا بك
+            {store?.name
+              ? ` في ${store.name}`
+              : ""}
           </h1>
 
-          <p className="mt-2 max-w-[620px] text-[11px] leading-6 text-black/45">
-            بيانات تشغيلية مباشرة من الخادم: الجاهزية والطلبات والمخزون والسلات المتروكة.
+          <p>
+            كل ما يحتاج قرارًا اليوم في مساحة واحدة،
+            مرتبة حسب الأولوية بدل كثرة الصناديق.
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="rukn-d5-intro-actions">
           <button
             type="button"
             onClick={() =>
               void load()
             }
-            disabled={loading}
-            className="inline-flex size-10 items-center justify-center rounded-[10px] border border-black/[0.09] bg-white text-black/45 disabled:opacity-40"
-            aria-label="تحديث"
+            disabled={
+              loading
+            }
+            aria-label="تحديث البيانات"
           >
             <RefreshCw
-              size={14}
+              size={18}
               className={
                 loading
                   ? "animate-spin"
@@ -258,559 +982,1205 @@ export function AdminDashboardPage() {
           {store?.slug ? (
             <Link
               to={`/store/${store.slug}`}
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-[10px] border border-black/[0.09] bg-white px-4 text-[10px] font-semibold transition hover:border-black/20"
             >
-              فتح المتجر
               <ArrowUpLeft
-                size={14}
+                size={17}
               />
+
+              فتح المتجر
             </Link>
           ) : null}
         </div>
-      </div>
-
-      {!loading && readiness < 100 ? (
-      <section className="mt-7 overflow-hidden rounded-[18px] border border-black/[0.07] bg-[#101512] text-white shadow-[0_18px_50px_rgba(14,19,16,0.08)]">
-        <div className="grid gap-8 p-6 md:grid-cols-[1fr_320px] md:p-7">
-          <div>
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="rounded-full border border-white/12 bg-white/[0.06] px-3 py-1 text-[9px] font-semibold text-white/70">
-                جاهزية المتجر
-              </span>
-
-              <span
-                className={`rounded-full px-3 py-1 text-[9px] font-semibold ${
-                  isSuspended
-                    ? "bg-red-400/15 text-red-200"
-                    : isActive
-                      ? "bg-[#d7b174]/15 text-[#ead3aa]"
-                      : "bg-white/[0.08] text-white/65"
-                }`}
-              >
-                {isSuspended
-                  ? "المتجر موقوف"
-                  : isActive
-                    ? "المتجر فعال"
-                    : "قيد الإعداد"}
-              </span>
-            </div>
-
-            <div className="mt-6 flex items-end gap-3">
-              <span className="text-[52px] font-semibold leading-none tracking-[-0.065em]">
-                {loading
-                  ? "—"
-                  : `${readiness}%`}
-              </span>
-
-              <p className="mb-1 max-w-[420px] text-[10px] leading-5 text-white/45">
-                {summary?.readiness.state ??
-                  "يتم احتساب الجاهزية من بيانات المتجر الحقيقية على الخادم."}
-              </p>
-            </div>
-
-            <div className="mt-6 h-1.5 overflow-hidden rounded-full bg-white/10">
-              <div
-                className="h-full rounded-full bg-[#d7b174] transition-[width] duration-500"
-                style={{
-                  width:
-                    `${readiness}%`,
-                }}
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-2">
-            <CompactStat
-              label="طلبات مفتوحة"
-              value={
-                summary?.openOrders ??
-                0
-              }
-            />
-            <CompactStat
-              label="مدفوع بانتظار التأكيد"
-              value={
-                summary?.paidOrdersAwaitingConfirmation ??
-                0
-              }
-            />
-            <CompactStat
-              label="مخزون منخفض"
-              value={
-                summary?.lowStockVariants ??
-                0
-              }
-            />
-            <CompactStat
-              label="سلات متروكة"
-              value={
-                summary?.abandonedCarts ??
-                0
-              }
-            />
-          </div>
-        </div>
       </section>
-      ) : null}
 
       {error ? (
-        <div className="mt-4 flex items-start gap-3 rounded-[13px] border border-red-200 bg-red-50 px-4 py-3 text-[10px] leading-5 text-red-700">
+        <div className="rukn-d5-error">
           <AlertTriangle
-            size={15}
-            className="mt-0.5 shrink-0"
+            size={18}
           />
-          <div className="flex-1">
+
+          <span>
             {error}
-          </div>
+          </span>
+
           <button
             type="button"
             onClick={() =>
               void load()
             }
-            className="shrink-0 font-semibold underline underline-offset-4"
           >
             إعادة المحاولة
           </button>
         </div>
       ) : null}
 
-      <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <a href="/admin/orders" data-rukn-dashboard-link="الطلبات المفتوحة" className="block cursor-pointer rounded-[17px] transition hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#315F5B]">
-        <MetricCard
+      <section className="rukn-d5-kpis">
+        <Metric
+          to="/admin/orders"
           icon={ShoppingBag}
           label="الطلبات المفتوحة"
           value={
             loading
               ? "—"
-              : String(
+              : formatNumberEn(
                   summary?.openOrders ??
                     0,
                 )
           }
-          detail="طلبات تحتاج متابعة تشغيلية"
+          note="طلبات تنتظر خطوة تشغيلية"
+          tone="green"
+          featured
         />
-        </a>
 
-        <a href="/admin/orders?view=paid" data-rukn-dashboard-link="مدفوع بانتظار التأكيد" className="block cursor-pointer rounded-[17px] transition hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#315F5B]">
-        <MetricCard
-          icon={Clock3}
-          label="مدفوع بانتظار التأكيد"
+        <Metric
+          to="/admin/orders?view=paid"
+          icon={ReceiptText}
+          label="تأكيد الدفع"
           value={
             loading
               ? "—"
-              : String(
+              : formatNumberEn(
                   summary
                     ?.paidOrdersAwaitingConfirmation ??
                     0,
                 )
           }
-          detail="من بيانات الدفع والطلب الفعلية"
+          note="دفعات تنتظر المراجعة"
+          tone="amber"
         />
-        </a>
 
-        <a href="/admin/inventory?filter=low-stock" data-rukn-dashboard-link="تنبيهات المخزون" className="block cursor-pointer rounded-[17px] transition hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#315F5B]">
-        <MetricCard
+        <Metric
+          to="/admin/inventory?filter=low-stock"
           icon={PackageCheck}
-          label="تنبيهات المخزون"
+          label="المخزون"
           value={
             loading
               ? "—"
-              : String(
-                  summary?.lowStockVariants ??
+              : formatNumberEn(
+                  summary
+                    ?.lowStockVariants ??
                     0,
                 )
           }
-          detail="متغيرات وصلت لحد المخزون المنخفض"
+          note="منتجات وصلت حد التنبيه"
+          tone="red"
         />
-        </a>
 
-        <a href="#abandoned-carts" data-rukn-dashboard-link="السلات المتروكة" className="block cursor-pointer rounded-[17px] transition hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#315F5B]">
-        <MetricCard
+        <Metric
+          href="#abandoned-carts"
           icon={Store}
           label="السلات المتروكة"
           value={
             loading
               ? "—"
-              : String(
-                  summary?.abandonedCarts ??
+              : formatNumberEn(
+                  summary
+                    ?.abandonedCarts ??
                     0,
                 )
           }
-          detail={
-            summary
-              ? `بعد ${summary.abandonedAfterMinutes} دقيقة من عدم النشاط`
-              : "محسوبة من نشاط السلات الحقيقي"
-          }
+          note="فرص شراء لم تكتمل"
+          tone="plain"
         />
-        </a>
-      </div>
+      </section>
 
-      <div className="mt-5 grid gap-5 xl:grid-cols-[1.35fr_.65fr]">
-        <section className="overflow-hidden rounded-[17px] border border-black/[0.065] bg-white">
-          <SectionHeader
-            title="آخر الطلبات"
-            subtitle="أحدث الطلبات المسجلة فعليًا"
+      <section className="rukn-d5-grid">
+        <section className="rukn-d5-module rukn-d5-orders">
+          <ModuleHeader
+            kicker="التشغيل الآن"
+            title="مركز الطلبات"
+            description="طلب واحد في الواجهة، وباقي الطلبات قريبة بدون ازدحام."
             link="/admin/orders"
+            linkText="كل الطلبات"
           />
 
           {loading ? (
-            <EmptyState
-              text="جاري تحميل الطلبات…"
+            <Loading
+              count={4}
             />
-          ) : !summary?.recentOrders.length ? (
-            <EmptyState
-              text="لا توجد طلبات بعد."
+          ) : !activeOrder ? (
+            <Empty
+              icon={ShoppingBag}
+              title="لا توجد طلبات بعد"
+              text="أول طلب جديد سيظهر هنا مع الدفع والتنفيذ والتوصيل."
             />
           ) : (
-            <div className="divide-y divide-black/[0.055]">
-              {summary.recentOrders.map(
-                (order) => (
-                  <div
-                    key={order.orderId}
-                    className="grid gap-3 px-5 py-4 sm:grid-cols-[1fr_auto_auto] sm:items-center"
-                  >
+            <div className="rukn-d5-order-body">
+              <article
+                className="rukn-d5-order-focus"
+                onMouseEnter={() =>
+                  setCarouselPaused(
+                    true,
+                  )
+                }
+                onMouseLeave={() =>
+                  setCarouselPaused(
+                    false,
+                  )
+                }
+              >
+                <div className="rukn-d5-order-head">
+                  <div className="rukn-d5-order-number">
+                    <span />
+
                     <div>
-                      <p
+                      <small>
+                        الطلب الحالي
+                      </small>
+
+                      <strong
                         dir="ltr"
-                        className="text-left text-[9px] font-semibold"
                       >
                         #
-                        {order.orderId.slice(
-                          0,
-                          8,
+                        {shortId(
+                          activeOrder.orderId,
                         )}
-                      </p>
+                      </strong>
 
-                      <p className="mt-1 text-[8px] text-black/35">
-                        {new Intl.DateTimeFormat(
-                          "ar-SA",
-                          {
-                            dateStyle:
-                              "medium",
-                            timeStyle:
-                              "short",
-                          },
-                        ).format(
-                          new Date(
-                            order.createdAtUtc,
-                          ),
+                      <p>
+                        {relativeTime(
+                          activeOrder.createdAtUtc,
                         )}
                       </p>
                     </div>
+                  </div>
 
-                    <span className="w-fit rounded-full bg-[#f1f0eb] px-3 py-1 text-[8px] font-semibold text-black/55">
-                      {orderStatusLabel(
-                        order.status,
-                        order.fulfillmentStatus,
+                  <div className="rukn-d5-order-controls">
+                    <Status
+                      tone={
+                        orderMeta(
+                          activeOrder,
+                        )
+                          .tone
+                      }
+                    >
+                      {
+                        orderMeta(
+                          activeOrder,
+                        )
+                          .label
+                      }
+                    </Status>
+
+                    <button
+                      type="button"
+                      onClick={
+                        previousOrder
+                      }
+                      aria-label="الطلب السابق"
+                    >
+                      <ChevronRight
+                        size={17}
+                      />
+                    </button>
+
+                    <strong>
+                      {formatNumberEn(
+                        safeIndex +
+                          1,
                       )}
+                      /
+                      {formatNumberEn(
+                        latestOrders.length,
+                      )}
+                    </strong>
+
+                    <button
+                      type="button"
+                      onClick={
+                        nextOrder
+                      }
+                      aria-label="الطلب التالي"
+                    >
+                      <ChevronLeft
+                        size={17}
+                      />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="rukn-d5-order-summary">
+                  <div className="customer">
+                    <span>
+                      <UserRound
+                        size={20}
+                      />
                     </span>
 
-                    <p
+                    <div>
+                      <small>
+                        العميل
+                      </small>
+
+                      <strong>
+                        {activeReview
+                          ?.customerName ||
+                          activeOrder
+                            .customerEmail ||
+                          "عميل المتجر"}
+                      </strong>
+
+                      <p>
+                        {activeOrder
+                          .customerEmail ??
+                          activeReview
+                            ?.customerPhone ??
+                          "بيانات التواصل داخل الطلب"}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div>
+                    <small>
+                      إجمالي الطلب
+                    </small>
+
+                    <strong
                       dir="ltr"
-                      className="text-left text-[10px] font-semibold"
+                      className="money"
                     >
                       {formatMoney(
-                        order.totalAmount,
-                        order.currency,
+                        activeOrder.totalAmount,
+                        activeOrder.currency,
+                      )}
+                    </strong>
+
+                    <p>
+                      {formatNumberEn(
+                        activeOrder.totalQuantity,
+                      )}
+                      {" "}
+                      قطعة
+                    </p>
+                  </div>
+
+                  <div>
+                    <small>
+                      الدفع
+                    </small>
+
+                    <Status
+                      tone={
+                        paymentMeta(
+                          activeOrder,
+                        )
+                          .tone
+                      }
+                    >
+                      {
+                        paymentMeta(
+                          activeOrder,
+                        )
+                          .label
+                      }
+                    </Status>
+
+                    <p>
+                      {paymentMethodText(
+                        activeOrder,
+                        activeReview,
                       )}
                     </p>
                   </div>
-                ),
-              )}
-            </div>
-          )}
-        </section>
 
-        <section className="overflow-hidden rounded-[17px] border border-black/[0.065] bg-white">
-          <SectionHeader
-            title="المخزون المنخفض"
-            subtitle="أكثر العناصر احتياجًا للمراجعة"
-            link="/admin/products"
-          />
+                  <div>
+                    <small>
+                      الإجراء التالي
+                    </small>
 
-          {loading ? (
-            <EmptyState
-              text="جاري تحميل المخزون…"
-            />
-          ) : !summary?.lowStock.length ? (
-            <EmptyState
-              text="لا توجد تنبيهات مخزون حاليًا."
-            />
-          ) : (
-            <div className="divide-y divide-black/[0.055]">
-              {summary.lowStock.slice(
-                0,
-                5,
-              ).map(
-                (item) => (
-                  <div
-                    key={item.variantId}
-                    className="px-5 py-4"
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="truncate text-[9px] font-semibold">
-                          {item.productName}
-                        </p>
-                        <p className="mt-1 truncate text-[8px] text-black/34">
-                          {item.variantName}
-                          {item.sku
-                            ? ` · ${item.sku}`
-                            : ""}
-                        </p>
-                      </div>
+                    <strong>
+                      {
+                        orderMeta(
+                          activeOrder,
+                        )
+                          .next
+                      }
+                    </strong>
 
-                      <span className="shrink-0 rounded-full bg-[#f7eee0] px-2.5 py-1 text-[8px] font-semibold text-[#765327]">
-                        {item.quantity}
-                      </span>
-                    </div>
-
-                    <p className="mt-2 text-[8px] text-black/32">
-                      حد التنبيه:{" "}
-                      {item.lowStockThreshold}
+                    <p>
+                      من تفاصيل الطلب
                     </p>
                   </div>
-                ),
-              )}
-            </div>
-          )}
-        </section>
-      </div>
+                </div>
 
-      <div className="mt-5 grid gap-5 lg:grid-cols-2">
-        <section id="abandoned-carts" className="overflow-hidden rounded-[17px] border border-black/[0.065] bg-white">
-          <SectionHeader
-            title="السلات المتروكة"
-            subtitle="نشاط حقيقي لم يتحول إلى طلب"
-          />
+                <div className="rukn-d5-order-details">
+                  <Fact
+                    icon={MapPin}
+                    label="الوجهة"
+                    value={
+                      destinationText(
+                        activeDetail,
+                      )
+                    }
+                  />
 
-          {loading ? (
-            <EmptyState
-              text="جاري تحميل السلات…"
-            />
-          ) : !summary?.abandonedCartItems.length ? (
-            <EmptyState
-              text="لا توجد سلات متروكة ضمن النافذة الحالية."
-            />
-          ) : (
-            <div className="divide-y divide-black/[0.055]">
-              {summary.abandonedCartItems
-                .slice(
-                  0,
-                  5,
-                )
-                .map(
-                  (cart) => (
-                    <div
-                      key={cart.cartId}
-                      className="flex items-center justify-between gap-4 px-5 py-4"
-                    >
-                      <div>
-                        <p
-                          dir="ltr"
-                          className="text-left text-[9px] font-semibold"
-                        >
-                          #
-                          {cart.cartId.slice(
-                            0,
-                            8,
-                          )}
-                        </p>
-                        <p className="mt-1 text-[8px] text-black/34">
-                          {cart.totalQuantity} عناصر · آخر نشاط{" "}
-                          {new Intl.DateTimeFormat(
-                            "ar-SA",
-                            {
-                              dateStyle:
-                                "short",
-                              timeStyle:
-                                "short",
-                            },
-                          ).format(
-                            new Date(
-                              cart.lastActivityAtUtc,
-                            ),
-                          )}
-                        </p>
-                      </div>
+                  <Fact
+                    icon={Truck}
+                    label="الشحن"
+                    value={
+                      activeDetail
+                        ?.shippingCarrier ||
+                      activeOrder
+                        .shippingCarrier ||
+                      "لم يبدأ الشحن بعد"
+                    }
+                  />
 
-                      <p
-                        dir="ltr"
-                        className="text-left text-[9px] font-semibold"
-                      >
-                        {formatMoney(
-                          cart.totalAmount,
-                          cart.currency,
-                        )}
-                      </p>
-                    </div>
-                  ),
-                )}
-            </div>
-          )}
-        </section>
+                  <Fact
+                    icon={Clock3}
+                    label="تاريخ الطلب"
+                    value={
+                      formatDateTime(
+                        activeOrder.createdAtUtc,
+                      )
+                    }
+                  />
+                </div>
 
-        <section className="overflow-hidden rounded-[17px] border border-black/[0.065] bg-white">
-          <SectionHeader
-            title="أفضل المنتجات"
-            subtitle="من المبيعات الملتقطة فعليًا"
-          />
+                <footer className="rukn-d5-order-footer">
+                  <div>
+                    {latestOrders.map(
+                      (
+                        order,
+                        index,
+                      ) => (
+                        <button
+                          key={
+                            order.orderId
+                          }
+                          type="button"
+                          aria-label={`عرض الطلب ${index + 1}`}
+                          className={
+                            index ===
+                            safeIndex
+                              ? "active"
+                              : ""
+                          }
+                          onClick={() =>
+                            setActiveOrderIndex(
+                              index,
+                            )
+                          }
+                        />
+                      ),
+                    )}
+                  </div>
 
-          {loading ? (
-            <EmptyState
-              text="جاري تحميل الأداء…"
-            />
-          ) : !summary?.topProducts.length ? (
-            <EmptyState
-              text="لا توجد مبيعات كافية للترتيب بعد."
-            />
-          ) : (
-            <div className="divide-y divide-black/[0.055]">
-              {summary.topProducts
-                .slice(
-                  0,
-                  5,
-                )
-                .map(
+                  <Link
+                    to={`/admin/orders?search=${encodeURIComponent(
+                      activeOrder.orderId,
+                    )}`}
+                  >
+                    فتح تفاصيل الطلب
+
+                    <ChevronLeft
+                      size={16}
+                    />
+                  </Link>
+                </footer>
+              </article>
+
+              <div className="rukn-d5-order-stream">
+                {latestOrders.map(
                   (
-                    product,
+                    order,
                     index,
-                  ) => (
-                    <div
+                  ) => {
+                    const stage =
+                      orderMeta(
+                        order,
+                      );
+
+                    const review =
+                      reviewByOrder.get(
+                        order.orderId,
+                      );
+
+                    return (
+                      <button
+                        type="button"
+                        key={
+                          order.orderId
+                        }
+                        className={
+                          index ===
+                          safeIndex
+                            ? "active"
+                            : ""
+                        }
+                        onClick={() =>
+                          setActiveOrderIndex(
+                            index,
+                          )
+                        }
+                      >
+                        <span>
+                          <strong
+                            dir="ltr"
+                          >
+                            #
+                            {shortId(
+                              order.orderId,
+                            )}
+                          </strong>
+
+                          <small
+                            data-tone={
+                              stage.tone
+                            }
+                          >
+                            {
+                              stage.label
+                            }
+                          </small>
+                        </span>
+
+                        <p>
+                          {review
+                            ?.customerName ||
+                            order
+                              .customerEmail ||
+                            "عميل المتجر"}
+                        </p>
+
+                        <div>
+                          <strong
+                            dir="ltr"
+                          >
+                            {formatMoney(
+                              order.totalAmount,
+                              order.currency,
+                            )}
+                          </strong>
+
+                          <small>
+                            {relativeTime(
+                              order.createdAtUtc,
+                            )}
+                          </small>
+                        </div>
+                      </button>
+                    );
+                  },
+                )}
+              </div>
+            </div>
+          )}
+        </section>
+
+        <aside className="rukn-d5-module rukn-d5-attention">
+          <div className="rukn-d5-attention-head">
+            <span>
+              نظرة سريعة
+            </span>
+
+            <h2>
+              يحتاج انتباهك
+            </h2>
+
+            <p>
+              أهم الإشارات التشغيلية الحالية بدون أرقام مصطنعة.
+            </p>
+          </div>
+
+          <div className="rukn-d5-readiness">
+            <div>
+              <span>
+                جاهزية المتجر
+              </span>
+
+              <strong>
+                {loading
+                  ? "—"
+                  : `${formatNumberEn(
+                      readiness,
+                    )}%`}
+              </strong>
+            </div>
+
+            <div>
+              <i
+                style={{
+                  width: `${readiness}%`,
+                }}
+              />
+            </div>
+
+            <p>
+              {summary
+                ?.readiness
+                .state ??
+                "جارٍ تحميل حالة المتجر."}
+            </p>
+          </div>
+
+          <AttentionRow
+            tone="amber"
+            label="دفعات تنتظر التأكيد"
+            value={
+              loading
+                ? "—"
+                : formatNumberEn(
+                    summary
+                      ?.paidOrdersAwaitingConfirmation ??
+                      0,
+                  )
+            }
+            to="/admin/orders?view=paid"
+          />
+
+          <AttentionRow
+            tone="red"
+            label="مخزون عند حد التنبيه"
+            value={
+              loading
+                ? "—"
+                : formatNumberEn(
+                    summary
+                      ?.lowStockVariants ??
+                      0,
+                  )
+            }
+            to="/admin/inventory?filter=low-stock"
+          />
+
+          <AttentionRow
+            tone="green"
+            label="سلات لم تكتمل"
+            value={
+              loading
+                ? "—"
+                : formatNumberEn(
+                    summary
+                      ?.abandonedCarts ??
+                      0,
+                  )
+            }
+            href="#abandoned-carts"
+          />
+        </aside>
+
+        <section className="rukn-d5-module rukn-d5-products">
+          <ModuleHeader
+            kicker="الأداء الفعلي"
+            title="أفضل المنتجات"
+            description="الترتيب مبني على الوحدات المباعة والمبيعات المسجلة."
+            link="/admin/products"
+            linkText="كل المنتجات"
+          />
+
+          {loading ? (
+            <Loading
+              count={5}
+            />
+          ) : !topProducts.length ? (
+            <Empty
+              icon={TrendingUp}
+              title="لا توجد مبيعات كافية"
+              text="يظهر ترتيب المنتجات بعد تسجيل مبيعات فعلية."
+              compact
+            />
+          ) : (
+            <div className="rukn-d5-product-list">
+              {topProducts.map(
+                (
+                  product,
+                  index,
+                ) => {
+                  const share =
+                    topUnits >
+                    0
+                      ? Math.round(
+                          (
+                            product.quantitySold /
+                            topUnits
+                          ) *
+                            100,
+                        )
+                      : 0;
+
+                  const performance =
+                    Math.max(
+                      5,
+                      Math.round(
+                        (
+                          product.quantitySold /
+                          maxSold
+                        ) *
+                          100,
+                      ),
+                    );
+
+                  return (
+                    <article
                       key={`${product.productId}-${product.currency}`}
-                      className="grid grid-cols-[32px_1fr_auto] items-center gap-3 px-5 py-4"
+                      className={
+                        index ===
+                        0
+                          ? "leader"
+                          : ""
+                      }
                     >
-                      <span className="text-[10px] font-semibold text-black/30">
+                      <span className="rank">
                         {String(
-                          index + 1,
+                          index +
+                            1,
                         ).padStart(
                           2,
                           "0",
                         )}
                       </span>
-                      <div className="min-w-0">
-                        <p className="truncate text-[9px] font-semibold">
-                          {product.productName}
-                        </p>
-                        <p className="mt-1 text-[8px] text-black/34">
-                          {product.quantitySold} قطعة
-                        </p>
+
+                      <span className="avatar">
+                        {productInitial(
+                          product.productName,
+                        )}
+                      </span>
+
+                      <div className="copy">
+                        <div>
+                          <strong>
+                            {
+                              product.productName
+                            }
+                          </strong>
+
+                          <span>
+                            {formatNumberEn(
+                              product.quantitySold,
+                            )}
+                            {" "}
+                            مباع
+                          </span>
+                        </div>
+
+                        <div className="track">
+                          <i
+                            style={{
+                              width: `${performance}%`,
+                            }}
+                          />
+                        </div>
+
+                        <small>
+                          حصة Top 5:
+                          {" "}
+                          {formatNumberEn(
+                            share,
+                          )}
+                          %
+                        </small>
                       </div>
-                      <p
+
+                      <strong
                         dir="ltr"
-                        className="text-left text-[9px] font-semibold"
+                        className="sales"
                       >
                         {formatMoney(
                           product.capturedSales,
                           product.currency,
                         )}
-                      </p>
-                    </div>
+                      </strong>
+                    </article>
+                  );
+                },
+              )}
+            </div>
+          )}
+        </section>
+
+        <section className="rukn-d5-module rukn-d5-stock">
+          <ModuleHeader
+            kicker="المخزون"
+            title="الأقرب للنفاد"
+            description="الحالات التي تحتاج تدخلاً قبل بقية المخزون."
+            link="/admin/inventory?filter=low-stock"
+            linkText="إدارة المخزون"
+          />
+
+          {loading ? (
+            <Loading
+              count={4}
+            />
+          ) : !summary
+              ?.lowStock
+              .length ? (
+            <Empty
+              icon={PackageCheck}
+              title="المخزون بحالة جيدة"
+              text="لا توجد منتجات ضمن حد المخزون المنخفض."
+              compact
+            />
+          ) : (
+            <div className="rukn-d5-stock-list">
+              {summary.lowStock
+                .slice(
+                  0,
+                  4,
+                )
+                .map(
+                  (
+                    item,
+                  ) => {
+                    const out =
+                      item.quantity <=
+                      0;
+
+                    return (
+                      <article
+                        key={
+                          item.variantId
+                        }
+                      >
+                        <span
+                          className={
+                            out
+                              ? "danger"
+                              : ""
+                          }
+                        >
+                          <Boxes
+                            size={18}
+                          />
+                        </span>
+
+                        <div>
+                          <strong>
+                            {
+                              item.productName
+                            }
+                          </strong>
+
+                          <p>
+                            {
+                              item.variantName
+                            }
+
+                            {item.sku
+                              ? ` · ${item.sku}`
+                              : ""}
+                          </p>
+                        </div>
+
+                        <div>
+                          <strong
+                            className={
+                              out
+                                ? "danger"
+                                : ""
+                            }
+                          >
+                            {formatNumberEn(
+                              item.quantity,
+                            )}
+                          </strong>
+
+                          <small>
+                            تنبيه عند
+                            {" "}
+                            {formatNumberEn(
+                              item.lowStockThreshold,
+                            )}
+                          </small>
+                        </div>
+                      </article>
+                    );
+                  },
+                )}
+            </div>
+          )}
+        </section>
+
+        <section
+          id="abandoned-carts"
+          className="rukn-d5-module rukn-d5-carts"
+        >
+          <ModuleHeader
+            kicker="فرص غير مكتملة"
+            title="السلات المتروكة"
+            description="أحدث السلات التي توقفت قبل إكمال الشراء."
+          />
+
+          {loading ? (
+            <Loading
+              count={4}
+            />
+          ) : !summary
+              ?.abandonedCartItems
+              .length ? (
+            <Empty
+              icon={Store}
+              title="لا توجد سلات متروكة"
+              text="لا توجد فرص شراء متوقفة ضمن نافذة الخمول الحالية."
+              compact
+            />
+          ) : (
+            <div className="rukn-d5-cart-list">
+              {summary.abandonedCartItems
+                .slice(
+                  0,
+                  4,
+                )
+                .map(
+                  (
+                    cart,
+                  ) => (
+                    <article
+                      key={
+                        cart.cartId
+                      }
+                    >
+                      <span>
+                        <ShoppingBag
+                          size={18}
+                        />
+                      </span>
+
+                      <div>
+                        <strong>
+                          {cart.customerUserId
+                            ? "عميل مسجل"
+                            : "زائر"}
+                        </strong>
+
+                        <small
+                          dir="ltr"
+                        >
+                          #
+                          {shortId(
+                            cart.cartId,
+                          )}
+                        </small>
+                      </div>
+
+                      <div>
+                        <strong>
+                          {formatNumberEn(
+                            cart.totalQuantity,
+                          )}
+                          {" "}
+                          عناصر
+                        </strong>
+
+                        <small>
+                          {relativeTime(
+                            cart.lastActivityAtUtc,
+                          )}
+                        </small>
+                      </div>
+
+                      <strong
+                        dir="ltr"
+                        className="total"
+                      >
+                        {formatMoney(
+                          cart.totalAmount,
+                          cart.currency,
+                        )}
+                      </strong>
+                    </article>
                   ),
                 )}
             </div>
           )}
         </section>
-      </div>
+      </section>
     </div>
   );
 }
 
-function CompactStat({
-  label,
-  value,
-}: {
-  label: string;
-  value: number;
-}) {
-  return (
-    <div className="rounded-[12px] border border-white/[0.07] bg-white/[0.035] px-3.5 py-3">
-      <p className="text-[8px] leading-4 text-white/40">
-        {label}
-      </p>
-      <p className="mt-2 text-[20px] font-semibold tracking-[-0.03em]">
-        {value}
-      </p>
-    </div>
-  );
-}
-
-function MetricCard({
+function Metric({
+  to,
+  href,
   icon: Icon,
   label,
   value,
-  detail,
+  note,
+  tone,
+  featured = false,
 }: {
-  icon: typeof TrendingUp;
+  to?: string;
+  href?: string;
+  icon: LucideIcon;
   label: string;
-  value: string;
-  detail: string;
+  value: string | number;
+  note: string;
+  tone:
+    | "green"
+    | "amber"
+    | "red"
+    | "plain";
+  featured?: boolean;
 }) {
-  return (
-    <div className="rounded-[15px] border border-black/[0.065] bg-white p-5">
-      <div className="flex items-center justify-between">
-        <div className="flex size-8 items-center justify-center rounded-[9px] bg-[#f1f0eb] text-black/55">
-          <Icon
-            size={14}
-          />
-        </div>
+  const content = (
+    <>
+      <span className="icon">
+        <Icon
+          size={20}
+        />
+      </span>
+
+      <div>
+        <span>
+          {label}
+        </span>
+
+        <strong>
+          {value}
+        </strong>
+
+        <small>
+          {note}
+        </small>
       </div>
-      <p className="mt-5 text-[9px] text-black/38">
-        {label}
-      </p>
-      <p className="mt-1 text-[24px] font-semibold tracking-[-0.04em]">
-        {value}
-      </p>
-      <p className="mt-2 text-[8px] leading-4 text-black/30">
-        {detail}
-      </p>
-    </div>
+
+      <ChevronLeft
+        size={17}
+        className="arrow"
+      />
+    </>
+  );
+
+  const className =
+    [
+      "rukn-d5-metric",
+      featured
+        ? "featured"
+        : "",
+    ]
+      .filter(Boolean)
+      .join(" ");
+
+  if (href) {
+    return (
+      <a
+        href={href}
+        data-tone={tone}
+        className={className}
+      >
+        {content}
+      </a>
+    );
+  }
+
+  return (
+    <Link
+      to={to ?? "/admin"}
+      data-tone={tone}
+      className={className}
+    >
+      {content}
+    </Link>
   );
 }
 
-function SectionHeader({
+function ModuleHeader({
+  kicker,
   title,
-  subtitle,
+  description,
   link,
+  linkText,
 }: {
+  kicker: string;
   title: string;
-  subtitle: string;
+  description: string;
   link?: string;
+  linkText?: string;
 }) {
   return (
-    <div className="flex items-center justify-between gap-4 border-b border-black/[0.06] px-5 py-4">
+    <header className="rukn-d5-module-head">
       <div>
-        <h2 className="text-[10px] font-semibold">
+        <span>
+          {kicker}
+        </span>
+
+        <h2>
           {title}
         </h2>
-        <p className="mt-1 text-[8px] text-black/32">
-          {subtitle}
+
+        <p>
+          {description}
         </p>
       </div>
 
-      {link ? (
+      {link &&
+      linkText ? (
         <Link
           to={link}
-          className="flex items-center gap-1 text-[8px] font-semibold text-black/45 hover:text-black"
         >
-          عرض الكل
+          {linkText}
+
           <ChevronLeft
-            size={12}
+            size={16}
           />
         </Link>
       ) : null}
+    </header>
+  );
+}
+
+function Status({
+  tone,
+  children,
+}: {
+  tone: Tone;
+  children: ReactNode;
+}) {
+  return (
+    <span
+      className="rukn-d5-status"
+      data-tone={tone}
+    >
+      <i />
+
+      {children}
+    </span>
+  );
+}
+
+function Fact({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: LucideIcon;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="rukn-d5-fact">
+      <Icon
+        size={17}
+      />
+
+      <span>
+        {label}
+      </span>
+
+      <strong>
+        {value}
+      </strong>
     </div>
   );
 }
 
-function EmptyState({
-  text,
+function AttentionRow({
+  tone,
+  label,
+  value,
+  to,
+  href,
 }: {
+  tone:
+    | "green"
+    | "amber"
+    | "red";
+  label: string;
+  value: string;
+  to?: string;
+  href?: string;
+}) {
+  const content = (
+    <>
+      <span
+        className="dot"
+        data-tone={tone}
+      />
+
+      <div>
+        <span>
+          {label}
+        </span>
+
+        <strong>
+          {value}
+        </strong>
+      </div>
+
+      <ChevronLeft
+        size={17}
+      />
+    </>
+  );
+
+  if (href) {
+    return (
+      <a
+        href={href}
+        className="rukn-d5-attention-row"
+      >
+        {content}
+      </a>
+    );
+  }
+
+  return (
+    <Link
+      to={to ?? "/admin"}
+      className="rukn-d5-attention-row"
+    >
+      {content}
+    </Link>
+  );
+}
+
+function Empty({
+  icon: Icon,
+  title,
+  text,
+  compact = false,
+}: {
+  icon: LucideIcon;
+  title: string;
   text: string;
+  compact?: boolean;
 }) {
   return (
-    <div className="p-10 text-center text-[9px] text-black/34">
-      {text}
+    <div
+      className={[
+        "rukn-d5-empty",
+        compact
+          ? "compact"
+          : "",
+      ].join(" ")}
+    >
+      <Icon
+        size={24}
+      />
+
+      <strong>
+        {title}
+      </strong>
+
+      <p>
+        {text}
+      </p>
+    </div>
+  );
+}
+
+function Loading({
+  count,
+}: {
+  count: number;
+}) {
+  return (
+    <div className="rukn-d5-loading">
+      {Array.from({
+        length:
+          count,
+      }).map(
+        (
+          _,
+          index,
+        ) => (
+          <span
+            key={
+              index
+            }
+          />
+        ),
+      )}
     </div>
   );
 }

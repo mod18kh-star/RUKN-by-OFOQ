@@ -4,6 +4,7 @@ using System.Net.Http.Json;
 using Microsoft.Extensions.DependencyInjection;
 using OFOQ.Market.Api.Tests.Support;
 using OFOQ.Market.Application.Common.Persistence;
+using OFOQ.Market.Application.Common.Security;
 using OFOQ.Market.Contracts.Commerce.Payments;
 using OFOQ.Market.Domain.Catalog;
 using OFOQ.Market.Domain.Commerce.Carts;
@@ -169,7 +170,15 @@ public sealed class PaymentEndpointsTests
         var setup = await CreateSetupAsync(factory, client);
         var method = AddMethod(factory, setup);
 
-        SetAccessToken(client, UserId.New());
+        var otherCustomer =
+            await CreateUserAsync(
+                factory,
+                "payment-other");
+
+        SetAccessToken(
+            factory,
+            client,
+            otherCustomer.Id);
 
         var response = await PostCreateIntentAsync(
             client,
@@ -286,7 +295,14 @@ public sealed class PaymentEndpointsTests
         HttpClient client,
         decimal totalAmount = 50m)
     {
-        var customerUserId = UserId.New();
+        var customer =
+            await CreateUserAsync(
+                factory,
+                "payment");
+
+        var customerUserId =
+            customer.Id;
+
         var tenant = Tenant.Create(
             "Payment API Store",
             $"payment-api-{Guid.NewGuid():N}",
@@ -319,7 +335,10 @@ public sealed class PaymentEndpointsTests
             orderStore.Items.Add(new InMemoryOrderEntry(order, null));
         }
 
-        SetAccessToken(client, customerUserId);
+        SetAccessToken(
+            factory,
+            client,
+            customerUserId);
 
         return new TestSetup(customerUserId, tenant, order);
     }
@@ -390,17 +409,56 @@ public sealed class PaymentEndpointsTests
         return $"/api/tenants/{setup.Tenant.Id.Value}/orders/{setup.Order.Id.Value}/payments/intents";
     }
 
-    private static void SetAccessToken(HttpClient client, UserId userId)
+    private static void SetAccessToken(
+        MarketApiFactory factory,
+        HttpClient client,
+        UserId userId)
     {
-        var now = DateTimeOffset.UtcNow;
-        var token = TestJwtTokenFactory.Create(
-            userId.Value,
-            $"payment-{userId.Value:N}@example.com",
-            now.AddMinutes(-1),
-            now.AddMinutes(15));
+        var user =
+            factory.Services
+                .GetRequiredService<
+                    IUserRepository>()
+                .GetByIdAsync(
+                    userId)
+                .GetAwaiter()
+                .GetResult();
+
+        Assert.NotNull(
+            user);
+
+        var token =
+            factory.Services
+                .GetRequiredService<
+                    ITestAccessTokenService>()
+                .Create(
+                    user.Id,
+                    user.Email.Value,
+                    DateTimeOffset.UtcNow,
+                    AccessTokenAuthenticationLevel.PasswordOnly);
 
         client.DefaultRequestHeaders.Authorization =
-            new AuthenticationHeaderValue("Bearer", token);
+            new AuthenticationHeaderValue(
+                "Bearer",
+                token.Token);
+    }
+
+    private static async Task<User> CreateUserAsync(
+        MarketApiFactory factory,
+        string prefix)
+    {
+        var user =
+            User.Create(
+                $"{prefix}-{Guid.NewGuid():N}@example.com",
+                "test-password-hash",
+                DateTimeOffset.UtcNow);
+
+        await factory.Services
+            .GetRequiredService<
+                IUserRepository>()
+            .AddAsync(
+                user);
+
+        return user;
     }
 
     private sealed record TestSetup(

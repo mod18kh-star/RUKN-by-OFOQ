@@ -242,6 +242,7 @@ export async function submitManualDraftReceipt(
   form.append("transferReference", reference.trim());
   form.append("cartId", draft.cartId);
   form.append("shippingMethodId", draft.shippingMethodId);
+  form.append("customerAddressId", draft.customerAddressId ?? "");
   form.append("accountId", draft.paymentAccountId);
   form.append("accountUpdatedAtUtc", accountUpdatedAtUtc);
   form.append("customerPhone", draft.customerPhone);

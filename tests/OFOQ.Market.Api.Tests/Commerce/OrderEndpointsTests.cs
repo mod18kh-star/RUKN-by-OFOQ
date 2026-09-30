@@ -914,7 +914,7 @@ public sealed class OrderEndpointsTests
         var accessTokenService =
             factory.Services
                 .GetRequiredService<
-                    IAccessTokenService>();
+                    ITestAccessTokenService>();
 
         var accessToken =
             accessTokenService.Create(

@@ -2,13 +2,19 @@ import {
   ArrowLeft,
   Building2,
   CheckCircle2,
+  ChevronLeft,
   Clock3,
+  History,
   KeyRound,
   Mail,
   RefreshCw,
   ShieldCheck,
   SlidersHorizontal,
+  Store,
+  UserRound,
+  X,
   XCircle,
+  type LucideIcon,
 } from "lucide-react";
 
 import {
@@ -20,6 +26,7 @@ import {
   useEffect,
   useMemo,
   useState,
+  type ReactNode,
 } from "react";
 
 import {
@@ -51,11 +58,19 @@ import {
   type MfaReopenPolicy,
 } from "../auth/mfaSessionPolicy";
 
+import "./AdminSettingsV3.css";
+
 type RequestKind =
   | "plan"
   | "identity"
   | "email"
   | null;
+
+type SettingsSection =
+  | "account"
+  | "store"
+  | "security"
+  | "requests";
 
 const statusLabels: Record<string, string> = {
   Pending: "قيد المراجعة",
@@ -71,109 +86,346 @@ const typeLabels: Record<string, string> = {
   OwnerEmailChange: "تغيير بريد المالك",
 };
 
+function storeStatusLabel(
+  value: string | undefined,
+) {
+  const status =
+    value
+      ?.trim()
+      .toLowerCase();
+
+  if (
+    status === "active"
+  ) {
+    return "فعال";
+  }
+
+  if (
+    status === "suspended"
+  ) {
+    return "موقوف";
+  }
+
+  return "قيد الإعداد";
+}
+
 export function AdminSettingsPage() {
-  const store = readAdminStore();
-  const [requests, setRequests] =
-    useState<MerchantPlatformRequest[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [kind, setKind] = useState<RequestKind>(null);
-  const [busy, setBusy] = useState(false);
+  const store =
+    readAdminStore();
 
-  const [planCode, setPlanCode] = useState("pro");
-  const [billingCycle, setBillingCycle] =
-    useState<"Monthly" | "Annual">("Annual");
-  const [reason, setReason] = useState("");
-  const [name, setName] = useState(store?.name ?? "");
-  const [slug, setSlug] = useState(store?.slug ?? "");
-  const [verticalCode, setVerticalCode] = useState(
-    store?.verticalCode ?? "",
-  );
-  const [email, setEmail] = useState("");
+  const [
+    activeSection,
+    setActiveSection,
+  ] =
+    useState<SettingsSection>(
+      "account",
+    );
 
-  const [mfaPolicy, setMfaPolicy] =
+  const [
+    contactOpen,
+    setContactOpen,
+  ] =
+    useState(false);
+
+  const [
+    requests,
+    setRequests,
+  ] =
+    useState<
+      MerchantPlatformRequest[]
+    >([]);
+
+  const [
+    loading,
+    setLoading,
+  ] =
+    useState(true);
+
+  const [
+    error,
+    setError,
+  ] =
+    useState<
+      string |
+      null
+    >(null);
+
+  const [
+    kind,
+    setKind,
+  ] =
+    useState<RequestKind>(
+      null,
+    );
+
+  const [
+    busy,
+    setBusy,
+  ] =
+    useState(false);
+
+  const [
+    planCode,
+    setPlanCode,
+  ] =
+    useState(
+      "pro",
+    );
+
+  const [
+    billingCycle,
+    setBillingCycle,
+  ] =
+    useState<
+      "Monthly" |
+      "Annual"
+    >(
+      "Annual",
+    );
+
+  const [
+    reason,
+    setReason,
+  ] =
+    useState("");
+
+  const [
+    name,
+    setName,
+  ] =
+    useState(
+      store?.name ??
+      "",
+    );
+
+  const [
+    slug,
+    setSlug,
+  ] =
+    useState(
+      store?.slug ??
+      "",
+    );
+
+  const [
+    verticalCode,
+    setVerticalCode,
+  ] =
+    useState(
+      store?.verticalCode ??
+      "",
+    );
+
+  const [
+    email,
+    setEmail,
+  ] =
+    useState("");
+
+  const [
+    mfaPolicy,
+    setMfaPolicy,
+  ] =
     useState<MfaReopenPolicy>(
       "EveryBrowserSession",
     );
 
-  const [securityLoading, setSecurityLoading] =
+  const [
+    securityLoading,
+    setSecurityLoading,
+  ] =
     useState(true);
 
-  const [securityBusy, setSecurityBusy] =
+  const [
+    securityBusy,
+    setSecurityBusy,
+  ] =
     useState(false);
 
-  const [securityMessage, setSecurityMessage] =
-    useState<string | null>(
-      null,
+  const [
+    securityMessage,
+    setSecurityMessage,
+  ] =
+    useState<
+      string |
+      null
+    >(null);
+
+  const [
+    securityError,
+    setSecurityError,
+  ] =
+    useState<
+      string |
+      null
+    >(null);
+
+  const loadSecurity =
+    useCallback(
+      async () => {
+        try {
+          const user =
+            await getCurrentUser();
+
+          setMfaPolicy(
+            user.mfaReopenPolicy,
+          );
+
+          setSecurityError(
+            null,
+          );
+        } catch (
+          exception
+        ) {
+          setSecurityError(
+            exception instanceof
+              Error
+              ? exception.message
+              : "تعذر تحميل إعدادات الأمان.",
+          );
+        } finally {
+          setSecurityLoading(
+            false,
+          );
+        }
+      },
+      [],
     );
 
-  const [securityError, setSecurityError] =
-    useState<string | null>(
-      null,
+  const load =
+    useCallback(
+      async () => {
+        if (
+          !store?.tenantId
+        ) {
+          setLoading(
+            false,
+          );
+
+          return;
+        }
+
+        try {
+          const result =
+            await getMyPlatformRequests(
+              store.tenantId,
+            );
+
+          setRequests(
+            result,
+          );
+
+          setError(
+            null,
+          );
+        } catch (
+          exception
+        ) {
+          setError(
+            exception instanceof
+              Error
+              ? exception.message
+              : "تعذر تحميل الطلبات.",
+          );
+        } finally {
+          setLoading(
+            false,
+          );
+        }
+      },
+      [
+        store?.tenantId,
+      ],
     );
 
-  const loadSecurity = useCallback(async () => {
-    try {
-      const user =
-        await getCurrentUser();
+  useEffect(
+    () => {
+      const timer =
+        window.setTimeout(
+          () => {
+            void load();
+            void loadSecurity();
+          },
+          0,
+        );
 
-      setMfaPolicy(
-        user.mfaReopenPolicy,
-      );
+      return () =>
+        window.clearTimeout(
+          timer,
+        );
+    },
+    [
+      load,
+      loadSecurity,
+    ],
+  );
 
-      setSecurityError(
-        null,
-      );
-    } catch (exception) {
-      setSecurityError(
-        exception instanceof Error
-          ? exception.message
-          : "تعذر تحميل إعدادات الأمان.",
-      );
-    } finally {
-      setSecurityLoading(
-        false,
-      );
-    }
-  }, []);
+  useEffect(
+    () => {
+      if (
+        !kind &&
+        !contactOpen
+      ) {
+        return;
+      }
 
-  const load = useCallback(async () => {
-    if (!store?.tenantId) {
-      setLoading(false);
-      return;
-    }
+      const previous =
+        document.body
+          .style
+          .overflow;
 
-    try {
-      const result = await getMyPlatformRequests(
-        store.tenantId,
-      );
-      setRequests(result);
-      setError(null);
-    } catch (exception) {
-      setError(
-        exception instanceof Error
-          ? exception.message
-          : "تعذر تحميل الطلبات.",
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, [store?.tenantId]);
+      document.body
+        .style
+        .overflow =
+        "hidden";
 
-  useEffect(() => {
-    const timer = window.setTimeout(() => {
-      void load();
-      void loadSecurity();
-    }, 0);
+      return () => {
+        document.body
+          .style
+          .overflow =
+          previous;
+      };
+    },
+    [
+      kind,
+      contactOpen,
+    ],
+  );
 
-    return () => window.clearTimeout(timer);
-  }, [
-    load,
-    loadSecurity,
-  ]);
+  const pendingCount =
+    useMemo(
+      () =>
+        requests.filter(
+          (
+            request,
+          ) =>
+            request.status ===
+            "Pending",
+        ).length,
+      [
+        requests,
+      ],
+    );
+
+  const verticalLabel =
+    useMemo(
+      () =>
+        VERTICAL_OPTIONS.find(
+          (
+            item,
+          ) =>
+            item.code ===
+            store?.verticalCode,
+        )?.label ??
+        "غير محدد",
+      [
+        store?.verticalCode,
+      ],
+    );
 
   async function updateMfaPolicy(
-    nextPolicy: MfaReopenPolicy,
+    nextPolicy:
+      MfaReopenPolicy,
   ) {
     setSecurityBusy(
       true,
@@ -190,15 +442,19 @@ export function AdminSettingsPage() {
     try {
       const result =
         await authRequest<{
-          policy: MfaReopenPolicy;
+          policy:
+            MfaReopenPolicy;
         }>(
           "/api/auth/mfa/reopen-policy",
           {
-            method: "PUT",
-            body: JSON.stringify({
-              policy:
-                nextPolicy,
-            }),
+            method:
+              "PUT",
+
+            body:
+              JSON.stringify({
+                policy:
+                  nextPolicy,
+              }),
           },
         );
 
@@ -209,9 +465,12 @@ export function AdminSettingsPage() {
       setSecurityMessage(
         "تم حفظ سياسة إعادة التحقق.",
       );
-    } catch (exception) {
+    } catch (
+      exception
+    ) {
       setSecurityError(
-        exception instanceof Error
+        exception instanceof
+          Error
           ? exception.message
           : "تعذر حفظ إعداد الأمان.",
       );
@@ -222,154 +481,786 @@ export function AdminSettingsPage() {
     }
   }
 
-  const pendingCount = useMemo(
-    () =>
-      requests.filter(
-        (item) => item.status === "Pending",
-      ).length,
-    [requests],
-  );
+  function openRequest(
+    nextKind:
+      Exclude<
+        RequestKind,
+        null
+      >,
+  ) {
+    setKind(
+      nextKind,
+    );
 
-  async function submit() {
-    if (!store?.tenantId || !kind) {
-      return;
-    }
-
-    const cleanReason = reason.trim();
-
-    if (cleanReason.length < 3) {
-      setError("اكتب سببًا واضحًا للطلب.");
-      return;
-    }
-
-    setBusy(true);
+    setReason("");
     setError(null);
 
+    if (
+      nextKind ===
+      "identity"
+    ) {
+      setName(
+        store?.name ??
+        "",
+      );
+
+      setSlug(
+        store?.slug ??
+        "",
+      );
+
+      setVerticalCode(
+        store?.verticalCode ??
+        "",
+      );
+    }
+  }
+
+  async function submit() {
+    if (
+      !store?.tenantId ||
+      !kind
+    ) {
+      return;
+    }
+
+    const cleanReason =
+      reason.trim();
+
+    if (
+      cleanReason.length <
+      3
+    ) {
+      setError(
+        "اكتب سببًا واضحًا للطلب.",
+      );
+
+      return;
+    }
+
+    setBusy(
+      true,
+    );
+
+    setError(
+      null,
+    );
+
     try {
-      if (kind === "plan") {
+      if (
+        kind ===
+        "plan"
+      ) {
         await submitPlanChangeRequest(
           store.tenantId,
           {
             planCode,
             billingCycle,
-            reason: cleanReason,
+            reason:
+              cleanReason,
           },
         );
-      } else if (kind === "identity") {
+      } else if (
+        kind ===
+        "identity"
+      ) {
         await submitStoreIdentityChangeRequest(
           store.tenantId,
           {
-            name: name.trim() || null,
-            slug: slug.trim() || null,
-            verticalCode: verticalCode || null,
-            reason: cleanReason,
+            name:
+              name.trim() ||
+              null,
+
+            slug:
+              slug.trim() ||
+              null,
+
+            verticalCode:
+              verticalCode ||
+              null,
+
+            reason:
+              cleanReason,
           },
         );
       } else {
         await submitOwnerEmailChangeRequest(
           store.tenantId,
           {
-            email: email.trim(),
-            reason: cleanReason,
+            email:
+              email.trim(),
+
+            reason:
+              cleanReason,
           },
         );
       }
 
-      setKind(null);
+      setKind(
+        null,
+      );
+
       setReason("");
       setEmail("");
+
       await load();
-    } catch (exception) {
+    } catch (
+      exception
+    ) {
       setError(
-        exception instanceof Error
+        exception instanceof
+          Error
           ? exception.message
           : "تعذر إرسال الطلب.",
       );
     } finally {
-      setBusy(false);
+      setBusy(
+        false,
+      );
     }
   }
 
   if (!store) {
     return (
-      <div className="rounded-[16px] border border-black/[0.08] bg-white p-8 text-[11px]">
-        لم يتم العثور على متجر حالي.
-      </div>
+      <main
+        dir="rtl"
+        className="rukn-settings-v3"
+      >
+        <div className="rukn-settings-v3-empty">
+          لم يتم العثور على متجر حالي.
+        </div>
+      </main>
     );
   }
 
   return (
-    <div className="mx-auto max-w-[1180px] pb-10">
-      <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
+    <main
+      dir="rtl"
+      className="rukn-settings-v3"
+    >
+      <header className="rukn-settings-v3-head">
         <div>
-          <p className="text-[9px] font-semibold text-[#9a713f]">
-            STORE SETTINGS
-          </p>
-          <h1 className="mt-2 text-[31px] font-semibold tracking-[-0.045em]">
-            الإعدادات والطلبات
+          <span className="eyebrow">
+            RUKN SETTINGS
+          </span>
+
+          <h1>
+            الإعدادات
           </h1>
-          <p className="mt-3 max-w-[680px] text-[11px] leading-7 text-black/44">
-            التغييرات الحساسة لا تُنفذ مباشرة. أرسل الطلب وسيصل إلى إدارة ركن للمراجعة والموافقة.
+
+          <p>
+            مكان هادئ لإدارة حسابك، متجرك، الأمان، والتغييرات التي تحتاج مراجعة.
           </p>
         </div>
 
-        <div className="rounded-[13px] border border-black/[0.07] bg-white px-4 py-3">
-          <p className="text-[8px] text-black/35">طلبات قيد المراجعة</p>
-          <p className="mt-1 text-[19px] font-semibold">{pendingCount}</p>
-        </div>
-      </div>
+        {pendingCount >
+        0 ? (
+          <button
+            type="button"
+            className="rukn-settings-v3-pending"
+            onClick={() =>
+              setActiveSection(
+                "requests",
+              )
+            }
+          >
+            <span>
+              قيد المراجعة
+            </span>
 
-      {error ? (
-        <div className="mt-5 rounded-[12px] border border-red-200 bg-red-50 px-4 py-3 text-[10px] text-red-700">
+            <strong>
+              {pendingCount.toLocaleString(
+                "en-US",
+              )}
+            </strong>
+          </button>
+        ) : (
+          <div className="rukn-settings-v3-clear">
+            <i />
+
+            لا توجد طلبات معلّقة
+          </div>
+        )}
+      </header>
+
+      {error &&
+      !kind ? (
+        <div
+          role="alert"
+          className="rukn-settings-v3-alert"
+        >
           {error}
         </div>
       ) : null}
 
-      <div className="mt-7 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <ActionCard
-          icon={SlidersHorizontal}
-          title="تغيير الباقة"
-          description="اطلب ترقية أو تغيير الباقة وطريقة الفوترة."
-          onClick={() => setKind("plan")}
-        />
-        <ActionCard
-          icon={Building2}
-          title="تغيير بيانات المتجر"
-          description="الاسم أو الرابط أو النشاط الأساسي بعد موافقة الإدارة."
-          onClick={() => setKind("identity")}
-        />
-        <ActionCard
-          icon={Mail}
-          title="تغيير بريد المالك"
-          description="طلب أمني لتغيير بريد حساب المالك بعد المراجعة."
-          onClick={() => setKind("email")}
-        />
-
-        <div className="rounded-[16px] border border-black/[0.07] bg-white p-5">
-          <div className="flex size-9 items-center justify-center rounded-[10px] bg-[#f2ede4] text-[#78592f]">
-            <KeyRound size={16} />
-          </div>
-
-          <h3 className="mt-4 text-[11px] font-semibold">
-            أمان الحساب
-          </h3>
-
-          <p className="mt-2 text-[9px] leading-5 text-black/40">
-            اختر متى يطلب ركن رمز التحقق عند فتح لوحة المتجر من جلسة متصفح جديدة.
-          </p>
-
-          <select
-            value={mfaPolicy}
-            disabled={
-              securityLoading ||
-              securityBusy
+      <div className="rukn-settings-v3-layout">
+        <nav className="rukn-settings-v3-nav">
+          <SettingsNavItem
+            icon={
+              UserRound
             }
-            onChange={(event) =>
-              void updateMfaPolicy(
-                event.target.value as MfaReopenPolicy,
+            title="حسابي"
+            description="الباقة والبريد والنشاط"
+            active={
+              activeSection ===
+              "account"
+            }
+            onClick={() =>
+              setActiveSection(
+                "account",
               )
             }
-            className="mt-4 h-10 w-full rounded-[10px] border border-black/[0.09] bg-[#fbfaf7] px-3 text-[10px] outline-none disabled:opacity-50"
+          />
+
+          <SettingsNavItem
+            icon={
+              Store
+            }
+            title="المتجر"
+            description="الهوية والتواصل والعنوان"
+            active={
+              activeSection ===
+              "store"
+            }
+            onClick={() =>
+              setActiveSection(
+                "store",
+              )
+            }
+          />
+
+          <SettingsNavItem
+            icon={
+              KeyRound
+            }
+            title="الأمان"
+            description="التحقق وحماية الجلسة"
+            active={
+              activeSection ===
+              "security"
+            }
+            onClick={() =>
+              setActiveSection(
+                "security",
+              )
+            }
+          />
+
+          <SettingsNavItem
+            icon={
+              History
+            }
+            title="طلبات التغييرات"
+            description="المراجعات والقرارات"
+            active={
+              activeSection ===
+              "requests"
+            }
+            badge={
+              pendingCount
+            }
+            onClick={() =>
+              setActiveSection(
+                "requests",
+              )
+            }
+          />
+        </nav>
+
+        <section className="rukn-settings-v3-content">
+          {activeSection ===
+          "account" ? (
+            <AccountSection
+              onPlan={() =>
+                openRequest(
+                  "plan",
+                )
+              }
+              onIdentity={() =>
+                openRequest(
+                  "identity",
+                )
+              }
+              onEmail={() =>
+                openRequest(
+                  "email",
+                )
+              }
+              verticalLabel={
+                verticalLabel
+              }
+            />
+          ) : null}
+
+          {activeSection ===
+          "store" ? (
+            <StoreSection
+              name={
+                store.name
+              }
+              slug={
+                store.slug
+              }
+              status={
+                storeStatusLabel(
+                  store.status,
+                )
+              }
+              verticalLabel={
+                verticalLabel
+              }
+              onIdentity={() =>
+                openRequest(
+                  "identity",
+                )
+              }
+              onContact={() =>
+                setContactOpen(
+                  true,
+                )
+              }
+            />
+          ) : null}
+
+          {activeSection ===
+          "security" ? (
+            <SecuritySection
+              mfaPolicy={
+                mfaPolicy
+              }
+              loading={
+                securityLoading
+              }
+              busy={
+                securityBusy
+              }
+              message={
+                securityMessage
+              }
+              error={
+                securityError
+              }
+              onChange={
+                updateMfaPolicy
+              }
+            />
+          ) : null}
+
+          {activeSection ===
+          "requests" ? (
+            <RequestsSection
+              requests={
+                requests
+              }
+              loading={
+                loading
+              }
+              onRefresh={() =>
+                void load()
+              }
+            />
+          ) : null}
+        </section>
+      </div>
+
+      {kind ? (
+        <RequestDrawer
+          kind={
+            kind
+          }
+          busy={
+            busy
+          }
+          error={
+            error
+          }
+          planCode={
+            planCode
+          }
+          billingCycle={
+            billingCycle
+          }
+          name={
+            name
+          }
+          slug={
+            slug
+          }
+          verticalCode={
+            verticalCode
+          }
+          email={
+            email
+          }
+          reason={
+            reason
+          }
+          onPlanCode={
+            setPlanCode
+          }
+          onBillingCycle={
+            setBillingCycle
+          }
+          onName={
+            setName
+          }
+          onSlug={
+            setSlug
+          }
+          onVerticalCode={
+            setVerticalCode
+          }
+          onEmail={
+            setEmail
+          }
+          onReason={
+            setReason
+          }
+          onClose={() => {
+            if (
+              !busy
+            ) {
+              setKind(
+                null,
+              );
+
+              setError(
+                null,
+              );
+            }
+          }}
+          onSubmit={() =>
+            void submit()
+          }
+        />
+      ) : null}
+
+      {contactOpen ? (
+        <div className="rukn-settings-v3-layer">
+          <button
+            type="button"
+            className="rukn-settings-v3-backdrop"
+            aria-label="إغلاق"
+            onClick={() =>
+              setContactOpen(
+                false,
+              )
+            }
+          />
+
+          <aside className="rukn-settings-v3-store-drawer">
+            <header>
+              <div>
+                <span>
+                  إعداد المتجر
+                </span>
+
+                <h2>
+                  التواصل والعنوان
+                </h2>
+
+                <p>
+                  هذه التفاصيل لا تظهر في صفحة الإعدادات الرئيسية إلا عند الحاجة لتعديلها.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                aria-label="إغلاق"
+                onClick={() =>
+                  setContactOpen(
+                    false,
+                  )
+                }
+              >
+                <X
+                  size={18}
+                />
+              </button>
+            </header>
+
+            <div className="rukn-settings-v3-store-host">
+              <StoreContactSettings
+                tenantId={
+                  store.tenantId
+                }
+              />
+            </div>
+          </aside>
+        </div>
+      ) : null}
+    </main>
+  );
+}
+
+function AccountSection({
+  onPlan,
+  onIdentity,
+  onEmail,
+  verticalLabel,
+}: {
+  onPlan:
+    () => void;
+  onIdentity:
+    () => void;
+  onEmail:
+    () => void;
+  verticalLabel:
+    string;
+}) {
+  return (
+    <>
+      <SectionIntro
+        eyebrow="ACCOUNT"
+        title="حسابي"
+        description="الأشياء المرتبطة بالحساب التجاري نفسه، بدون تشتيتها بين عدة شاشات."
+      />
+
+      <div className="rukn-settings-v3-list">
+        <SettingAction
+          icon={
+            SlidersHorizontal
+          }
+          title="الباقة والفوترة"
+          description="طلب تغيير الباقة أو دورة الفوترة."
+          value="إدارة الباقة"
+          onClick={
+            onPlan
+          }
+        />
+
+        <SettingAction
+          icon={
+            Mail
+          }
+          title="بريد المالك"
+          description="تغيير البريد الأساسي المرتبط بمالك المتجر."
+          value="تغيير البريد"
+          onClick={
+            onEmail
+          }
+        />
+
+        <SettingAction
+          icon={
+            Building2
+          }
+          title="النشاط والتخصص"
+          description="تعديل النشاط الأساسي أو بيانات هوية المتجر."
+          value={
+            verticalLabel
+          }
+          onClick={
+            onIdentity
+          }
+        />
+      </div>
+    </>
+  );
+}
+
+function StoreSection({
+  name,
+  slug,
+  status,
+  verticalLabel,
+  onIdentity,
+  onContact,
+}: {
+  name:
+    string;
+  slug:
+    string;
+  status:
+    string;
+  verticalLabel:
+    string;
+  onIdentity:
+    () => void;
+  onContact:
+    () => void;
+}) {
+  return (
+    <>
+      <SectionIntro
+        eyebrow="STORE"
+        title="إعداد المتجر"
+        description="العميل يرى متجرًا واحدًا؛ لذلك نجمع الهوية والتواصل والعنوان في مكان مرتب وواضح."
+      />
+
+      <div className="rukn-settings-v3-store-summary">
+        <div className="identity">
+          <span className="avatar">
+            <Store
+              size={20}
+            />
+          </span>
+
+          <div>
+            <strong>
+              {name}
+            </strong>
+
+            <small
+              dir="ltr"
+            >
+              {slug
+                ? `${slug}.ofoq.store`
+                : "Store URL not configured"}
+            </small>
+          </div>
+        </div>
+
+        <dl>
+          <div>
+            <dt>
+              الحالة
+            </dt>
+
+            <dd>
+              {status}
+            </dd>
+          </div>
+
+          <div>
+            <dt>
+              النشاط
+            </dt>
+
+            <dd>
+              {verticalLabel}
+            </dd>
+          </div>
+        </dl>
+      </div>
+
+      <div className="rukn-settings-v3-list">
+        <SettingAction
+          icon={
+            Building2
+          }
+          title="هوية المتجر"
+          description="الاسم، الرابط، والنشاط الأساسي."
+          value="تعديل الهوية"
+          onClick={
+            onIdentity
+          }
+        />
+
+        <SettingAction
+          icon={
+            Store
+          }
+          title="التواصل والعنوان"
+          description="أرقام التواصل، WhatsApp، الموقع، والعنوان."
+          value="إدارة البيانات"
+          onClick={
+            onContact
+          }
+        />
+
+        <Link
+          to="/admin/store"
+          className="rukn-settings-v3-setting-action"
+        >
+          <span className="icon">
+            <SlidersHorizontal
+              size={16}
+            />
+          </span>
+
+          <div className="copy">
+            <strong>
+              واجهة المتجر
+            </strong>
+
+            <small>
+              الألوان، العرض، والمحتوى المرئي للمتجر.
+            </small>
+          </div>
+
+          <span className="value">
+            تخصيص الواجهة
+          </span>
+
+          <ChevronLeft
+            size={16}
+          />
+        </Link>
+      </div>
+    </>
+  );
+}
+
+function SecuritySection({
+  mfaPolicy,
+  loading,
+  busy,
+  message,
+  error,
+  onChange,
+}: {
+  mfaPolicy:
+    MfaReopenPolicy;
+  loading:
+    boolean;
+  busy:
+    boolean;
+  message:
+    string |
+    null;
+  error:
+    string |
+    null;
+  onChange:
+    (
+      policy:
+        MfaReopenPolicy,
+    ) => Promise<void>;
+}) {
+  return (
+    <>
+      <SectionIntro
+        eyebrow="SECURITY"
+        title="أمان الحساب"
+        description="إعدادات قليلة ومباشرة، بدون تشتيت المستخدم بتفاصيل تقنية غير ضرورية."
+      />
+
+      <div className="rukn-settings-v3-security">
+        <div className="security-row">
+          <span className="icon">
+            <ShieldCheck
+              size={17}
+            />
+          </span>
+
+          <div>
+            <strong>
+              إعادة طلب رمز التحقق
+            </strong>
+
+            <small>
+              اختر متى يطلب ركن رمز MFA عند إعادة فتح لوحة الإدارة.
+            </small>
+          </div>
+
+          <select
+            value={
+              mfaPolicy
+            }
+            disabled={
+              loading ||
+              busy
+            }
+            onChange={(
+              event,
+            ) =>
+              void onChange(
+                event.target
+                  .value as
+                  MfaReopenPolicy,
+              )
+            }
           >
             <option value="EveryBrowserSession">
               كل جلسة متصفح جديدة
@@ -387,265 +1278,702 @@ export function AdminSettingsPage() {
               بعد 60 دقيقة
             </option>
           </select>
+        </div>
 
-          <p className="mt-3 text-[8px] leading-5 text-black/35">
-            طالما اللوحة مفتوحة لن يطلب الرمز بسبب مدة 15/30/60 دقيقة. يوجد حد أمان ثابت قدره 6 ساعات من آخر تحقق MFA.
-          </p>
+        <div className="security-note">
+          <KeyRound
+            size={15}
+          />
 
-          {securityMessage ? (
-            <p className="mt-3 text-[9px] text-emerald-700">
-              {securityMessage}
-            </p>
-          ) : null}
-
-          {securityError ? (
-            <p className="mt-3 text-[9px] text-red-700">
-              {securityError}
-            </p>
-          ) : null}
+          <span>
+            يوجد حد أمان ثابت قدره 6 ساعات من آخر تحقق MFA.
+          </span>
 
           <Link
             to="/security/setup?returnTo=%2Fadmin%2Fsettings&reauth=1"
-            className="mt-4 inline-flex items-center gap-1 text-[9px] font-semibold text-[#78592f]"
           >
             تأكيد الرمز الآن
-            <ArrowLeft size={11} />
+            <ArrowLeft
+              size={12}
+            />
           </Link>
         </div>
+
+        {message ? (
+          <p className="success">
+            {message}
+          </p>
+        ) : null}
+
+        {error ? (
+          <p className="error">
+            {error}
+          </p>
+        ) : null}
       </div>
-
-      <StoreContactSettings tenantId={store.tenantId} />
-
-      <section className="mt-6 overflow-hidden rounded-[18px] border border-black/[0.065] bg-white">
-        <div className="flex items-center justify-between gap-4 border-b border-black/[0.06] px-5 py-4">
-          <div>
-            <p className="text-[9px] font-semibold">طلباتك للإدارة</p>
-            <p className="mt-1 text-[8px] text-black/34">
-              آخر الطلبات والقرارات المتعلقة بهذا المتجر
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => void load()}
-            className="flex size-9 items-center justify-center rounded-[9px] border border-black/[0.07] text-black/40"
-          >
-            <RefreshCw size={13} />
-          </button>
-        </div>
-
-        {loading ? (
-          <div className="p-10 text-center text-[9px] text-black/35">
-            جاري تحميل الطلبات
-          </div>
-        ) : requests.length === 0 ? (
-          <div className="p-10 text-center text-[9px] text-black/35">
-            لا يوجد طلبات بعد
-          </div>
-        ) : (
-          <div className="divide-y divide-black/[0.055]">
-            {requests.map((item) => (
-              <div
-                key={item.requestId}
-                className="grid gap-3 px-5 py-4 md:grid-cols-[1fr_.8fr_.8fr] md:items-center"
-              >
-                <div>
-                  <p className="text-[10px] font-semibold">
-                    {typeLabels[item.type] ?? item.type}
-                  </p>
-                  <p className="mt-1 text-[8px] text-black/34">
-                    {item.summary}
-                  </p>
-                </div>
-                <RequestStatus value={item.status} />
-                <div className="text-[8px] text-black/34 md:text-left">
-                  {new Intl.DateTimeFormat("ar-SA", {
-                    dateStyle: "medium",
-                  }).format(new Date(item.requestedAtUtc))}
-                </div>
-                {item.reviewReason ? (
-                  <p className="md:col-span-3 rounded-[9px] bg-[#f7f5f0] px-3 py-2 text-[9px] leading-5 text-black/55">
-                    ملاحظة الإدارة: {item.reviewReason}
-                  </p>
-                ) : null}
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
-
-      {kind ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 p-4 backdrop-blur-[2px]">
-          <div className="w-full max-w-[560px] rounded-[18px] border border-black/[0.08] bg-[#f8f6f1] p-6 shadow-2xl">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="text-[9px] font-semibold text-[#9a713f]">
-                  REQUEST TO RUKN
-                </p>
-                <h2 className="mt-2 text-[20px] font-semibold">
-                  {kind === "plan"
-                    ? "طلب تغيير الباقة"
-                    : kind === "identity"
-                      ? "طلب تغيير بيانات المتجر"
-                      : "طلب تغيير بريد المالك"}
-                </h2>
-              </div>
-              <button
-                type="button"
-                onClick={() => setKind(null)}
-                className="text-[10px] text-black/40"
-              >
-                إلغاء
-              </button>
-            </div>
-
-            <div className="mt-6 space-y-4">
-              {kind === "plan" ? (
-                <>
-                  <Field label="الباقة المطلوبة">
-                    <select
-                      value={planCode}
-                      onChange={(event) => setPlanCode(event.target.value)}
-                      className="h-10 w-full rounded-[10px] border border-black/[0.09] bg-white px-3 text-[10px] outline-none focus:border-black/20"
-                    >
-                      <option value="business">Business</option>
-                      <option value="pro">Pro</option>
-                      <option value="extra">Extra</option>
-                    </select>
-                  </Field>
-                  <Field label="دورة الفوترة">
-                    <select
-                      value={billingCycle}
-                      onChange={(event) =>
-                        setBillingCycle(
-                          event.target.value as "Monthly" | "Annual",
-                        )
-                      }
-                      className="h-10 w-full rounded-[10px] border border-black/[0.09] bg-white px-3 text-[10px] outline-none focus:border-black/20"
-                    >
-                      <option value="Monthly">شهري</option>
-                      <option value="Annual">سنوي</option>
-                    </select>
-                  </Field>
-                </>
-              ) : kind === "identity" ? (
-                <>
-                  <Field label="اسم المتجر">
-                    <input
-                      value={name}
-                      onChange={(event) => setName(event.target.value)}
-                      className="h-10 w-full rounded-[10px] border border-black/[0.09] bg-white px-3 text-[10px] outline-none focus:border-black/20"
-                    />
-                  </Field>
-                  <Field label="الرابط">
-                    <input
-                      dir="ltr"
-                      value={slug}
-                      onChange={(event) => setSlug(event.target.value)}
-                      className="h-10 w-full rounded-[10px] border border-black/[0.09] bg-white px-3 text-[10px] outline-none focus:border-black/20 text-left"
-                    />
-                  </Field>
-                  <Field label="النشاط الأساسي">
-                    <select
-                      value={verticalCode}
-                      onChange={(event) => setVerticalCode(event.target.value)}
-                      className="h-10 w-full rounded-[10px] border border-black/[0.09] bg-white px-3 text-[10px] outline-none focus:border-black/20"
-                    >
-                      <option value="">بدون تغيير</option>
-                      {VERTICAL_OPTIONS.map((item) => (
-                        <option key={item.code} value={item.code}>
-                          {item.label}
-                        </option>
-                      ))}
-                    </select>
-                  </Field>
-                </>
-              ) : (
-                <Field label="البريد الجديد للمالك">
-                  <input
-                    type="email"
-                    dir="ltr"
-                    value={email}
-                    onChange={(event) => setEmail(event.target.value)}
-                    placeholder="owner@example.com"
-                    className="h-10 w-full rounded-[10px] border border-black/[0.09] bg-white px-3 text-[10px] outline-none focus:border-black/20 text-left"
-                  />
-                </Field>
-              )}
-
-              <Field label="سبب الطلب">
-                <textarea
-                  value={reason}
-                  onChange={(event) => setReason(event.target.value)}
-                  placeholder="اكتب السبب باختصار حتى تقدر الإدارة تراجع الطلب بسرعة"
-                  className="min-h-[100px] w-full resize-none rounded-[10px] border border-black/[0.09] bg-white p-3 text-[10px] leading-6 outline-none"
-                />
-              </Field>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => void submit()}
-              disabled={busy}
-              className="mt-6 flex h-11 w-full items-center justify-center gap-2 rounded-[9px] bg-[#0a0d15] text-[10px] font-semibold text-white disabled:opacity-50"
-            >
-              <ShieldCheck size={14} />
-              {busy ? "جاري الإرسال..." : "إرسال للمراجعة"}
-              <ArrowLeft size={13} />
-            </button>
-          </div>
-        </div>
-      ) : null}
-    </div>
+    </>
   );
 }
 
-function ActionCard({
+function RequestsSection({
+  requests,
+  loading,
+  onRefresh,
+}: {
+  requests:
+    MerchantPlatformRequest[];
+  loading:
+    boolean;
+  onRefresh:
+    () => void;
+}) {
+  return (
+    <>
+      <div className="rukn-settings-v3-section-head">
+        <SectionIntro
+          eyebrow="REQUESTS"
+          title="طلبات التغييرات"
+          description="سجل مختصر للتغييرات الحساسة التي أرسلتها للمراجعة."
+        />
+
+        <button
+          type="button"
+          className="refresh"
+          disabled={
+            loading
+          }
+          onClick={
+            onRefresh
+          }
+          aria-label="تحديث"
+        >
+          <RefreshCw
+            size={15}
+            className={
+              loading
+                ? "animate-spin"
+                : ""
+            }
+          />
+        </button>
+      </div>
+
+      {loading ? (
+        <div className="rukn-settings-v3-loading">
+          جاري تحميل الطلبات...
+        </div>
+      ) : requests.length ===
+        0 ? (
+        <div className="rukn-settings-v3-empty-inline">
+          لم ترسل أي طلبات تغيير حتى الآن.
+        </div>
+      ) : (
+        <div className="rukn-settings-v3-request-list">
+          {requests.map(
+            (
+              request,
+            ) => (
+              <article
+                key={
+                  request.requestId
+                }
+              >
+                <div className="main">
+                  <strong>
+                    {
+                      typeLabels[
+                        request.type
+                      ] ??
+                      request.type
+                    }
+                  </strong>
+
+                  <small>
+                    {
+                      request.summary
+                    }
+                  </small>
+                </div>
+
+                <RequestStatus
+                  value={
+                    request.status
+                  }
+                />
+
+                <time>
+                  {new Intl.DateTimeFormat(
+                    "ar-SA-u-nu-latn",
+                    {
+                      dateStyle:
+                        "medium",
+                    },
+                  ).format(
+                    new Date(
+                      request.requestedAtUtc,
+                    ),
+                  )}
+                </time>
+
+                {request.reviewReason ? (
+                  <p className="review-note">
+                    ملاحظة الإدارة:
+                    {" "}
+                    {
+                      request.reviewReason
+                    }
+                  </p>
+                ) : null}
+              </article>
+            ),
+          )}
+        </div>
+      )}
+    </>
+  );
+}
+
+function SettingsNavItem({
   icon: Icon,
   title,
   description,
+  active,
+  badge = 0,
   onClick,
 }: {
-  icon: typeof Mail;
-  title: string;
-  description: string;
-  onClick: () => void;
+  icon:
+    LucideIcon;
+  title:
+    string;
+  description:
+    string;
+  active:
+    boolean;
+  badge?:
+    number;
+  onClick:
+    () => void;
 }) {
   return (
     <button
       type="button"
-      onClick={onClick}
-      className="group rounded-[17px] border border-black/[0.065] bg-white p-5 text-right transition hover:-translate-y-0.5 hover:shadow-[0_15px_40px_rgba(0,0,0,0.05)]"
+      data-active={
+        active
+      }
+      onClick={
+        onClick
+      }
     >
-      <div className="flex size-9 items-center justify-center rounded-[9px] bg-[#eee4d4] text-[#8b632f]">
-        <Icon size={15} />
-      </div>
-      <p className="mt-5 text-[12px] font-semibold">{title}</p>
-      <p className="mt-2 text-[9px] leading-6 text-black/40">{description}</p>
+      <span className="icon">
+        <Icon
+          size={17}
+        />
+      </span>
+
+      <span className="copy">
+        <strong>
+          {title}
+        </strong>
+
+        <small>
+          {description}
+        </small>
+      </span>
+
+      {badge >
+      0 ? (
+        <span className="badge">
+          {badge.toLocaleString(
+            "en-US",
+          )}
+        </span>
+      ) : (
+        <ChevronLeft
+          size={15}
+          className="arrow"
+        />
+      )}
     </button>
   );
 }
 
-function RequestStatus({ value }: { value: string }) {
+function SectionIntro({
+  eyebrow,
+  title,
+  description,
+}: {
+  eyebrow:
+    string;
+  title:
+    string;
+  description:
+    string;
+}) {
+  return (
+    <header className="rukn-settings-v3-intro">
+      <span>
+        {eyebrow}
+      </span>
+
+      <h2>
+        {title}
+      </h2>
+
+      <p>
+        {description}
+      </p>
+    </header>
+  );
+}
+
+function SettingAction({
+  icon: Icon,
+  title,
+  description,
+  value,
+  onClick,
+}: {
+  icon:
+    LucideIcon;
+  title:
+    string;
+  description:
+    string;
+  value:
+    string;
+  onClick:
+    () => void;
+}) {
+  return (
+    <button
+      type="button"
+      className="rukn-settings-v3-setting-action"
+      onClick={
+        onClick
+      }
+    >
+      <span className="icon">
+        <Icon
+          size={16}
+        />
+      </span>
+
+      <span className="copy">
+        <strong>
+          {title}
+        </strong>
+
+        <small>
+          {description}
+        </small>
+      </span>
+
+      <span className="value">
+        {value}
+      </span>
+
+      <ChevronLeft
+        size={16}
+      />
+    </button>
+  );
+}
+
+function RequestDrawer({
+  kind,
+  busy,
+  error,
+  planCode,
+  billingCycle,
+  name,
+  slug,
+  verticalCode,
+  email,
+  reason,
+  onPlanCode,
+  onBillingCycle,
+  onName,
+  onSlug,
+  onVerticalCode,
+  onEmail,
+  onReason,
+  onClose,
+  onSubmit,
+}: {
+  kind:
+    Exclude<
+      RequestKind,
+      null
+    >;
+  busy:
+    boolean;
+  error:
+    string |
+    null;
+  planCode:
+    string;
+  billingCycle:
+    "Monthly" |
+    "Annual";
+  name:
+    string;
+  slug:
+    string;
+  verticalCode:
+    string;
+  email:
+    string;
+  reason:
+    string;
+  onPlanCode:
+    (
+      value:
+        string,
+    ) => void;
+  onBillingCycle:
+    (
+      value:
+        "Monthly" |
+        "Annual",
+    ) => void;
+  onName:
+    (
+      value:
+        string,
+    ) => void;
+  onSlug:
+    (
+      value:
+        string,
+    ) => void;
+  onVerticalCode:
+    (
+      value:
+        string,
+    ) => void;
+  onEmail:
+    (
+      value:
+        string,
+    ) => void;
+  onReason:
+    (
+      value:
+        string,
+    ) => void;
+  onClose:
+    () => void;
+  onSubmit:
+    () => void;
+}) {
+  return (
+    <div className="rukn-settings-v3-layer">
+      <button
+        type="button"
+        className="rukn-settings-v3-backdrop"
+        aria-label="إغلاق"
+        onClick={
+          onClose
+        }
+      />
+
+      <aside className="rukn-settings-v3-request-drawer">
+        <header>
+          <div>
+            <span>
+              طلب مراجعة
+            </span>
+
+            <h2>
+              {kind ===
+              "plan"
+                ? "تغيير الباقة"
+                : kind ===
+                    "identity"
+                  ? "هوية ونشاط المتجر"
+                  : "تغيير بريد المالك"}
+            </h2>
+
+            <p>
+              لن يتم تطبيق التغيير الحساس قبل مراجعته واعتماده.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            disabled={
+              busy
+            }
+            aria-label="إغلاق"
+            onClick={
+              onClose
+            }
+          >
+            <X
+              size={18}
+            />
+          </button>
+        </header>
+
+        <div className="body">
+          {kind ===
+          "plan" ? (
+            <>
+              <Field
+                label="الباقة المطلوبة"
+              >
+                <select
+                  value={
+                    planCode
+                  }
+                  onChange={(
+                    event,
+                  ) =>
+                    onPlanCode(
+                      event.target.value,
+                    )
+                  }
+                >
+                  <option value="business">
+                    Business
+                  </option>
+
+                  <option value="pro">
+                    Pro
+                  </option>
+
+                  <option value="extra">
+                    Extra
+                  </option>
+                </select>
+              </Field>
+
+              <Field
+                label="دورة الفوترة"
+              >
+                <select
+                  value={
+                    billingCycle
+                  }
+                  onChange={(
+                    event,
+                  ) =>
+                    onBillingCycle(
+                      event.target
+                        .value as
+                        "Monthly" |
+                        "Annual",
+                    )
+                  }
+                >
+                  <option value="Monthly">
+                    شهري
+                  </option>
+
+                  <option value="Annual">
+                    سنوي
+                  </option>
+                </select>
+              </Field>
+            </>
+          ) : kind ===
+            "identity" ? (
+            <>
+              <Field
+                label="اسم المتجر"
+              >
+                <input
+                  value={
+                    name
+                  }
+                  onChange={(
+                    event,
+                  ) =>
+                    onName(
+                      event.target.value,
+                    )
+                  }
+                />
+              </Field>
+
+              <Field
+                label="رابط المتجر"
+              >
+                <input
+                  dir="ltr"
+                  value={
+                    slug
+                  }
+                  onChange={(
+                    event,
+                  ) =>
+                    onSlug(
+                      event.target.value,
+                    )
+                  }
+                />
+              </Field>
+
+              <Field
+                label="النشاط الأساسي"
+              >
+                <select
+                  value={
+                    verticalCode
+                  }
+                  onChange={(
+                    event,
+                  ) =>
+                    onVerticalCode(
+                      event.target.value,
+                    )
+                  }
+                >
+                  <option value="">
+                    بدون تغيير
+                  </option>
+
+                  {VERTICAL_OPTIONS.map(
+                    (
+                      option,
+                    ) => (
+                      <option
+                        key={
+                          option.code
+                        }
+                        value={
+                          option.code
+                        }
+                      >
+                        {
+                          option.label
+                        }
+                      </option>
+                    ),
+                  )}
+                </select>
+              </Field>
+            </>
+          ) : (
+            <Field
+              label="البريد الجديد"
+            >
+              <input
+                type="email"
+                dir="ltr"
+                value={
+                  email
+                }
+                onChange={(
+                  event,
+                ) =>
+                  onEmail(
+                    event.target.value,
+                  )
+                }
+                placeholder="owner@example.com"
+              />
+            </Field>
+          )}
+
+          <Field
+            label="سبب الطلب"
+          >
+            <textarea
+              value={
+                reason
+              }
+              onChange={(
+                event,
+              ) =>
+                onReason(
+                  event.target.value,
+                )
+              }
+              placeholder="اكتب السبب باختصار..."
+            />
+          </Field>
+
+          {error ? (
+            <div
+              role="alert"
+              className="drawer-error"
+            >
+              {error}
+            </div>
+          ) : null}
+        </div>
+
+        <footer>
+          <button
+            type="button"
+            className="secondary"
+            disabled={
+              busy
+            }
+            onClick={
+              onClose
+            }
+          >
+            إلغاء
+          </button>
+
+          <button
+            type="button"
+            className="primary"
+            disabled={
+              busy
+            }
+            onClick={
+              onSubmit
+            }
+          >
+            <ShieldCheck
+              size={15}
+            />
+
+            {busy
+              ? "جاري الإرسال..."
+              : "إرسال للمراجعة"}
+          </button>
+        </footer>
+      </aside>
+    </div>
+  );
+}
+
+function RequestStatus({
+  value,
+}: {
+  value:
+    string;
+}) {
   const Icon =
-    value === "Approved"
+    value ===
+    "Approved"
       ? CheckCircle2
-      : value === "Rejected"
+      : value ===
+          "Rejected"
         ? XCircle
         : Clock3;
 
-  const classes =
-    value === "Approved"
-      ? "text-emerald-700"
-      : value === "Rejected"
-        ? "text-red-700"
-        : value === "MoreInfoRequested"
-          ? "text-blue-700"
-          : "text-amber-700";
-
   return (
-    <span className={`inline-flex items-center gap-1.5 text-[9px] font-semibold ${classes}`}>
-      <Icon size={12} />
-      {statusLabels[value] ?? value}
+    <span
+      className="rukn-settings-v3-request-status"
+      data-status={
+        value
+      }
+    >
+      <Icon
+        size={13}
+      />
+
+      {
+        statusLabels[
+          value
+        ] ??
+        value
+      }
     </span>
   );
 }
@@ -654,14 +1982,17 @@ function Field({
   label,
   children,
 }: {
-  label: string;
-  children: React.ReactNode;
+  label:
+    string;
+  children:
+    ReactNode;
 }) {
   return (
-    <label className="block">
-      <span className="mb-2 block text-[9px] font-semibold text-black/50">
+    <label className="rukn-settings-v3-field">
+      <span>
         {label}
       </span>
+
       {children}
     </label>
   );

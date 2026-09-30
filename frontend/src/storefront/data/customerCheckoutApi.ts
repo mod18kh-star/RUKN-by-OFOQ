@@ -12,6 +12,26 @@ export interface CheckoutShippingMethod {
   isEnabled: boolean;
 }
 
+export interface CustomerCheckoutAddress {
+  addressId: string;
+  label: string;
+  recipientName: string;
+  phone: string;
+  countryCode: string;
+  region: string | null;
+  city: string;
+  postalCode: string | null;
+  line1: string;
+  line2: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  accuracyMeters: number | null;
+  mapUrl: string | null;
+  deliveryNotes: string | null;
+  isDefault: boolean;
+  isActive: boolean;
+}
+
 export interface CheckoutOrderItem {
   id: string;
   productId: string;
@@ -66,6 +86,50 @@ export async function getCheckoutShippingMethods(
   );
 }
 
+export async function getCheckoutAddresses(
+  storeSlug: string,
+): Promise<CustomerCheckoutAddress[]> {
+  const path = await tenantPath(storeSlug);
+
+  return authRequest<CustomerCheckoutAddress[]>(
+    `${path}/account/addresses`,
+    { method: "GET" },
+  );
+}
+
+export interface CustomerCheckoutAddressInput {
+  label: string;
+  recipientName: string;
+  phone: string;
+  countryCode: string;
+  region: string | null;
+  city: string;
+  postalCode: string | null;
+  line1: string;
+  line2: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  accuracyMeters?: number | null;
+  mapUrl?: string | null;
+  deliveryNotes?: string | null;
+  isDefault: boolean;
+}
+
+export async function createCheckoutAddress(
+  storeSlug: string,
+  input: CustomerCheckoutAddressInput,
+): Promise<CustomerCheckoutAddress> {
+  const path = await tenantPath(storeSlug);
+
+  return authRequest<CustomerCheckoutAddress>(
+    `${path}/account/addresses`,
+    {
+      method: "POST",
+      body: JSON.stringify(input),
+    },
+  );
+}
+
 export interface CheckoutCouponQuote {
   couponCode: string;
   currency: string;
@@ -81,14 +145,26 @@ export async function previewCheckoutCoupon(
   storeSlug: string,
   shippingMethodId: string,
   couponCode: string,
+  customerAddressId: string | null = null,
 ): Promise<CheckoutCouponQuote> {
-  if (!GUID.test(shippingMethodId) || !couponCode || couponCode.length > 60) {
-    throw new Error("اختر طريقة الاستلام وأدخل رمز كوبون صحيحًا.");
+  if (
+    !GUID.test(shippingMethodId) ||
+    !couponCode ||
+    couponCode.length > 60 ||
+    (customerAddressId !== null && !GUID.test(customerAddressId))
+  ) {
+    throw new Error("اختر طريقة تسليم وعنوانًا صالحًا عند الحاجة وأدخل رمز كوبون صحيحًا.");
   }
+
   const path = await tenantPath(storeSlug);
+
   return authRequest<CheckoutCouponQuote>(`${path}/checkout/quote`, {
     method: "POST",
-    body: JSON.stringify({ shippingMethodId, couponCode }),
+    body: JSON.stringify({
+      customerAddressId,
+      shippingMethodId,
+      couponCode,
+    }),
   });
 }
 
@@ -97,10 +173,12 @@ export async function submitCustomerCheckout(
   shippingMethodId: string,
   idempotencyKey: string,
   couponCode: string | null = null,
+  customerAddressId: string | null = null,
 ): Promise<CheckoutOrder> {
   if (
     !GUID.test(shippingMethodId) ||
-    !GUID.test(idempotencyKey)
+    !GUID.test(idempotencyKey) ||
+    (customerAddressId !== null && !GUID.test(customerAddressId))
   ) {
     throw new Error("بيانات تأكيد الطلب غير صالحة.");
   }
@@ -115,7 +193,7 @@ export async function submitCustomerCheckout(
         "Idempotency-Key": idempotencyKey,
       },
       body: JSON.stringify({
-        customerAddressId: null,
+        customerAddressId,
         shippingMethodId,
         couponCode: couponCode?.trim().toUpperCase() || null,
       }),

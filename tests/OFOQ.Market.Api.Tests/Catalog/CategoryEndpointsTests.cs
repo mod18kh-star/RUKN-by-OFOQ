@@ -887,7 +887,7 @@ public sealed class CategoryEndpointsTests
         var accessTokenService =
             factory.Services
                 .GetRequiredService<
-                    IAccessTokenService>();
+                    ITestAccessTokenService>();
 
         var token =
             accessTokenService.Create(

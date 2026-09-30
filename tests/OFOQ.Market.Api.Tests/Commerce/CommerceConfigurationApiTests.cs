@@ -661,7 +661,7 @@ public sealed class CommerceConfigurationApiTests
     {
         var accessTokenService =
             factory.Services.GetRequiredService<
-                IAccessTokenService>();
+                ITestAccessTokenService>();
 
         var accessToken =
             accessTokenService.Create(

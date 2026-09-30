@@ -1,4 +1,4 @@
-using OFOQ.Market.Application.Common.Persistence;
+﻿using OFOQ.Market.Application.Common.Persistence;
 using OFOQ.Market.Application.Common.Security;
 using OFOQ.Market.Domain.Identity;
 
@@ -24,9 +24,6 @@ public sealed class VerifyMfaRecoveryCodeHandler
     private readonly IRecoveryCodeService
         _recoveryCodeService;
 
-    private readonly IAccessTokenService
-        _accessTokenService;
-
     private readonly IUnitOfWork
         _unitOfWork;
 
@@ -43,7 +40,6 @@ public sealed class VerifyMfaRecoveryCodeHandler
         IUserMfaRecoveryCodeRepository recoveryCodeRepository,
         IMfaLoginChallengeTokenService challengeTokenService,
         IRecoveryCodeService recoveryCodeService,
-        IAccessTokenService accessTokenService,
         IUnitOfWork unitOfWork,
         ITransactionExecutor transactionExecutor,
         TimeProvider timeProvider)
@@ -65,9 +61,6 @@ public sealed class VerifyMfaRecoveryCodeHandler
 
         _recoveryCodeService =
             recoveryCodeService;
-
-        _accessTokenService =
-            accessTokenService;
 
         _unitOfWork =
             unitOfWork;
@@ -226,20 +219,10 @@ public sealed class VerifyMfaRecoveryCodeHandler
         /*
          * Do not create the JWT before the database transaction
          * has committed successfully.
-         */
-        var accessToken =
-            _accessTokenService.Create(
-                outcome.UserId,
-                outcome.Email,
-                now,
-                AccessTokenAuthenticationLevel.MultiFactor,
-                outcome.AuthenticationMethod);
-
-        return new VerifyMfaRecoveryCodeResult(
+         */return new VerifyMfaRecoveryCodeResult(
             outcome.UserId,
             outcome.Email,
-            accessToken.Token,
-            accessToken.ExpiresAtUtc,
+            
             outcome.AuthenticationMethod);
     }
 
@@ -271,3 +254,5 @@ public sealed class VerifyMfaRecoveryCodeHandler
         }
     }
 }
+
+

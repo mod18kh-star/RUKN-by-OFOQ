@@ -24,6 +24,11 @@ public sealed class CustomerAddressConfiguration : IEntityTypeConfiguration<Cust
         b.Property(x => x.PostalCode).HasColumnName("postal_code").HasMaxLength(CustomerAddress.MaxPostalCodeLength);
         b.Property(x => x.Line1).HasColumnName("line1").HasMaxLength(CustomerAddress.MaxAddressLineLength).IsRequired();
         b.Property(x => x.Line2).HasColumnName("line2").HasMaxLength(CustomerAddress.MaxAddressLineLength);
+        b.Property(x => x.Latitude).HasColumnName("latitude");
+        b.Property(x => x.Longitude).HasColumnName("longitude");
+        b.Property(x => x.AccuracyMeters).HasColumnName("accuracy_meters");
+        b.Property(x => x.MapUrl).HasColumnName("map_url").HasMaxLength(CustomerAddress.MaxMapUrlLength);
+        b.Property(x => x.DeliveryNotes).HasColumnName("delivery_notes").HasMaxLength(CustomerAddress.MaxDeliveryNotesLength);
         b.Property(x => x.IsDefault).HasColumnName("is_default").IsRequired();
         b.Property(x => x.IsActive).HasColumnName("is_active").IsRequired();
         b.Property(x => x.CreatedAtUtc).HasColumnName("created_at_utc").IsRequired();

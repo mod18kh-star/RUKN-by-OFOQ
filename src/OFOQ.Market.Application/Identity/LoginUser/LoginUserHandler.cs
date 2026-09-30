@@ -1,4 +1,4 @@
-using OFOQ.Market.Application.Common.Persistence;
+﻿using OFOQ.Market.Application.Common.Persistence;
 using OFOQ.Market.Application.Common.Security;
 using OFOQ.Market.Domain.Identity;
 
@@ -14,7 +14,6 @@ public sealed class LoginUserHandler
     private readonly IMfaLoginChallengeRepository
         _mfaLoginChallengeRepository;
     private readonly IPasswordHasher _passwordHasher;
-    private readonly IAccessTokenService _accessTokenService;
     private readonly IMfaLoginChallengeTokenService
         _challengeTokenService;
     private readonly IUnitOfWork _unitOfWork;
@@ -25,7 +24,6 @@ public sealed class LoginUserHandler
         IUserMfaRepository userMfaRepository,
         IMfaLoginChallengeRepository mfaLoginChallengeRepository,
         IPasswordHasher passwordHasher,
-        IAccessTokenService accessTokenService,
         IMfaLoginChallengeTokenService challengeTokenService,
         IUnitOfWork unitOfWork,
         TimeProvider timeProvider)
@@ -41,9 +39,6 @@ public sealed class LoginUserHandler
 
         _passwordHasher =
             passwordHasher;
-
-        _accessTokenService =
-            accessTokenService;
 
         _challengeTokenService =
             challengeTokenService;
@@ -97,8 +92,8 @@ public sealed class LoginUserHandler
             throw new InvalidCredentialsException();
         }
 
-        // نتحقق من كلمة المرور حتى للحساب غير النشط
-        // لتقليل فروقات التوقيت التي قد تكشف حالة الحساب.
+        // ظ†طھط­ظ‚ظ‚ ظ…ظ† ظƒظ„ظ…ط© ط§ظ„ظ…ط±ظˆط± ط­طھظ‰ ظ„ظ„ط­ط³ط§ط¨ ط؛ظٹط± ط§ظ„ظ†ط´ط·
+        // ظ„طھظ‚ظ„ظٹظ„ ظپط±ظˆظ‚ط§طھ ط§ظ„طھظˆظ‚ظٹطھ ط§ظ„طھظٹ ظ‚ط¯ طھظƒط´ظپ ط­ط§ظ„ط© ط§ظ„ط­ط³ط§ط¨.
         var passwordIsValid =
             _passwordHasher.Verify(
                 user.PasswordHash,
@@ -126,23 +121,11 @@ public sealed class LoginUserHandler
                 user,
                 now,
                 cancellationToken);
-        }
-
-        var accessToken =
-            _accessTokenService.Create(
-                user.Id,
-                user.Email.Value,
-                now,
-                AccessTokenAuthenticationLevel.PasswordOnly);
-
-        return new LoginUserResult(
+        }return new LoginUserResult(
             user.Id,
             user.Email.Value,
             RequiresMfa: false,
-            AccessToken:
-                accessToken.Token,
-            AccessTokenExpiresAtUtc:
-                accessToken.ExpiresAtUtc,
+            
             MfaChallengeToken:
                 null,
             MfaChallengeExpiresAtUtc:
@@ -198,13 +181,13 @@ public sealed class LoginUserHandler
             user.Id,
             user.Email.Value,
             RequiresMfa: true,
-            AccessToken:
-                null,
-            AccessTokenExpiresAtUtc:
-                null,
+            
             MfaChallengeToken:
                 generatedToken.Token,
             MfaChallengeExpiresAtUtc:
                 expiresAtUtc);
     }
 }
+
+
+

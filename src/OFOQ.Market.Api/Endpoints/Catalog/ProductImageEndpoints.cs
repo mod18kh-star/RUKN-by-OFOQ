@@ -1,4 +1,6 @@
 using System.IdentityModel.Tokens.Jwt;
+using Microsoft.AspNetCore.Http.Features;
+using OFOQ.Market.Api.Security.Uploads;
 using OFOQ.Market.Api.Security.Authorization;
 using OFOQ.Market.Application.Catalog.ProductImages;
 using OFOQ.Market.Application.Common.Tenancy;
@@ -146,32 +148,85 @@ public static class ProductImageEndpoints
             return Results.Forbid();
         }
 
-        var form = await request.ReadFormAsync(cancellationToken);
-        var file = form.Files.GetFile("file");
+        const long maxFileBytes =
+            8L * 1024L * 1024L;
 
-        if (file is null || file.Length <= 0)
+        if (!request.HasFormContentType ||
+            request.ContentLength is >
+                maxFileBytes + 65536)
         {
-            return ValidationError("يرجى اختيار صورة صالحة.");
+            return ValidationError(
+                "صيغة طلب رفع الصورة أو حجمه غير صالح.");
         }
 
-        if (file.Length > 8 * 1024 * 1024)
+        var bodySizeFeature =
+            request.HttpContext.Features
+                .Get<IHttpMaxRequestBodySizeFeature>();
+
+        if (bodySizeFeature is
+            { IsReadOnly: false })
         {
-            return ValidationError("حجم صورة المنتج يجب أن يكون أقل من 8MB.");
+            bodySizeFeature.MaxRequestBodySize =
+                maxFileBytes + 65536;
         }
 
-        var extension = Path.GetExtension(file.FileName);
-        var allowed = new[] { ".png", ".jpg", ".jpeg", ".webp" };
+        var form =
+            await request.ReadFormAsync(
+                cancellationToken);
 
-        if (string.IsNullOrWhiteSpace(extension) ||
-            !allowed.Contains(extension, StringComparer.OrdinalIgnoreCase))
+        var file =
+            form.Files.GetFile(
+                "file");
+
+        if (form.Files.Count != 1 ||
+            file is null ||
+            file.Length <= 0)
         {
-            return ValidationError("الامتداد المدعوم هو PNG أو JPG أو WEBP.");
+            return ValidationError(
+                "يرجى اختيار صورة صالحة.");
         }
 
-        if (!string.IsNullOrWhiteSpace(file.ContentType) &&
-            !file.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
+        if (file.Length > maxFileBytes)
         {
-            return ValidationError("نوع الملف يجب أن يكون صورة.");
+            return ValidationError(
+                "حجم صورة المنتج يجب أن يكون أقل من 8MB.");
+        }
+
+        var content =
+            new byte[(int)file.Length];
+
+        await using (var source =
+                     file.OpenReadStream())
+        {
+            var position = 0;
+
+            while (position < content.Length)
+            {
+                var read =
+                    await source.ReadAsync(
+                        content.AsMemory(
+                            position),
+                        cancellationToken);
+
+                if (read == 0)
+                {
+                    return ValidationError(
+                        "تعذر قراءة ملف الصورة كاملًا.");
+                }
+
+                position += read;
+            }
+        }
+
+        if (!PublicImageUploadValidator.TryValidate(
+                file.FileName,
+                file.ContentType,
+                content,
+                out var extension,
+                out _))
+        {
+            return ValidationError(
+                "ملف الصورة غير صالح. استخدم PNG أو JPG أو WEBP حقيقيًا بأبعاد آمنة.");
         }
 
         var tenantFolder = tenantId.ToString("N");
@@ -187,10 +242,10 @@ public static class ProductImageEndpoints
         var fileName = $"product-{Guid.NewGuid():N}{extension.ToLowerInvariant()}";
         var physicalPath = Path.Combine(directory, fileName);
 
-        await using (var stream = File.Create(physicalPath))
-        {
-            await file.CopyToAsync(stream, cancellationToken);
-        }
+        await File.WriteAllBytesAsync(
+            physicalPath,
+            content,
+            cancellationToken);
 
         return Results.Ok(new
         {

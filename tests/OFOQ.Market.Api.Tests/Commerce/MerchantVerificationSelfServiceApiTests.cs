@@ -494,7 +494,7 @@ public sealed class MerchantVerificationSelfServiceApiTests
         var accessTokenService =
             factory.Services
                 .GetRequiredService<
-                    IAccessTokenService>();
+                    ITestAccessTokenService>();
 
         var token =
             accessTokenService.Create(

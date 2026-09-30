@@ -785,7 +785,7 @@ public sealed class PaymentProviderAccountsApiTests
         var accessTokenService =
             factory.Services
                 .GetRequiredService<
-                    IAccessTokenService>();
+                    ITestAccessTokenService>();
 
         var accessToken =
             accessTokenService.Create(

@@ -1,4 +1,4 @@
-using OFOQ.Market.Application.Common.Persistence;
+﻿using OFOQ.Market.Application.Common.Persistence;
 using OFOQ.Market.Application.Common.Security;
 using OFOQ.Market.Domain.Identity;
 
@@ -24,9 +24,6 @@ public sealed class VerifyMfaTotpHandler
     private readonly ITotpService
         _totpService;
 
-    private readonly IAccessTokenService
-        _accessTokenService;
-
     private readonly IUnitOfWork
         _unitOfWork;
 
@@ -40,7 +37,6 @@ public sealed class VerifyMfaTotpHandler
         IMfaLoginChallengeTokenService challengeTokenService,
         IMfaSecretProtector mfaSecretProtector,
         ITotpService totpService,
-        IAccessTokenService accessTokenService,
         IUnitOfWork unitOfWork,
         TimeProvider timeProvider)
     {
@@ -61,9 +57,6 @@ public sealed class VerifyMfaTotpHandler
 
         _totpService =
             totpService;
-
-        _accessTokenService =
-            accessTokenService;
 
         _unitOfWork =
             unitOfWork;
@@ -197,21 +190,10 @@ public sealed class VerifyMfaTotpHandler
 
         await _unitOfWork
             .SaveChangesAsync(
-                cancellationToken);
-
-        var accessToken =
-            _accessTokenService.Create(
-                user.Id,
-                user.Email.Value,
-                now,
-                AccessTokenAuthenticationLevel.MultiFactor,
-                challenge.AuthenticationMethod);
-
-        return new VerifyMfaTotpResult(
+                cancellationToken);return new VerifyMfaTotpResult(
             user.Id,
             user.Email.Value,
-            accessToken.Token,
-            accessToken.ExpiresAtUtc,
+            
             challenge.AuthenticationMethod);
     }
 
@@ -228,3 +210,5 @@ public sealed class VerifyMfaTotpHandler
                 cancellationToken);
     }
 }
+
+

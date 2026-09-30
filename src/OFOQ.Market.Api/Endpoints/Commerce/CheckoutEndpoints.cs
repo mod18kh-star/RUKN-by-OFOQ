@@ -34,7 +34,10 @@ public static class CheckoutEndpoints
         return endpoints;
     }
 
-    public sealed record CheckoutQuoteRequest(Guid ShippingMethodId, string? CouponCode);
+    public sealed record CheckoutQuoteRequest(
+        Guid? CustomerAddressId,
+        Guid ShippingMethodId,
+        string? CouponCode);
 
     private sealed record CheckoutQuoteResponse(
         string CouponCode,
@@ -58,7 +61,9 @@ public static class CheckoutEndpoints
     {
         var userId = GetUserId(http);
         if (!userId.HasValue) return Results.Unauthorized();
-        if (request is null || request.ShippingMethodId == Guid.Empty ||
+        if (request is null ||
+            request.ShippingMethodId == Guid.Empty ||
+            (request.CustomerAddressId.HasValue && request.CustomerAddressId.Value == Guid.Empty) ||
             string.IsNullOrWhiteSpace(request.CouponCode) || request.CouponCode.Length > 60 ||
             !System.Text.RegularExpressions.Regex.IsMatch(request.CouponCode.Trim(), @"^[A-Za-z0-9][A-Za-z0-9_-]{1,59}$"))
             return Results.BadRequest(new { code = "checkout_coupon_invalid", message = "Enter a valid coupon and shipping method." });
@@ -89,9 +94,16 @@ public static class CheckoutEndpoints
                 if (!currency.HasValue)
                     throw new CheckoutPricingException("checkout_cart_empty", "Your cart is empty.");
                 var subtotal = decimal.Round(items.Sum(i => i.LineTotal), 2, MidpointRounding.AwayFromZero);
-                var calculation = await pricing.ResolveAsync(userId.Value, null,
-                    ShippingMethodId.From(request.ShippingMethodId), request.CouponCode,
-                    items, currency.Value, transactionCt);
+                var calculation = await pricing.ResolveAsync(
+                    userId.Value,
+                    request.CustomerAddressId is { } addressId
+                        ? OFOQ.Market.Domain.Commerce.Customers.CustomerAddressId.From(addressId)
+                        : null,
+                    ShippingMethodId.From(request.ShippingMethodId),
+                    request.CouponCode,
+                    items,
+                    currency.Value,
+                    transactionCt);
                 var total = subtotal + calculation.ShippingAmount - calculation.DiscountAmount;
                 if (total <= 0m)
                     throw new CheckoutPricingException("checkout_total_nonpositive", "This coupon reduces the total to zero. Manual payment cannot process a zero-value order.");

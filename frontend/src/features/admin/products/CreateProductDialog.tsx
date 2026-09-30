@@ -1,4 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
+
+import { createPortal } from "react-dom";
+import "./CreateProductDialogV6.css";
 import { ArrowLeft, Image as ImageIcon, PackagePlus, Plus, Sparkles, Trash2, Upload, X } from "lucide-react";
 import type { AdminCategory } from "../catalog/catalogContentApi";
 import {
@@ -489,9 +492,12 @@ export function CreateProductDialog({ open, busy, categories, onClose, onCreate 
     }
   }
 
-  return (
-    <div dir="rtl" className="fixed inset-0 z-[100] flex items-end justify-center bg-black/35 backdrop-blur-[2px] md:items-center md:p-5">
-      <div className="max-h-[95vh] w-full overflow-y-auto rounded-t-[22px] bg-[#f6f4ee] shadow-2xl md:max-w-[1050px] md:rounded-[22px]">
+  return createPortal(
+    <div
+      dir="rtl"
+      className="rukn-create-v6-backdrop fixed inset-0 z-[9999] flex items-center justify-center"
+    >
+      <div className="rukn-create-v6-dialog max-h-[95vh] w-full overflow-y-auto rounded-t-[22px] bg-[#f6f4ee] shadow-2xl md:max-w-[1050px] md:rounded-[22px]">
         <div className="sticky top-0 z-10 flex items-center justify-between border-b border-black/[0.07] bg-[#f6f4ee]/95 px-6 py-5 backdrop-blur-xl md:px-8">
           <div className="flex items-center gap-3"><div className="flex size-10 items-center justify-center rounded-[10px] bg-[#080b14] text-white"><PackagePlus size={18}/></div><div><h2 className="text-[20px] font-semibold">إضافة منتج متكامل</h2><p className="mt-1 text-[10px] text-black/43">صورة البطاقة، التفاصيل، المواصفات، والخيارات بمخزون مستقل.</p></div></div>
           <button type="button" onClick={close} disabled={busy} className="flex size-10 items-center justify-center rounded-full border border-black/[0.09] bg-white"><X size={17}/></button>
@@ -568,7 +574,7 @@ export function CreateProductDialog({ open, busy, categories, onClose, onCreate 
             <label><span className={labelClass}>العملة</span><select value={form.currency} onChange={(e)=>update("currency",e.target.value)} className={inputClass}><option value="SAR">SAR — ريال سعودي</option><option value="AED">AED — درهم إماراتي</option><option value="USD">USD — دولار أمريكي</option></select></label>
             <label><span className={labelClass}>السعر الأساسي</span><input dir="ltr" type="number" min="0" step="0.01" value={form.price} onChange={(e)=>update("price",e.target.value)} className={`${inputClass} text-left`}/></label>
             <label><span className={labelClass}>السعر قبل الخصم</span><input dir="ltr" type="number" min="0" step="0.01" value={form.compareAtPrice} onChange={(e)=>update("compareAtPrice",e.target.value)} className={`${inputClass} text-left`}/></label>
-            <label className="md:col-span-2"><span className={labelClass}>الوصف</span><textarea value={form.description} onChange={(e)=>update("description",e.target.value)} className="min-h-[115px] w-full rounded-[10px] border border-black/[0.11] bg-white p-4 text-[12px] leading-7 outline-none" placeholder="وصف يظهر داخل صفحة المنتج وتحت البطاقة بشكل مختصر..."/></label>
+            <label className="md:col-span-2"><span className={labelClass}>الوصف</span><textarea value={form.description} onChange={(e)=>update("description",e.target.value)} className="rukn-create-v6-description min-h-[115px] w-full rounded-[10px] border border-black/[0.11] bg-white p-4 text-[12px] leading-7 outline-none" placeholder="وصف يظهر داخل صفحة المنتج وتحت البطاقة بشكل مختصر..."/></label>
           </div></section>
 
           <div className="my-7 border-t border-black/[0.07]"/>
@@ -873,7 +879,7 @@ export function CreateProductDialog({ open, busy, categories, onClose, onCreate 
               })}
             </div>
 
-            <div className="mt-4 rounded-[12px] border border-dashed border-[#b78a52]/35 bg-[#fbf7f0] p-4">
+            <div className="rukn-create-v6-ai-placeholder mt-4 rounded-[12px] border border-dashed border-[#b78a52]/35 bg-[#fbf7f0] p-4">
               <div className="flex gap-3">
                 <Sparkles
                   size={16}
@@ -901,7 +907,7 @@ export function CreateProductDialog({ open, busy, categories, onClose, onCreate 
 
           <div className="my-7 border-t border-black/[0.07]"/>
           {/* RUKN_PRODUCT_DELIVERY_TOGGLE */}
-<section className="rounded-[14px] border border-black/[0.08] bg-white p-5">
+<section className="rukn-create-v6-delivery rounded-[14px] border border-black/[0.08] bg-white p-5">
 
   <div className="flex items-center justify-between gap-4">
 
@@ -1026,9 +1032,10 @@ export function CreateProductDialog({ open, busy, categories, onClose, onCreate 
 <section><p className="text-[11px] font-semibold">حالة المنتج</p><div className="mt-3 grid gap-3 md:grid-cols-2"><button type="button" onClick={()=>update("publishImmediately",true)} className={`rounded-[12px] border p-4 text-right ${form.publishImmediately?"border-[#080b14] bg-[#080b14] text-white":"bg-white"}`}><p className="text-[11px] font-semibold">نشر مباشرة</p><p className="mt-1 text-[9px] opacity-60">يظهر للعميل بعد الحفظ.</p></button><button type="button" onClick={()=>update("publishImmediately",false)} className={`rounded-[12px] border p-4 text-right ${!form.publishImmediately?"border-[#a77a43] bg-[#f4eadc]":"bg-white"}`}><p className="text-[11px] font-semibold">حفظ كمسودة</p><p className="mt-1 text-[9px] opacity-60">أكمله ثم انشره لاحقًا.</p></button></div></section>
 
           {error?<div className="mt-6 rounded-[11px] border border-red-200 bg-red-50 px-4 py-3 text-[10px] text-red-700">{error}</div>:null}
-          <div className="mt-7 flex items-center justify-between border-t border-black/[0.07] pt-5"><button type="button" onClick={close} className="h-11 px-3 text-[10px] text-black/42">إلغاء</button><button type="button" disabled={!valid||busy} onClick={()=>void submit()} className="inline-flex h-11 items-center gap-2 rounded-[9px] bg-[#080b14] px-5 text-[11px] font-semibold text-white disabled:opacity-40">{busy?"جاري بناء المنتج...":"حفظ المنتج وكل خياراته"}<ArrowLeft size={15}/></button></div>
+          <div className="rukn-create-v6-footer mt-7 flex items-center justify-between border-t border-black/[0.07] pt-5"><button type="button" onClick={close} className="h-11 px-3 text-[10px] text-black/42">إلغاء</button><button type="button" disabled={!valid||busy} onClick={()=>void submit()} className="inline-flex h-11 items-center gap-2 rounded-[9px] bg-[#080b14] px-5 text-[11px] font-semibold text-white disabled:opacity-40">{busy?"جاري بناء المنتج...":"حفظ المنتج وكل خياراته"}<ArrowLeft size={15}/></button></div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

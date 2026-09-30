@@ -671,7 +671,7 @@ public sealed class ProductOptionEndpointsTests
         var accessTokenService =
             factory.Services
                 .GetRequiredService<
-                    IAccessTokenService>();
+                    ITestAccessTokenService>();
 
         var accessToken =
             accessTokenService.Create(

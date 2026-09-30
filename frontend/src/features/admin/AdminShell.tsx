@@ -1,23 +1,26 @@
 import {
   Boxes,
-  CreditCard,
-  TicketPercent,
-  Truck,
-  Warehouse,
   ClipboardList,
+  CreditCard,
   FileText,
   FolderTree,
   LayoutDashboard,
   LogOut,
   Menu,
+  Moon,
   Settings2,
   Star,
   Store,
+  Sun,
+  TicketPercent,
+  Truck,
+  Warehouse,
   X,
 } from "lucide-react";
 
 import {
   useEffect,
+  useRef,
   useState,
 } from "react";
 
@@ -39,6 +42,11 @@ import {
 import type {
   AdminStore,
 } from "./store-setup/storeSetup.types";
+
+import "./AdminHumanV4.css";
+import "./AdminHumanV6.css";
+import "./AdminHumanV61.css";
+import "./AdminHoverSidebarV7.css";
 
 const navigation = [
   {
@@ -104,42 +112,157 @@ const navigation = [
   },
 ];
 
+function statusLabel(
+  status: string,
+) {
+  if (status === "active") {
+    return "فعال";
+  }
+
+  if (status === "suspended") {
+    return "موقوف";
+  }
+
+  return "قيد الإعداد";
+}
+
 export function AdminShell() {
-  const navigate = useNavigate();
+  const navigate =
+    useNavigate();
 
-  const [store, setStore] = useState<AdminStore | null>(() => readAdminStore());
-  const [mobileOpen, setMobileOpen] = useState(false);
-  const [accountOpen, setAccountOpen] = useState(false);
+  const [
+    store,
+    setStore,
+  ] =
+    useState<AdminStore | null>(
+      () => readAdminStore(),
+    );
 
-  useEffect(() => {
-    function refreshStore() {
-      setStore(readAdminStore());
-    }
+  const [
+    mobileOpen,
+    setMobileOpen,
+  ] =
+    useState(false);
 
-    window.addEventListener("storage", refreshStore);
-    window.addEventListener(STORE_UPDATED_EVENT, refreshStore);
+  const [
+    accountOpen,
+    setAccountOpen,
+  ] =
+    useState(false);
 
-    return () => {
-      window.removeEventListener("storage", refreshStore);
-      window.removeEventListener(STORE_UPDATED_EVENT, refreshStore);
-    };
-  }, []);
+  const [
+    theme,
+    setTheme,
+  ] =
+    useState<"light" | "dark">(
+      () => {
+        try {
+          const stored =
+            window.localStorage.getItem(
+              "rukn_admin_theme",
+            );
 
-  const storeName = store?.name ?? "متجر ركن";
-  const storeDomain = store?.slug
-    ? `${store.slug}.ofoq.store`
-    : "لم يتم إعداد رابط المتجر بعد";
+          if (
+            stored === "light" ||
+            stored === "dark"
+          ) {
+            return stored;
+          }
 
-  const initials = store?.name
-    ? store.name
-        .split(/\s+/)
-        .filter(Boolean)
-        .slice(0, 2)
-        .map((part) => part[0])
-        .join("")
-    : "ر";
+          return window.matchMedia(
+            "(prefers-color-scheme: dark)",
+          ).matches
+            ? "dark"
+            : "light";
+        } catch {
+          return "light";
+        }
+      },
+    );
 
-  const status = (store?.status ?? "Draft").toLowerCase();
+  useEffect(
+    () => {
+      document.documentElement.dataset.adminTheme =
+        theme;
+
+      try {
+        window.localStorage.setItem(
+          "rukn_admin_theme",
+          theme,
+        );
+      } catch {
+        // Storage can be unavailable.
+      }
+
+      return () => {
+        delete document.documentElement.dataset.adminTheme;
+      };
+    },
+    [
+      theme,
+    ],
+  );
+
+  useEffect(
+    () => {
+      function refreshStore() {
+        setStore(
+          readAdminStore(),
+        );
+      }
+
+      window.addEventListener(
+        "storage",
+        refreshStore,
+      );
+
+      window.addEventListener(
+        STORE_UPDATED_EVENT,
+        refreshStore,
+      );
+
+      return () => {
+        window.removeEventListener(
+          "storage",
+          refreshStore,
+        );
+
+        window.removeEventListener(
+          STORE_UPDATED_EVENT,
+          refreshStore,
+        );
+      };
+    },
+    [],
+  );
+
+  const storeName =
+    store?.name ??
+    "متجر ركن";
+
+  const storeDomain =
+    store?.slug
+      ? `${store.slug}.ofoq.store`
+      : "رابط المتجر غير مكتمل";
+
+  const status =
+    (
+      store?.status ??
+      "Draft"
+    ).toLowerCase();
+
+  const initials =
+    store?.name
+      ? store.name
+          .split(/\s+/)
+          .filter(Boolean)
+          .slice(0, 2)
+          .map(
+            (part) =>
+              part[0],
+          )
+          .join("")
+      : "ر";
 
   async function signOut() {
     setAccountOpen(false);
@@ -157,111 +280,181 @@ export function AdminShell() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f4f4f0] text-[#111513]">
-      <Sidebar className="fixed inset-y-0 right-0 z-40 hidden w-[248px] lg:flex" />
+    <div className="rukn-admin-shell rukn-h6-shell min-h-screen">
+      <Sidebar
+        className="rukn-h6-sidebar-desktop"
+      />
 
       {mobileOpen ? (
-        <div className="fixed inset-0 z-50 lg:hidden">
+        <div className="rukn-h6-mobile-layer">
           <button
             type="button"
+            className="rukn-h6-mobile-backdrop"
             aria-label="إغلاق القائمة"
-            onClick={() => setMobileOpen(false)}
-            className="absolute inset-0 bg-black/25 backdrop-blur-[1px]"
+            onClick={() =>
+              setMobileOpen(false)
+            }
           />
-          <div className="absolute inset-y-0 right-0 w-[276px] max-w-[86vw] shadow-2xl">
+
+          <div className="rukn-h6-mobile-drawer">
             <Sidebar
-              className="h-full w-full"
-              onNavigate={() => setMobileOpen(false)}
-              mobileClose={() => setMobileOpen(false)}
+              className="h-full"
+              onNavigate={() =>
+                setMobileOpen(false)
+              }
+              onClose={() =>
+                setMobileOpen(false)
+              }
             />
           </div>
         </div>
       ) : null}
 
-      <div className="lg:mr-[248px]">
-        <header className="sticky top-0 z-30 flex h-[70px] items-center justify-between border-b border-black/[0.065] bg-[#f8f8f5]/95 px-4 backdrop-blur-xl md:px-7">
-          <div className="flex min-w-0 items-center gap-3">
+      <div className="rukn-h6-content">
+        <header className="rukn-h6-topbar">
+          <div className="rukn-h6-topbar-context">
             <button
               type="button"
+              className="rukn-h6-mobile-button"
               aria-label="فتح القائمة"
-              onClick={() => setMobileOpen(true)}
-              className="flex size-9 shrink-0 items-center justify-center rounded-[9px] border border-black/[0.07] bg-white lg:hidden"
+              onClick={() =>
+                setMobileOpen(true)
+              }
             >
-              <Menu size={17} />
+              <Menu
+                size={18}
+              />
             </button>
 
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <p className="truncate text-[11px] font-semibold">{storeName}</p>
+            <span className="rukn-h6-store-icon">
+              <Store
+                size={17}
+              />
+            </span>
+
+            <div className="rukn-h6-store-meta">
+              <div>
+                <strong>
+                  {storeName}
+                </strong>
+
                 <span
-                  className={`hidden rounded-full px-2 py-0.5 text-[7px] font-semibold sm:inline-flex ${
-                    status === "active"
-                      ? "bg-emerald-50 text-emerald-700"
-                      : status === "suspended"
-                        ? "bg-red-50 text-red-700"
-                        : "bg-amber-50 text-amber-700"
-                  }`}
+                  data-status={
+                    status
+                  }
                 >
-                  {status === "active"
-                    ? "فعال"
-                    : status === "suspended"
-                      ? "موقوف"
-                      : "قيد الإعداد"}
+                  {statusLabel(
+                    status,
+                  )}
                 </span>
               </div>
-              <p
+
+              <small
                 dir="ltr"
-                className="mt-0.5 truncate text-left text-[8px] text-black/32"
               >
                 {storeDomain}
-              </p>
+              </small>
             </div>
           </div>
 
-          <div className="relative">
+          <div className="rukn-h6-topbar-actions">
             <button
               type="button"
-              aria-label="قائمة الحساب"
-              aria-expanded={accountOpen}
-              onClick={() => setAccountOpen((value) => !value)}
-              className="flex size-9 items-center justify-center rounded-full border border-black/[0.06] bg-[#ddd8ca] text-[9px] font-bold"
+              className="rukn-h6-round-action"
+              aria-label={
+                theme === "dark"
+                  ? "تفعيل الوضع الفاتح"
+                  : "تفعيل الوضع الليلي"
+              }
+              onClick={() =>
+                setTheme(
+                  (current) =>
+                    current === "dark"
+                      ? "light"
+                      : "dark",
+                )
+              }
             >
-              {initials}
+              {theme === "dark" ? (
+                <Sun
+                  size={17}
+                />
+              ) : (
+                <Moon
+                  size={17}
+                />
+              )}
             </button>
 
-            {accountOpen ? (
-              <div className="absolute left-0 top-12 w-[210px] overflow-hidden rounded-[13px] border border-black/[0.08] bg-white p-1.5 shadow-[0_18px_45px_rgba(0,0,0,0.12)]">
-                <div className="border-b border-black/[0.055] px-3 py-3">
-                  <p className="truncate text-[9px] font-semibold">{storeName}</p>
-                  <p className="mt-1 truncate text-[8px] text-black/34">
-                    إدارة المتجر
-                  </p>
+            <div className="rukn-h6-account">
+              <button
+                type="button"
+                className="rukn-h6-avatar"
+                aria-label="قائمة الحساب"
+                aria-expanded={
+                  accountOpen
+                }
+                onClick={() =>
+                  setAccountOpen(
+                    (current) =>
+                      !current,
+                  )
+                }
+              >
+                {initials}
+              </button>
+
+              {accountOpen ? (
+                <div className="rukn-h6-account-menu">
+                  <div>
+                    <strong>
+                      {storeName}
+                    </strong>
+
+                    <span>
+                      إدارة المتجر
+                    </span>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAccountOpen(
+                        false,
+                      );
+
+                      navigate(
+                        "/admin/settings",
+                      );
+                    }}
+                  >
+                    <Settings2
+                      size={15}
+                    />
+
+                    الإعدادات
+                  </button>
+
+                  <button
+                    type="button"
+                    className="danger"
+                    onClick={() =>
+                      void signOut()
+                    }
+                  >
+                    <LogOut
+                      size={15}
+                    />
+
+                    تسجيل الخروج
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setAccountOpen(false);
-                    navigate("/admin/settings");
-                  }}
-                  className="mt-1 flex w-full items-center gap-2 rounded-[8px] px-3 py-2.5 text-right text-[9px] text-black/62 hover:bg-black/[0.035]"
-                >
-                  <Settings2 size={13} />
-                  الإعدادات
-                </button>
-                <button
-                  type="button"
-                  onClick={() => void signOut()}
-                  className="flex w-full items-center gap-2 rounded-[8px] px-3 py-2.5 text-right text-[9px] text-red-700 hover:bg-red-50"
-                >
-                  <LogOut size={13} />
-                  تسجيل الخروج
-                </button>
-              </div>
-            ) : null}
+              ) : null}
+            </div>
           </div>
         </header>
 
-        <main className="px-4 py-6 md:px-7 md:py-8">
+        <main className="rukn-admin-main rukn-h6-main">
           <Outlet />
         </main>
       </div>
@@ -272,73 +465,217 @@ export function AdminShell() {
 function Sidebar({
   className,
   onNavigate,
-  mobileClose,
+  onClose,
 }: {
   className?: string;
   onNavigate?: () => void;
-  mobileClose?: () => void;
+  onClose?: () => void;
 }) {
+  const sidebarRef =
+    useRef<HTMLElement | null>(
+      null,
+    );
+
+  const [
+    navigationLock,
+    setNavigationLock,
+  ] =
+    useState(false);
+
+  useEffect(
+    () => {
+      if (
+        !navigationLock
+      ) {
+        return;
+      }
+
+      function releaseWhenPointerLeaves(
+        event: PointerEvent,
+      ) {
+        const sidebar =
+          sidebarRef.current;
+
+        if (!sidebar) {
+          setNavigationLock(
+            false,
+          );
+
+          return;
+        }
+
+        const rect =
+          sidebar.getBoundingClientRect();
+
+        const outside =
+          event.clientX <
+            rect.left ||
+          event.clientX >
+            rect.right ||
+          event.clientY <
+            rect.top ||
+          event.clientY >
+            rect.bottom;
+
+        if (outside) {
+          setNavigationLock(
+            false,
+          );
+        }
+      }
+
+      window.addEventListener(
+        "pointermove",
+        releaseWhenPointerLeaves,
+        {
+          passive: true,
+        },
+      );
+
+      return () => {
+        window.removeEventListener(
+          "pointermove",
+          releaseWhenPointerLeaves,
+        );
+      };
+    },
+    [
+      navigationLock,
+    ],
+  );
+
   return (
     <aside
-      className={`flex flex-col border-l border-black/[0.065] bg-[#fbfbf9] ${className ?? ""}`}
+      ref={sidebarRef}
+      style={
+        navigationLock &&
+        !onClose
+          ? {
+              pointerEvents:
+                "none",
+            }
+          : undefined
+      }
+      className={[
+        "rukn-h6-sidebar",
+        className ??
+          "",
+      ].join(" ")}
     >
-      <div className="flex h-[70px] items-center justify-between border-b border-black/[0.065] px-6">
+      <div className="rukn-h6-brand">
         <div>
-          <div className="text-[20px] font-bold tracking-[-0.055em]">ركن</div>
-          <div className="mt-0.5 text-[7px] font-semibold tracking-[0.16em] text-black/30">
+          <strong>
+            ركن
+          </strong>
+
+          <span>
             BY OFOQ
-          </div>
+          </span>
         </div>
 
-        {mobileClose ? (
+        {onClose ? (
           <button
             type="button"
             aria-label="إغلاق القائمة"
-            onClick={mobileClose}
-            className="flex size-8 items-center justify-center rounded-[8px] border border-black/[0.07] bg-white"
+            onClick={
+              onClose
+            }
           >
-            <X size={14} />
+            <X
+              size={16}
+            />
           </button>
         ) : null}
       </div>
 
-      <div className="flex-1 px-3 py-5">
-        <p className="mb-3 px-3 text-[8px] font-semibold tracking-[0.04em] text-black/30">
+      <div className="rukn-h6-navigation">
+        <p>
           إدارة المتجر
         </p>
 
-        <nav className="space-y-1">
-          {navigation.map((item) => {
-            const Icon = item.icon;
+        <nav>
+          {navigation.map(
+            (
+              item,
+            ) => {
+              const Icon =
+                item.icon;
 
-            return (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                end={item.end}
-                onClick={onNavigate}
-                className={({ isActive }) =>
-                  [
-                    "flex h-10 items-center gap-3 rounded-[9px] px-3 text-[10px] font-medium transition",
+              return (
+                <NavLink
+                  key={
+                    item.to
+                  }
+                  to={
+                    item.to
+                  }
+                  end={
+                    item.end
+                  }
+                  onClick={(
+                    event,
+                  ) => {
+                    /*
+                     * Clicking a desktop navigation item used to keep
+                     * :hover / :focus-within active while the new page
+                     * was already visible.
+                     *
+                     * Blur the link and temporarily remove the desktop
+                     * sidebar from pointer hit-testing. It becomes
+                     * interactive again after the pointer genuinely
+                     * leaves its current area.
+                     */
+                    if (
+                      event.detail >
+                      0
+                    ) {
+                      event.currentTarget.blur();
+
+                      if (
+                        !onClose
+                      ) {
+                        setNavigationLock(
+                          true,
+                        );
+                      }
+                    }
+
+                    onNavigate?.();
+                  }}
+                  className={({
+                    isActive,
+                  }) =>
                     isActive
-                      ? "bg-[#e9e9e4] text-[#111513]"
-                      : "text-black/52 hover:bg-black/[0.03] hover:text-black/75",
-                  ].join(" ")
-                }
-              >
-                <Icon size={16} strokeWidth={1.6} />
-                {item.label}
-              </NavLink>
-            );
-          })}
+                      ? "active"
+                      : ""
+                  }
+                >
+                  <span>
+                    <Icon
+                      size={17}
+                      strokeWidth={
+                        1.65
+                      }
+                    />
+                  </span>
+
+                  {item.label}
+                </NavLink>
+              );
+            },
+          )}
         </nav>
       </div>
 
-      <div className="border-t border-black/[0.055] px-5 py-4">
-        <p className="text-[8px] leading-4 text-black/28">
-          ركن لإدارة التجارة الإلكترونية
-        </p>
-      </div>
+      <footer className="rukn-h6-sidebar-footer">
+        <strong>
+          RUKN
+        </strong>
+
+        <span>
+          مساحة تشغيل متجرك
+        </span>
+      </footer>
     </aside>
   );
 }

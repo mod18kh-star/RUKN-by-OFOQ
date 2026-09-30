@@ -137,6 +137,19 @@ public static class ManualCheckoutDraftEndpoints
                 DateTimeStyles.RoundtripKind, out var expectedAccountUpdatedAt))
             return Results.BadRequest(new { message = "بيانات المسودة غير مكتملة؛ ارجع إلى صفحة إتمام الطلب." });
 
+        OFOQ.Market.Domain.Commerce.Customers.CustomerAddressId? customerAddressId = null;
+        var customerAddressRaw = form["customerAddressId"].ToString().Trim();
+
+        if (!string.IsNullOrEmpty(customerAddressRaw))
+        {
+            if (!Guid.TryParse(customerAddressRaw, out var customerAddressGuid) ||
+                customerAddressGuid == Guid.Empty)
+                return Results.BadRequest(new { message = "عنوان التوصيل غير صالح؛ ارجع إلى صفحة إتمام الطلب." });
+
+            customerAddressId =
+                OFOQ.Market.Domain.Commerce.Customers.CustomerAddressId.From(customerAddressGuid);
+        }
+
         var expectedCurrency = form["expectedCurrency"].ToString().Trim().ToUpperInvariant();
         if (expectedCurrency.Length != 3 || !expectedCurrency.All(char.IsLetter))
             return Results.BadRequest(new { message = "عملة المسودة غير صالحة." });
@@ -407,7 +420,7 @@ public static class ManualCheckoutDraftEndpoints
                             new CheckoutCommand(
                                 UserId.From(actor),
                                 requestKey.ToString(),
-                                null,
+                                customerAddressId,
                                 ShippingMethodId.From(shippingId),
                                 string.IsNullOrWhiteSpace(coupon)
                                     ? null

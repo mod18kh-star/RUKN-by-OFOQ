@@ -1,4 +1,4 @@
-using OFOQ.Market.Application.Common.Persistence;
+﻿using OFOQ.Market.Application.Common.Persistence;
 using OFOQ.Market.Application.Common.Security;
 using OFOQ.Market.Domain.Identity;
 
@@ -27,9 +27,6 @@ public sealed class CompleteMfaEnrollmentHandler
     private readonly IRecoveryCodeService
         _recoveryCodeService;
 
-    private readonly IAccessTokenService
-        _accessTokenService;
-
     private readonly IUnitOfWork
         _unitOfWork;
 
@@ -43,7 +40,6 @@ public sealed class CompleteMfaEnrollmentHandler
         ITotpService totpService,
         IMfaSecretProtector secretProtector,
         IRecoveryCodeService recoveryCodeService,
-        IAccessTokenService accessTokenService,
         IUnitOfWork unitOfWork,
         TimeProvider timeProvider)
     {
@@ -64,9 +60,6 @@ public sealed class CompleteMfaEnrollmentHandler
 
         _recoveryCodeService =
             recoveryCodeService;
-
-        _accessTokenService =
-            accessTokenService;
 
         _unitOfWork =
             unitOfWork;
@@ -171,18 +164,12 @@ public sealed class CompleteMfaEnrollmentHandler
 
         await _unitOfWork
             .SaveChangesAsync(
-                cancellationToken);
-
-        var accessToken =
-            _accessTokenService.Create(
-                user.Id,
-                user.Email.Value,
-                now,
-                AccessTokenAuthenticationLevel.MultiFactor);
-
-        return new CompleteMfaEnrollmentResult(
-            rawRecoveryCodes,
-            accessToken.Token,
-            accessToken.ExpiresAtUtc);
+                cancellationToken);return new CompleteMfaEnrollmentResult(
+            rawRecoveryCodes);
     }
 }
+
+
+
+
+

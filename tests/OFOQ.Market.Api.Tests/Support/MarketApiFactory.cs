@@ -538,6 +538,10 @@ internal sealed class MarketApiFactory :
                                 InMemoryUserSessionRepository>());
 
                 services.AddSingleton<
+                    ITestAccessTokenService,
+                    SessionBackedTestAccessTokenService>();
+
+                services.AddSingleton<
                     InMemoryUserTrustedDeviceRepository>();
 
                 services.AddSingleton<

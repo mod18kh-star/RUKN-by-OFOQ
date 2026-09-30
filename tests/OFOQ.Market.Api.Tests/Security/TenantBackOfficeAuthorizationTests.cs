@@ -191,7 +191,7 @@ public sealed class TenantBackOfficeAuthorizationTests
     }
 
     [Fact]
-    public async Task BackOffice_SuspendedUser_ReturnsForbidden()
+    public async Task BackOffice_SuspendedUser_ReturnsUnauthorized()
     {
         await using var factory =
             new MarketApiFactory();
@@ -226,7 +226,7 @@ public sealed class TenantBackOfficeAuthorizationTests
                 setup.Tenant.Id);
 
         Assert.Equal(
-            HttpStatusCode.Forbidden,
+            HttpStatusCode.Unauthorized,
             response.StatusCode);
     }
 
@@ -431,7 +431,7 @@ public sealed class TenantBackOfficeAuthorizationTests
         var accessTokenService =
             factory.Services
                 .GetRequiredService<
-                    IAccessTokenService>();
+                    ITestAccessTokenService>();
 
         var accessToken =
             accessTokenService.Create(

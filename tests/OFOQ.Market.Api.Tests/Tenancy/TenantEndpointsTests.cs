@@ -179,7 +179,7 @@ public sealed class TenantEndpointsTests
     }
 
     [Fact]
-    public async Task PostTenant_WhenLiveUserIsSuspended_ReturnsForbidden()
+    public async Task PostTenant_WhenLiveUserIsSuspended_ReturnsUnauthorized()
     {
         await using var factory =
             new MarketApiFactory();
@@ -208,7 +208,7 @@ public sealed class TenantEndpointsTests
                     "blocked-store"));
 
         Assert.Equal(
-            HttpStatusCode.Forbidden,
+            HttpStatusCode.Unauthorized,
             response.StatusCode);
 
         var tenantRepository =
@@ -479,7 +479,7 @@ public sealed class TenantEndpointsTests
         var accessTokenService =
             factory.Services
                 .GetRequiredService<
-                    IAccessTokenService>();
+                    ITestAccessTokenService>();
 
         var accessToken =
             accessTokenService.Create(

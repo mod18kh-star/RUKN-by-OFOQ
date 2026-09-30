@@ -1,4 +1,6 @@
 using System.IdentityModel.Tokens.Jwt;
+using Microsoft.AspNetCore.Http.Features;
+using OFOQ.Market.Api.Security.Uploads;
 using OFOQ.Market.Api.Security.Authorization;
 using OFOQ.Market.Application.Common.Tenancy;
 using OFOQ.Market.Application.Tenancy.StorefrontPresentation;
@@ -124,6 +126,34 @@ public static class TenantStorefrontPresentationEndpoints
             return Results.Forbid();
         }
 
+        const long maxFileBytes =
+            5L * 1024L * 1024L;
+
+        if (!request.HasFormContentType ||
+            request.ContentLength is >
+                maxFileBytes + 65536)
+        {
+            return Results.BadRequest(
+                new
+                {
+                    code =
+                        "storefront_asset_invalid_request",
+                    message =
+                        "صيغة طلب رفع الصورة أو حجمه غير صالح."
+                });
+        }
+
+        var bodySizeFeature =
+            request.HttpContext.Features
+                .Get<IHttpMaxRequestBodySizeFeature>();
+
+        if (bodySizeFeature is
+            { IsReadOnly: false })
+        {
+            bodySizeFeature.MaxRequestBodySize =
+                maxFileBytes + 65536;
+        }
+
         var form =
             await request.ReadFormAsync(
                 cancellationToken);
@@ -148,7 +178,8 @@ public static class TenantStorefrontPresentationEndpoints
             form.Files.GetFile(
                 "file");
 
-        if (file is null ||
+        if (form.Files.Count != 1 ||
+            file is null ||
             file.Length <= 0)
         {
             return Results.BadRequest(
@@ -159,7 +190,7 @@ public static class TenantStorefrontPresentationEndpoints
                 });
         }
 
-        if (file.Length > 5 * 1024 * 1024)
+        if (file.Length > maxFileBytes)
         {
             return Results.BadRequest(
                 new
@@ -169,42 +200,52 @@ public static class TenantStorefrontPresentationEndpoints
                 });
         }
 
-        if (!string.IsNullOrWhiteSpace(file.ContentType) &&
-            !file.ContentType.StartsWith(
-                "image/",
-                StringComparison.OrdinalIgnoreCase))
+        var content =
+            new byte[(int)file.Length];
+
+        await using (var source =
+                     file.OpenReadStream())
         {
-            return Results.BadRequest(
-                new
+            var position = 0;
+
+            while (position < content.Length)
+            {
+                var read =
+                    await source.ReadAsync(
+                        content.AsMemory(
+                            position),
+                        cancellationToken);
+
+                if (read == 0)
                 {
-                    code = "storefront_asset_invalid_type",
-                    message = "نوع الملف يجب أن يكون صورة."
-                });
+                    return Results.BadRequest(
+                        new
+                        {
+                            code =
+                                "storefront_asset_read_failed",
+                            message =
+                                "تعذر قراءة ملف الصورة كاملًا."
+                        });
+                }
+
+                position += read;
+            }
         }
 
-        var extension =
-            Path.GetExtension(
-                file.FileName);
-
-        var allowedExtensions = new[]
-        {
-            ".png",
-            ".jpg",
-            ".jpeg",
-            ".webp",
-            ".svg"
-        };
-
-        if (string.IsNullOrWhiteSpace(extension) ||
-            !allowedExtensions.Contains(
-                extension,
-                StringComparer.OrdinalIgnoreCase))
+        if (!PublicImageUploadValidator.TryValidate(
+                file.FileName,
+                file.ContentType,
+                content,
+                out var extension,
+                out _))
         {
             return Results.BadRequest(
                 new
                 {
-                    code = "storefront_asset_invalid_extension",
-                    message = "الامتداد المدعوم هو PNG أو JPG أو WEBP أو SVG."
+                    code =
+                        "storefront_asset_invalid_file",
+                    message =
+                        "ملف الصورة غير صالح. استخدم PNG أو JPG أو WEBP حقيقيًا بأبعاد آمنة. SVG غير مسموح للملفات العامة."
                 });
         }
 
@@ -235,14 +276,10 @@ public static class TenantStorefrontPresentationEndpoints
                 physicalDirectory,
                 fileName);
 
-        await using (var stream =
-                     File.Create(
-                         physicalPath))
-        {
-            await file.CopyToAsync(
-                stream,
-                cancellationToken);
-        }
+        await File.WriteAllBytesAsync(
+            physicalPath,
+            content,
+            cancellationToken);
 
         var assetUrl =
             $"/public-uploads/storefront/{tenantPath}/{slot}/{fileName}";
